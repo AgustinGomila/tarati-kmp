@@ -205,7 +205,7 @@ incorrect, the announced move, if legal, must be played and the game continues w
 to re-claim the draw at a later stage. The moves can be recorded using any suitable notations and by labelling or
 numbering the stopping points, for example, in a similar manner to map references.
 
-In the second game, only one set of playing pieces is used, preferably consisting of 22 reversible pieces having light
+In the second game, only one set of playing pieces is used, preferably consisting of `22` reversible pieces having light
 and dark colours on respective faces.
 
 As with the first game, each player chooses a light or dark colour and places a piece on each of his four home-base

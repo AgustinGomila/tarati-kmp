@@ -71,6 +71,9 @@ import com.agustin.tarati.shared.generated.resources.profile_history_section
 import com.agustin.tarati.shared.generated.resources.profile_member_since
 import com.agustin.tarati.shared.generated.resources.profile_peak_rating
 import com.agustin.tarati.shared.generated.resources.profile_ratings_section
+import com.agustin.tarati.shared.generated.resources.profile_stat_draw_short
+import com.agustin.tarati.shared.generated.resources.profile_stat_loss_short
+import com.agustin.tarati.shared.generated.resources.profile_stat_win_short
 import com.agustin.tarati.shared.generated.resources.profile_title
 import com.agustin.tarati.shared.generated.resources.rated
 import com.agustin.tarati.shared.generated.resources.rated_info_card
@@ -243,9 +246,12 @@ private fun ProfileContent(
             Spacer(Modifier.height(8.dp))
         }
 
-        // History header + filters
+        // History header (con W/D/L del control de tiempo seleccionado) + filters
         item {
-            SectionHeader(text = localizedString(Res.string.profile_history_section))
+            ProfileHistoryHeader(
+                stats = profile.stats,
+                timeControlFilter = historyState.filters.timeControl,
+            )
             ProfileHistoryFilters(state = historyState, viewModel = viewModel)
         }
 
@@ -612,6 +618,75 @@ private fun SectionHeader(text: String) {
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+/**
+ * Encabezado de la sección de historial: título "Partidas" + resumen W/D/L del
+ * control de tiempo seleccionado en los filtros (o del total si no hay ninguno).
+ * El resumen refleja siempre el control de tiempo, independiente del filtro de
+ * resultado (Victorias/Derrotas/Tablas).
+ */
+@Composable
+private fun ProfileHistoryHeader(stats: ProfileStatsDto, timeControlFilter: String?) {
+    val tcStats = when (timeControlFilter) {
+        TimeControl.BULLET.key -> stats.bullet
+        TimeControl.BLITZ.key -> stats.blitz
+        TimeControl.RAPID.key -> stats.rapid
+        TimeControl.CLASSICAL.key -> stats.classical
+        else -> stats.total
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = localizedString(Res.string.profile_history_section),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WdlPart(
+                "${tcStats.wins}${localizedString(Res.string.profile_stat_win_short)}",
+                Color(0xFF4CAF50),
+            )
+            WdlSeparator()
+            WdlPart(
+                "${tcStats.draws}${localizedString(Res.string.profile_stat_draw_short)}",
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            WdlSeparator()
+            WdlPart(
+                "${tcStats.losses}${localizedString(Res.string.profile_stat_loss_short)}",
+                MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WdlPart(text: String, color: Color) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = color,
+    )
+}
+
+@Composable
+private fun WdlSeparator() {
+    Text(
+        text = "/",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 

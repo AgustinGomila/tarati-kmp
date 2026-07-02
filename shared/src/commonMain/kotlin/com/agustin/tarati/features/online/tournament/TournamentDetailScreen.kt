@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -30,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +58,7 @@ import com.agustin.tarati.network.models.TournamentStatus
 import com.agustin.tarati.network.models.TournamentType
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
+import com.agustin.tarati.shared.generated.resources.back
 import com.agustin.tarati.shared.generated.resources.cancel_tournament
 import com.agustin.tarati.shared.generated.resources.casual
 import com.agustin.tarati.shared.generated.resources.fixture
@@ -66,6 +69,7 @@ import com.agustin.tarati.shared.generated.resources.tournament_active_status
 import com.agustin.tarati.shared.generated.resources.tournament_arena_ended
 import com.agustin.tarati.shared.generated.resources.tournament_arena_ends_in
 import com.agustin.tarati.shared.generated.resources.tournament_bye
+import com.agustin.tarati.shared.generated.resources.tournament_cancel_confirm
 import com.agustin.tarati.shared.generated.resources.tournament_cancelled_status
 import com.agustin.tarati.shared.generated.resources.tournament_champion
 import com.agustin.tarati.shared.generated.resources.tournament_created_by
@@ -427,6 +431,8 @@ private fun TournamentActions(
     onStart: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    var showCancelConfirm by remember { mutableStateOf(false) }
+
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         when (tournament.status) {
             TournamentStatus.REGISTERING -> {
@@ -435,12 +441,13 @@ private fun TournamentActions(
                 }
                 if (!isParticipant && tournament.standings.size < tournament.maxPlayers) {
                     Button(onClick = onRegister) { Text(localizedString(Res.string.tournament_register)) }
-                } else if (isParticipant) {
+                } else if (isParticipant && !isCreator) {
+                    // El creador queda inscrito de forma fija; para salir del torneo lo cancela.
                     OutlinedButton(onClick = onUnregister) { Text(localizedString(Res.string.tournament_unregister)) }
                 }
                 if (isCreator) {
                     OutlinedButton(
-                        onClick = onCancel,
+                        onClick = { showCancelConfirm = true },
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.error,
                         ),
@@ -473,6 +480,32 @@ private fun TournamentActions(
                 )
             }
         }
+    }
+
+    if (showCancelConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelConfirm = false },
+            title = { Text(localizedString(Res.string.cancel_tournament)) },
+            text = { Text(localizedString(Res.string.tournament_cancel_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCancelConfirm = false
+                        onCancel()
+                    },
+                ) {
+                    Text(
+                        localizedString(Res.string.cancel_tournament),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelConfirm = false }) {
+                    Text(localizedString(Res.string.back))
+                }
+            },
+        )
     }
 }
 
@@ -975,8 +1008,10 @@ private fun buildSwissRoundStates(
         round != null && round.pairings.isNotEmpty() &&
                 round.pairings.all { it.status == TournamentGameStatus.COMPLETED } ->
             SwissRoundState.Completed
+
         n == currentRound && tournamentStatus == TournamentStatus.ACTIVE ->
             SwissRoundState.Active
+
         else ->
             SwissRoundState.Pending
     }

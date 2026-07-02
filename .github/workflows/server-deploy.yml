@@ -128,8 +128,11 @@ jobs:
   deploy-server:
     runs-on: ubuntu-latest
     needs: [ check-server, test-server ]
+    # Solo despliega desde main. El push ya está limitado a main; esta guarda cubre
+    # además el workflow_dispatch manual, que puede lanzarse desde cualquier rama.
     if: >-
       always() &&
+      github.ref == 'refs/heads/main' &&
       needs.check-server.outputs.present == 'true' && (
         needs.test-server.result == 'success' ||
         needs.test-server.result == 'skipped'

@@ -231,8 +231,6 @@ fun GameScreen(
         }
     }
 
-    val copyPositionToClipboard: () -> Unit = { viewModel.copyBoardToClipboard() }
-
     // ── Online handlers ───────────────────────────────────────────────────────
     val connectToServerFirstMsg = localizedString(Res.string.connect_to_server_first)
     val couldNotConnectMsg = localizedString(Res.string.could_not_connect)
@@ -624,7 +622,6 @@ fun GameScreen(
                 geometryViewModel = geometryViewModel,
                 selectViewModel = selectViewModel,
                 tutorialViewModel = tutorialViewModel,
-                onCopyPositionToClipboard = copyPositionToClipboard,
                 onTouchIndicator = {
                     when {
                         gameManagerState.gameStatus == GameStatus.GAME_OVER ->

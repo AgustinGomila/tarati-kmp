@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.appVersion
 import com.agustin.tarati.core.domain.game.pieces.colorNameRes
 import com.agustin.tarati.core.domain.game.play.GameEndReason
 import com.agustin.tarati.core.domain.game.play.GameResult.BLACK_WIN
@@ -41,6 +42,7 @@ import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.about_tarati
+import com.agustin.tarati.shared.generated.resources.app_version
 import com.agustin.tarati.shared.generated.resources.are_you_sure_you_want_to_start_a_new_game
 import com.agustin.tarati.shared.generated.resources.black
 import com.agustin.tarati.shared.generated.resources.cancel
@@ -121,12 +123,19 @@ private fun AboutHeader() {
             modifier = Modifier.size(24.dp),
             tint = MaterialTheme.colorScheme.primary,
         )
-        Text(
-            text = localizedString(Res.string.about_tarati),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Column {
+            Text(
+                text = localizedString(Res.string.about_tarati),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = localizedString(Res.string.app_version).replace($$"%1$s", appVersion),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

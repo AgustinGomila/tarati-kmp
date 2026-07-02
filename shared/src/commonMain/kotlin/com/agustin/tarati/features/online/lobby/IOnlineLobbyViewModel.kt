@@ -4,6 +4,7 @@ package com.agustin.tarati.features.online.lobby
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.data.database.dto.MatchDto
 import com.agustin.tarati.network.models.OnlineUserDto
+import com.agustin.tarati.network.models.ProfileStatsDto
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -28,6 +29,12 @@ interface IOnlineLobbyViewModel {
 
     /** Historial paginado del usuario autenticado. */
     val history: StateFlow<GameHistoryUiState>
+
+    /**
+     * Estadísticas sumarizadas del propio usuario por control de tiempo
+     * (para el resumen W/D/L del tab "Mis Partidas"). Null hasta que se cargan.
+     */
+    val myStats: StateFlow<ProfileStatsDto?>
 
     /** Filtros y ordenamiento del tab de lobby (en vivo + búsquedas). */
     val lobbyFilters: StateFlow<LobbyFilters>

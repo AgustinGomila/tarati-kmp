@@ -172,7 +172,12 @@ val onlineModule: Module = module {
      * Inyectar con `koinInject<IAuthViewModel>()` en composables.
      */
     single<IAuthViewModel> {
-        AuthViewModel(authRepository = get(), httpClient = get(), entitlementsRepository = get())
+        AuthViewModel(
+            authRepository = get(),
+            httpClient = get(),
+            entitlementsRepository = get(),
+            achievementsManager = getOrNull(),
+        )
     }
 
     // ============ Entitlements (ownership cross-platform C2) ============

@@ -8,6 +8,7 @@ import com.agustin.tarati.network.models.LiveGameDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
 import com.agustin.tarati.network.models.PagedResponse
+import com.agustin.tarati.network.models.PublicProfileDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -120,6 +121,19 @@ class OnlineLobbyRepository(
      */
     suspend fun getOnlineUsers(token: String): Result<List<OnlineUserDto>> = runCatching {
         httpClient.get("$baseUrl/api/lobby/online-users") {
+            header("Authorization", "Bearer $token")
+        }.body()
+    }
+
+    /**
+     * Obtiene el perfil público de un usuario, incluyendo sus estadísticas
+     * sumarizadas por control de tiempo ([PublicProfileDto.stats]).
+     *
+     * @param token  JWT del usuario autenticado.
+     * @param userId ID del usuario cuyo perfil se solicita.
+     */
+    suspend fun getProfile(token: String, userId: String): Result<PublicProfileDto> = runCatching {
+        httpClient.get("$baseUrl/api/users/$userId") {
             header("Authorization", "Bearer $token")
         }.body()
     }

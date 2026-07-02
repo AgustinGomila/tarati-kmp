@@ -17,7 +17,11 @@ import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.MatchState
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.features.online.auth.AuthRepository
+import com.agustin.tarati.network.models.ServerAchievementDto
+import com.google.android.gms.games.achievement.Achievement
 import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
@@ -37,6 +41,9 @@ class AchievementsManagerTest {
         val unlockedAchievements = mutableSetOf<Int>()
         val stepUpdates = mutableMapOf<Int, Int>()
 
+        /** Snapshots que [loadAchievements] devuelve — configurables por test de reconciliación. */
+        var snapshots: List<AchievementSnapshot> = emptyList()
+
         override fun unlock(achievementResId: Int) {
             unlockedAchievements.add(achievementResId)
         }
@@ -50,6 +57,7 @@ class AchievementsManagerTest {
             onResult: (List<AchievementSnapshot>) -> Unit,
             onFailure: (Exception) -> Unit
         ) {
+            onResult(snapshots)
         }
 
         fun wasUnlocked(achievementResId: Int) = achievementResId in unlockedAchievements
@@ -60,6 +68,9 @@ class AchievementsManagerTest {
 
     private lateinit var reporter: FakeAchievementsReporter
     private lateinit var repository: AchievementsRepository
+    private lateinit var context: android.content.Context
+    private lateinit var syncService: AchievementSyncService
+    private lateinit var authRepository: AuthRepository
     private lateinit var manager: AchievementsManager
 
     @Before
@@ -71,15 +82,20 @@ class AchievementsManagerTest {
             coEvery { incrementTotalWins() } returns 1
             coEvery { incrementTotalGames() } returns 1
             coEvery { getCachedSteps(any()) } returns 0
+            // Sin cuenta previa reconciliada (relaxed devolvería "", no null).
+            coEvery { getLastReconciledUserId() } returns null
         }
+        context = mockk(relaxed = true)
+        syncService = mockk(relaxed = true)
+        authRepository = mockk(relaxed = true)
         manager = AchievementsManager(
-            context = mockk(relaxed = true),
+            context = context,
             repository = repository,
             activityProvider = mockk(relaxed = true),
             reporter = reporter,
             aiEngine = mockk<IAIEngine>(relaxed = true),
-            syncService = mockk(relaxed = true),
-            authRepository = mockk<AuthRepository>(relaxed = true),
+            syncService = syncService,
+            authRepository = authRepository,
         )
     }
 
@@ -404,5 +420,120 @@ class AchievementsManagerTest {
         manager.onMoveApplied(move, oldState, oldState.applyMove(move))
 
         assertFalse(R.string.achievement_the_flipper in reporter.stepUpdates)
+    }
+
+    // ── reconcileAchievements (bidireccional) ─────────────────────────────────
+
+    /** JWT falso cuyo payload decodifica a `{"sub": userId}` (firma irrelevante). */
+    private fun jwtWithSub(userId: String): String {
+        val payload = java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString("""{"sub":"$userId"}""".toByteArray())
+        return "header.$payload.sig"
+    }
+
+    private fun standardUnlocked(gplayId: String) = AchievementSnapshot(
+        id = gplayId,
+        type = Achievement.TYPE_STANDARD,
+        state = Achievement.STATE_UNLOCKED,
+        currentSteps = 0,
+    )
+
+    private fun incremental(gplayId: String, steps: Int) = AchievementSnapshot(
+        id = gplayId,
+        type = Achievement.TYPE_INCREMENTAL,
+        state = Achievement.STATE_REVEALED,
+        currentSteps = steps,
+    )
+
+    @Test
+    fun reconcile_noToken_isNoOp(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns null
+
+        manager.reconcileAchievements()
+
+        assertFalse(reporter.wasUnlocked(R.string.achievement_mit))
+        coVerify(exactly = 0) { syncService.getAll(any()) }
+    }
+
+    @Test
+    fun reconcile_serverUnlocked_unlocksInGooglePlay(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        every { context.getString(R.string.achievement_mit) } returns "gplay_mit"
+        reporter.snapshots = emptyList()
+        coEvery { syncService.getAll(any()) } returns Result.success(
+            listOf(ServerAchievementDto("mit", unlockedAt = "2026-01-01T00:00:00Z", currentSteps = 0)),
+        )
+
+        manager.reconcileAchievements()
+
+        assertTrue(reporter.wasUnlocked(R.string.achievement_mit))
+    }
+
+    @Test
+    fun reconcile_gplayUnlocked_pushesToServer(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        every { context.getString(R.string.achievement_mit) } returns "gplay_mit"
+        reporter.snapshots = listOf(standardUnlocked("gplay_mit"))
+        coEvery { syncService.getAll(any()) } returns Result.success(emptyList())
+
+        manager.reconcileAchievements()
+
+        coVerify { syncService.unlock(any(), AchievementId.MIT) }
+    }
+
+    @Test
+    fun reconcile_incremental_serverHigher_pushesToGooglePlay(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        every { context.getString(R.string.achievement_the_flipper) } returns "gplay_flipper"
+        reporter.snapshots = listOf(incremental("gplay_flipper", steps = 10))
+        coEvery { syncService.getAll(any()) } returns Result.success(
+            listOf(ServerAchievementDto("the_flipper", unlockedAt = null, currentSteps = 30)),
+        )
+
+        manager.reconcileAchievements()
+
+        assertEquals(30, reporter.stepUpdates[R.string.achievement_the_flipper])
+    }
+
+    @Test
+    fun reconcile_incremental_gplayHigher_pushesToServer(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        every { context.getString(R.string.achievement_the_flipper) } returns "gplay_flipper"
+        reporter.snapshots = listOf(incremental("gplay_flipper", steps = 40))
+        coEvery { syncService.getAll(any()) } returns Result.success(
+            listOf(ServerAchievementDto("the_flipper", unlockedAt = null, currentSteps = 20)),
+        )
+
+        manager.reconcileAchievements()
+
+        coVerify { syncService.progress(any(), AchievementId.THE_FLIPPER, 40) }
+    }
+
+    @Test
+    fun reconcile_serverPalette_unlocksLocalPalette(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        every { context.getString(R.string.achievement_halloween_theme) } returns "gplay_halloween"
+        reporter.snapshots = emptyList()
+        coEvery { syncService.getAll(any()) } returns Result.success(
+            listOf(ServerAchievementDto("halloween_theme", unlockedAt = "2026-01-01T00:00:00Z", currentSteps = 0)),
+        )
+
+        manager.reconcileAchievements()
+
+        assertTrue(reporter.wasUnlocked(R.string.achievement_halloween_theme))
+        coVerify { repository.unlockHalloween() }
+    }
+
+    @Test
+    fun reconcile_accountMismatch_doesNotPushGooglePlayToServer(): TestResult = runTest {
+        coEvery { authRepository.getToken() } returns jwtWithSub("u1")
+        coEvery { repository.getLastReconciledUserId() } returns "someone_else"
+        every { context.getString(R.string.achievement_mit) } returns "gplay_mit"
+        reporter.snapshots = listOf(standardUnlocked("gplay_mit"))
+        coEvery { syncService.getAll(any()) } returns Result.success(emptyList())
+
+        manager.reconcileAchievements()
+
+        coVerify(exactly = 0) { syncService.unlock(any(), AchievementId.MIT) }
     }
 }

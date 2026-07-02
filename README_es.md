@@ -379,7 +379,8 @@ webApp/
 
 server/
 ├── Application.kt             # Entry point, plugins Ktor, setup de módulos
-├── ConnectionManager.kt       # Sesiones WebSocket, presencia, desafíos
+├── ConnectionManager.kt       # Sesiones WebSocket, presencia (fachada)
+├── ChallengeManager.kt        # Desafíos directos (extraído de ConnectionManager)
 ├── auth/                      # Configuración JWT, auth WebSocket
 ├── billing/                   # Clientes de checkout Stripe y Polar, webhooks
 ├── bots/                      # BotService, BotManager, BotAgent, BotPlayer
@@ -388,7 +389,7 @@ server/
 │   ├── dao/                   # UserDao, GameDao, SessionDao, FollowDao, TournamentDao, AchievementDao, EntitlementDao
 │   └── tables/                # Definiciones de tablas Exposed (PostgreSQL)
 ├── entitlements/              # EntitlementService, GooglePlayValidator
-├── game/                      # GameSessionManager, ClockManager
+├── game/                      # GameSessionManager (fachada), ClockManager, PostGameProcessor, SessionRecovery, RematchCoordinator, SessionStore, SessionBroadcaster
 ├── matchmaking/               # MatchmakingEngine (cola Glicko-2)
 ├── metrics/                   # TaratiMetrics (Prometheus)
 ├── models/                    # Role, User, AuthResponse
@@ -396,7 +397,7 @@ server/
 ├── redis/                     # TaratiRedisClient (Kreds)
 ├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby Routes
 ├── services/                  # AuthService, EmailService, GuestCleanupJob
-└── tournament/                # TournamentEngine (Round Robin, Swiss, Arena y Eliminación), TournamentManager
+└── tournament/                # TournamentEngine (Round Robin, Swiss, Arena y Eliminación), TournamentManager (fachada), TournamentNotifier, ArenaCoordinator, EliminationCoordinator
 ```
 
 Más de 500 tests (400+ cliente · 114 servidor) y previews de Compose.

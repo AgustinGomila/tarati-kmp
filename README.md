@@ -374,7 +374,8 @@ webApp/
 
 server/
 ├── Application.kt             # Entry point, Ktor plugins, module setup
-├── ConnectionManager.kt       # WebSocket sessions, presence, challenges
+├── ConnectionManager.kt       # WebSocket sessions, presence (facade)
+├── ChallengeManager.kt        # Direct challenges (extracted from ConnectionManager)
 ├── auth/                      # JWT config, WebSocket auth
 ├── billing/                   # Stripe & Polar checkout clients, webhooks
 ├── bots/                      # BotService, BotManager, BotAgent, BotPlayer
@@ -383,7 +384,7 @@ server/
 │   ├── dao/                   # UserDao, GameDao, SessionDao, FollowDao, TournamentDao, AchievementDao, EntitlementDao
 │   └── tables/                # Exposed table definitions (PostgreSQL)
 ├── entitlements/              # EntitlementService, GooglePlayValidator
-├── game/                      # GameSessionManager, ClockManager
+├── game/                      # GameSessionManager (facade), ClockManager, PostGameProcessor, SessionRecovery, RematchCoordinator, SessionStore, SessionBroadcaster
 ├── matchmaking/               # MatchmakingEngine (Glicko-2 queue)
 ├── metrics/                   # TaratiMetrics (Prometheus)
 ├── models/                    # Role, User, AuthResponse
@@ -391,7 +392,7 @@ server/
 ├── redis/                     # TaratiRedisClient (Kreds)
 ├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby Routes
 ├── services/                  # AuthService, EmailService, GuestCleanupJob
-└── tournament/                # TournamentEngine (Round Robin, Swiss, Arena & Elimination), TournamentManager
+└── tournament/                # TournamentEngine (Round Robin, Swiss, Arena & Elimination), TournamentManager (facade), TournamentNotifier, ArenaCoordinator, EliminationCoordinator
 ```
 
 500+ tests (400+ client · 114 server) and Compose previews.

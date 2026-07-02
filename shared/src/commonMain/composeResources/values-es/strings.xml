@@ -428,6 +428,9 @@
     <string name="profile_member_since">Miembro desde %1$s</string>
     <string name="profile_ratings_section">Puntajes</string>
     <string name="profile_history_section">Partidas</string>
+    <string name="profile_stat_win_short">V</string>
+    <string name="profile_stat_draw_short">T</string>
+    <string name="profile_stat_loss_short">D</string>
     <string name="settings_online">Online</string>
     <string name="settings_install_app">Instalar como app</string>
     <string name="profile_bio">Descripción</string>
@@ -495,6 +498,7 @@
     <string name="tournament_finished_notification">El torneo finalizó — ver la clasificación final</string>
     <string name="tournament_cancelled_notification">El torneo fue cancelado</string>
     <string name="cancel_tournament">Cancelar torneo</string>
+    <string name="tournament_cancel_confirm">El torneo se cancelará para todos los inscriptos. Esta acción no se puede deshacer.</string>
     <string name="validation_players_number">Ingresá números para la cantidad de jugadores</string>
     <string name="validation_min_players_count">El mínimo es 2 jugadores</string>
     <string name="validation_max_players_count">El máximo es 128 jugadores</string>

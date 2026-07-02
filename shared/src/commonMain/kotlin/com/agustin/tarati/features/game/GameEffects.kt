@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -85,7 +86,7 @@ import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.components.turnIndicator.FiftyMoveClaimBadge
 import com.agustin.tarati.ui.components.turnIndicator.IndicatorEvents
-import com.agustin.tarati.ui.components.turnIndicator.NotationTurnControl
+import com.agustin.tarati.ui.components.turnIndicator.TurnIndicator
 import com.agustin.tarati.ui.components.turnIndicator.TurnIndicatorState
 import com.agustin.tarati.ui.components.tutorial.ITutorialViewModel
 import com.agustin.tarati.ui.components.tutorial.TutorialEvents
@@ -183,7 +184,7 @@ fun GameEffects(
  *             └── Box (fillMaxSize)
  *                   ├── Column                  ← board
  *                   │     └── CreateBoard (weight=1f)
- *                   ├── NotationTurnControl     ← overlay TopEnd: notación + indicador
+ *                   ├── TurnIndicator           ← overlay TopEnd: indicador de turno
  *                   └── BottomGameBar           ← overlay, último hijo del Box
  *                         (sin edición, sin tutorial)
  * ```
@@ -200,7 +201,6 @@ fun GameEffects(
  * @param onRedo          Lambda que ejecuta redo sincronizando el historial del engine.
  * @param onMoveToCurrent Lambda que salta al último movimiento de la partida.
  * @param onMoveToIndex   Lambda invocada al hacer clic en un movimiento de la lista del FAB.
- * @param showNotation      Si false, el panel de notación y su chevron no se renderizan.
  * @param showTurnIndicator Si false, el círculo indicador de turno no se renderiza.
  */
 @ExperimentalMaterial3Api
@@ -226,7 +226,6 @@ fun MainContent(
     playerManager: IPlayerManager,
     boardManager: IEditBoardManager,
     editBoard: IEditBoard,
-    onCopyPositionToClipboard: () -> Unit,
     onTouchIndicator: () -> Unit,
     onUndo: () -> Unit,
     onRedo: () -> Unit,
@@ -249,7 +248,6 @@ fun MainContent(
     onCancelSearch: () -> Unit = {},
     spectatingState: SpectatingState? = null,
     onStopSpectating: () -> Unit = {},
-    showNotation: Boolean = true,
     showTurnIndicator: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
@@ -406,15 +404,6 @@ fun MainContent(
             }
     }
 
-    // toPositionNotation() se ejecuta en un LaunchedEffect (async) para no bloquear
-    // los composition passes durante partidas de IA vs IA con movimientos rápidos.
-    // Cuando gameState cambia N veces entre frames, solo el último LaunchedEffect
-    // completa (los anteriores se cancelan), reduciendo el cómputo a una llamada
-    // por frame en lugar de una por movimiento.
-    var positionNotation by remember { mutableStateOf(gameState.toPositionNotation()) }
-    LaunchedEffect(gameState) {
-        positionNotation = gameState.toPositionNotation()
-    }
 
     val boardRenderData = BoardRenderData(
         gameState = gameState,
@@ -571,7 +560,7 @@ fun MainContent(
                 )
             }
 
-            // ── NotationTurnControl + FiftyMoveClaimBadge: overlays TopEnd ──────
+            // ── TurnIndicator + FiftyMoveClaimBadge: overlays TopEnd ───────────
             // Se muestran fuera de modo edición y tutorial. Al ser hijos de este Box,
             // se renderizan sobre el tablero sin afectar su tamaño ni layout.
             if (!isEditing && !isTutorialActive) {
@@ -585,25 +574,26 @@ fun MainContent(
                     if (canClaimDraw) {
                         FiftyMoveClaimBadge(onClick = onClaimFiftyMoveDraw)
                     }
-                    NotationTurnControl(
-                        isLandscape = isLandscape,
-                        positionNotation = positionNotation,
-                        moveIndex = moveIndex,
-                        currentTurn = gameState.currentTurn,
-                        turnState = turnState,
-                        logoVisible = transitionDone,
-                        indicatorEvents = remember(onTouchIndicator) {
-                            object : IndicatorEvents {
-                                override fun onTouch() = onTouchIndicator()
-                            }
-                        },
-                        onCopyPositionToClipboard = onCopyPositionToClipboard,
-                        showNotation = showNotation,
-                        showTurnIndicator = showTurnIndicator,
-                        onCirclePositioned = { centre ->
-                            indicatorCentreWindow = centre
-                        },
-                    )
+                    if (showTurnIndicator) {
+                        // key(Unit) ancla la identidad de composición del TurnIndicator,
+                        // evitando que cambios en el slot table recreen el
+                        // InfiniteTransition y congelen la dirección de rotación.
+                        key(Unit) {
+                            TurnIndicator(
+                                state = turnState,
+                                currentTurn = gameState.currentTurn,
+                                logoVisible = transitionDone,
+                                onCirclePositioned = { centre ->
+                                    indicatorCentreWindow = centre
+                                },
+                                indicatorEvents = remember(onTouchIndicator) {
+                                    object : IndicatorEvents {
+                                        override fun onTouch() = onTouchIndicator()
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
 

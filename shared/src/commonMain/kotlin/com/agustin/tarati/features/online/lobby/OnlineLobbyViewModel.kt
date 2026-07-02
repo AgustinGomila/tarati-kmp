@@ -12,6 +12,7 @@ import com.agustin.tarati.network.models.LiveGameDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
 import com.agustin.tarati.network.models.PagedResponse
+import com.agustin.tarati.network.models.ProfileStatsDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -112,6 +113,9 @@ class OnlineLobbyViewModel(
 
     private val _history = MutableStateFlow(GameHistoryUiState())
     override val history: StateFlow<GameHistoryUiState> = _history.asStateFlow()
+
+    private val _myStats = MutableStateFlow<ProfileStatsDto?>(null)
+    override val myStats: StateFlow<ProfileStatsDto?> = _myStats.asStateFlow()
 
     private val _lobbyFilters = MutableStateFlow(LobbyFilters())
     override val lobbyFilters: StateFlow<LobbyFilters> = _lobbyFilters.asStateFlow()
@@ -240,6 +244,7 @@ class OnlineLobbyViewModel(
     // ── Game history ───────────────────────────────────────────────────────────
 
     override fun loadHistory() {
+        loadMyStats()
         loadPagedContent(_history) { token, page, limit ->
             repository.getGameHistory(
                 token = token,
@@ -249,6 +254,25 @@ class OnlineLobbyViewModel(
                 result = _history.value.filters.result,
                 rated = _history.value.filters.rated,
             )
+        }
+    }
+
+    /**
+     * Carga las estadísticas sumarizadas del propio usuario una sola vez por sesión
+     * del ViewModel. Son agregadas (no dependen de los filtros): la UI selecciona el
+     * control de tiempo del lado del cliente. No-op sin sesión.
+     */
+    private fun loadMyStats() {
+        if (_myStats.value != null) return
+        val userId = authViewModel.currentUser?.userId ?: return
+        viewModelScope.launch {
+            val token = getValidToken() ?: return@launch
+            repository.getProfile(token, userId)
+                .onSuccess { profile -> _myStats.value = profile.stats }
+                .onFailure { e ->
+                    if (e is CancellationException) throw e
+                    logger.debug("loadMyStats failed: ${e.message}")
+                }
         }
     }
 

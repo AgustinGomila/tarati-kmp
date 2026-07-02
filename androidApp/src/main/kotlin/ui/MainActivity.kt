@@ -52,12 +52,13 @@ class MainActivity : ComponentActivity() {
         provider.set(this)
         provider.intentLauncher = { intent -> achievementsLauncher.launch(intent) }
 
-        // Sync achievement state from Play Games server once per installation.
-        // Must run after ActivityProvider.set() so loadAchievements() has an
-        // Activity available. Restores palette unlock flags (Aurora, Ember,
-        // Halloween, Christmas) and incremental counters lost on reinstall.
+        // Reconcile achievements bidirectionally (Play Games ↔ Tarati server) on
+        // every foreground. Must run after ActivityProvider.set() so loadAchievements()
+        // has an Activity available. Propagates unlocks earned on any platform to the
+        // others and restores palette flags / incremental counters. No-op without a
+        // server session; the AuthViewModel login/restore hook covers that case.
         lifecycleScope.launch(Dispatchers.IO) {
-            getKoin().get<AchievementsManager>().syncFromServerIfNeeded()
+            getKoin().get<AchievementsManager>().reconcileAchievements()
         }
         lifecycleScope.launch(Dispatchers.IO) {
             getKoin().get<IBillingManager>().queryOwnedPurchases()

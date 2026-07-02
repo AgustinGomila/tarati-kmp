@@ -67,6 +67,14 @@ class AchievementsRepository(private val context: Context) {
      */
     private val serverSyncDoneKey = stringPreferencesKey("server_sync_done_v1")
 
+    /**
+     * Tarati server userId of the last account reconciled on this device.
+     * Used by [AchievementsManager.reconcileAchievements] to avoid pushing the
+     * previous user's Play Games achievements into a different Tarati account
+     * after an account switch. Null until the first reconciliation.
+     */
+    private val lastReconciledUserIdKey = stringPreferencesKey("last_reconciled_user_id_v1")
+
     // ── Seasonal unlock keys ──────────────────────────────────────────────────
 
     private val halloweenUnlockedKey = booleanPreferencesKey("seasonal_halloween_unlocked")
@@ -82,6 +90,14 @@ class AchievementsRepository(private val context: Context) {
     suspend fun incrementTotalPromotions(): Int = increment(totalPromotionsKey, 1)
     suspend fun incrementTotalWins(): Int = increment(totalWinsKey, 1)
     suspend fun incrementTotalGames(): Int = increment(totalGamesKey, 1)
+
+    // Lectura de los contadores locales — usada por la reconciliación bidireccional
+    // ([AchievementsManager.reconcileAchievements]) para incluir el piso local en el max.
+
+    suspend fun getTotalCaptures(): Int = getInt(totalCapturesKey)
+    suspend fun getTotalPromotions(): Int = getInt(totalPromotionsKey)
+    suspend fun getTotalWins(): Int = getInt(totalWinsKey)
+    suspend fun getTotalGames(): Int = getInt(totalGamesKey)
 
     // ── Seasonal unlock API ───────────────────────────────────────────────────
 
@@ -179,6 +195,19 @@ class AchievementsRepository(private val context: Context) {
      */
     suspend fun markServerSyncDone() {
         context.achievementsDataStore.edit { prefs -> prefs[serverSyncDoneKey] = "done" }
+    }
+
+    /**
+     * Returns the Tarati server userId of the last account reconciled on this
+     * device, or null if no reconciliation has run yet.
+     */
+    suspend fun getLastReconciledUserId(): String? = getString(lastReconciledUserIdKey)
+
+    /**
+     * Records the Tarati server userId just reconciled on this device.
+     */
+    suspend fun setLastReconciledUserId(userId: String) {
+        context.achievementsDataStore.edit { prefs -> prefs[lastReconciledUserIdKey] = userId }
     }
 
     /**

@@ -418,6 +418,9 @@
     <string name="profile_member_since">Member since %1$s</string>
     <string name="profile_ratings_section">Ratings</string>
     <string name="profile_history_section">Games</string>
+    <string name="profile_stat_win_short">W</string>
+    <string name="profile_stat_draw_short">D</string>
+    <string name="profile_stat_loss_short">L</string>
     <string name="settings_online">Online</string>
     <string name="settings_install_app">Install as app</string>
     <string name="profile_bio">Description</string>
@@ -485,6 +488,7 @@
     <string name="tournament_finished_notification">The tournament ended — see the final standings</string>
     <string name="tournament_cancelled_notification">The tournament was cancelled</string>
     <string name="cancel_tournament">Cancel tournament</string>
+    <string name="tournament_cancel_confirm">The tournament will be cancelled for all registered players. This action cannot be undone.</string>
     <string name="validation_players_number">Enter numbers for player counts</string>
     <string name="validation_min_players_count">Minimum is 2 players</string>
     <string name="validation_max_players_count">Maximum is 128 players</string>

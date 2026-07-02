@@ -6,11 +6,14 @@ import com.agustin.tarati.R
 import com.agustin.tarati.core.domain.ai.api.IAIEngine
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.AuthRepository
+import com.agustin.tarati.network.models.ServerAchievementDto
 import com.agustin.tarati.ui.theme.SeasonalThemeManager
 import com.google.android.gms.games.PlayGames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 /**
  * Gestiona los logros de Tarati en Android.
@@ -19,13 +22,23 @@ import kotlinx.coroutines.launch
  * - **Google Play Games** vía [IAchievementsReporter]
  * - **Servidor de Tarati** vía [AchievementSyncService]
  *
- * ## Reinstall resilience
- * [syncFromServerIfNeeded] consulta Play Games una vez por instalación y restaura
- * los contadores locales desde el servidor, previniendo llamadas [setSteps] con
- * valores obsoletos que Play Games ignora silenciosamente.
+ * ## Reconciliación bidireccional cross-platform
+ * [reconcileAchievements] fusiona el estado de Play Games y del servidor de Tarati
+ * en ambos sentidos: un logro conseguido en cualquier plataforma (Web/Desktop →
+ * servidor) se destraba en Play Games, y un logro conseguido en Android (Play Games)
+ * se sube al servidor para que sea visible en el resto de plataformas. La fusión es
+ * por **unión** (unlocked) y **máximo** (pasos incrementales); nunca revoca ni
+ * retrocede. Se dispara al login/restore (vía [syncFromServer], invocado desde
+ * `AuthViewModel`) y al volver la app a foreground ([ui.MainActivity.onResume]).
+ *
+ * ## Cambio de cuenta
+ * [AchievementsRepository.getLastReconciledUserId] registra la última cuenta Tarati
+ * reconciliada. Si la sesión actual pertenece a otro usuario, la reconciliación no
+ * sube lo de Play Games al servidor (evita contaminar la cuenta nueva con logros del
+ * usuario anterior); la bajada servidor → Play Games sí ocurre.
  *
  * ## Caché de sesión (GPlay)
- * [setSteps] usa [AchievementsRepository.getCachedSteps] para evitar llamadas
+ * [setStepsGPlay] usa [AchievementsRepository.getCachedSteps] para evitar llamadas
  * redundantes a la red dentro de la misma sesión. El servidor siempre recibe
  * el valor actualizado independientemente del caché.
  */
@@ -79,57 +92,172 @@ class AchievementsManager(
         }
     }
 
-    // ── Startup sync ──────────────────────────────────────────────────────────
+    // ── Reconciliación bidireccional ──────────────────────────────────────────
+
+    @Volatile
+    private var reconciling = false
 
     /**
-     * Restaura contadores locales desde Play Games una vez por instalación.
-     * Llamado desde [MainActivity.onResume].
+     * Hook cross-platform de login/restore: `AuthViewModel` llama [syncFromServer]
+     * en todas las plataformas al establecerse la sesión. En Android eso reconcilia
+     * Play Games ↔ servidor en ambos sentidos.
      */
-    suspend fun syncFromServerIfNeeded() {
-        if (!repository.needsServerSync()) return
+    override suspend fun syncFromServer() = reconcileAchievements()
 
-        reporter.loadAchievements(
-            onResult = { achievements ->
-                scope.launch {
-                    achievements.forEach { applyServerAchievementToLocalCounters(it) }
-                    repository.markServerSyncDone()
-                    logger.debug("syncFromServer: completed successfully")
+    /**
+     * Fusiona el estado de logros de Play Games y del servidor de Tarati en ambos
+     * sentidos. No-op si falta la Activity, la sesión de Play Games o el token de
+     * servidor — reintenta en el próximo disparo (login o foreground).
+     *
+     * Reglas de fusión (nunca revoca ni retrocede):
+     * - **One-shot**: `unlocked = GPlay ∪ servidor`. Se propaga al que falte.
+     * - **Incremental**: `steps = max(GPlay, servidor, local)`, acotado al máximo.
+     *   Se empuja el máximo a Play Games, al servidor y al DataStore local.
+     *
+     * La subida GPlay → servidor se omite si la cuenta Tarati cambió respecto de la
+     * última reconciliada (ver [AchievementsRepository.getLastReconciledUserId]).
+     */
+    suspend fun reconcileAchievements() {
+        val token = authRepository.getToken() ?: return
+        if (reconciling) return
+        reconciling = true
+        try {
+            val userId = userIdFromToken(token)
+            val lastUserId = repository.getLastReconciledUserId()
+            // Sin subir lo de Play Games a una cuenta Tarati distinta de la última reconciliada.
+            val allowUpstreamToServer = lastUserId == null || lastUserId == userId
+
+            // El servidor es la fuente de verdad cross-platform: sin él no hay nada que
+            // reconciliar. Play Games puede faltar (sin sesión Google) y aun así se aplica
+            // servidor → local para que los logros ganados en otra plataforma estén en Android.
+            val serverDtos = syncService.getAll(token).getOrElse { e ->
+                logger.warn("reconcile: server unavailable — ${e.message}")
+                return
+            }
+            val snapshots = loadGPlaySnapshots()
+
+            val gplayById: Map<AchievementId, AchievementSnapshot> = snapshots
+                .mapNotNull { snap -> achievementIdFromGPlayId(snap.id)?.let { it to snap } }
+                .toMap()
+            val serverById: Map<AchievementId, ServerAchievementDto> = serverDtos
+                .mapNotNull { dto -> AchievementId.fromId(dto.achievementId)?.let { it to dto } }
+                .toMap()
+
+            for (id in AchievementId.entries) {
+                val resId = id.toAndroidResId() ?: continue
+                val maxSteps = INCREMENTAL_MAX[id]
+                val gplay = gplayById[id]
+                val server = serverById[id]
+
+                if (maxSteps != null) {
+                    val gplaySteps = gplay?.currentSteps ?: 0
+                    val serverSteps = server?.currentSteps ?: 0
+                    val localSteps = localCounter(id)
+                    val merged = maxOf(gplaySteps, serverSteps, localSteps).coerceAtMost(maxSteps)
+
+                    if (merged > gplaySteps) setStepsGPlay(resId, merged)
+                    if (allowUpstreamToServer && merged > serverSteps) {
+                        syncService.progress(token, id, merged)
+                    }
+                    ensureLocalCounterAtLeast(id, merged)
+                } else {
+                    val gplayUnlocked = gplay?.isUnlocked == true
+                    val serverUnlocked = server?.unlockedAt != null
+                    if (gplayUnlocked || serverUnlocked) {
+                        if (!gplayUnlocked) reporter.unlock(resId)
+                        if (allowUpstreamToServer && !serverUnlocked) {
+                            syncService.unlock(token, id)
+                        }
+                        unlockPaletteLocal(id)  // no-op salvo para las cuatro paletas
+                    }
                 }
-            },
-            onFailure = { e ->
-                logger.warn("syncFromServer: failed, will retry on next launch — ${e.message}")
-            },
-        )
+            }
+
+            if (userId != null) repository.setLastReconciledUserId(userId)
+            repository.markServerSyncDone()
+            logger.debug("reconcile: completed (upstreamToServer=$allowUpstreamToServer)")
+        } finally {
+            reconciling = false
+        }
     }
 
-    private suspend fun applyServerAchievementToLocalCounters(snapshot: AchievementSnapshot) {
-        if (snapshot.isIncremental) {
-            val serverSteps = snapshot.currentSteps
-            when (snapshot.id) {
-                context.getString(R.string.achievement_the_flipper) ->
-                    repository.ensureTotalCapturesAtLeast(serverSteps)
-
-                context.getString(R.string.achievement_rok_master) ->
-                    repository.ensureTotalPromotionsAtLeast(serverSteps)
-
-                context.getString(R.string.achievement_unstoppable),
-                context.getString(R.string.achievement_grandmaster) ->
-                    repository.ensureTotalWinsAtLeast(serverSteps)
-
-                context.getString(R.string.achievement_play_10_games) ->
-                    repository.ensureTotalGamesAtLeast(serverSteps)
-            }
-            return
+    /**
+     * Suspende hasta obtener los snapshots de Play Games. Lista vacía si no hay Activity
+     * o la carga falla — la reconciliación continúa aplicando servidor → local y los
+     * envíos a Play Games hacen no-op de forma segura.
+     */
+    private suspend fun loadGPlaySnapshots(): List<AchievementSnapshot> =
+        suspendCancellableCoroutine { cont ->
+            reporter.loadAchievements(
+                onResult = { if (cont.isActive) cont.resume(it) },
+                onFailure = { if (cont.isActive) cont.resume(emptyList()) },
+            )
         }
 
-        if (!snapshot.isUnlocked) return
+    /** Play Games ID (`CgkI…`) → [AchievementId] canónico. Inverso de [toAndroidResId]. */
+    private fun achievementIdFromGPlayId(gplayId: String): AchievementId? =
+        gplayIdToAchievementId[gplayId]
 
-        when (snapshot.id) {
-            context.getString(R.string.achievement_halloween_theme) -> repository.unlockHalloween()
-            context.getString(R.string.achievement_christmas_theme) -> repository.unlockChristmas()
-            context.getString(R.string.achievement_the_first_light) -> repository.unlockAurora()
-            context.getString(R.string.achievement_the_dark_side) -> repository.unlockEmber()
+    private val gplayIdToAchievementId: Map<String, AchievementId> by lazy {
+        AchievementId.entries.mapNotNull { id ->
+            id.toAndroidResId()?.let { resId -> context.getString(resId) to id }
+        }.toMap()
+    }
+
+    /** Lee el contador local que respalda un logro incremental. */
+    private suspend fun localCounter(id: AchievementId): Int = when (id) {
+        AchievementId.THE_FLIPPER -> repository.getTotalCaptures()
+        AchievementId.ROK_MASTER -> repository.getTotalPromotions()
+        AchievementId.UNSTOPPABLE, AchievementId.GRANDMASTER -> repository.getTotalWins()
+        AchievementId.PLAY_10_GAMES -> repository.getTotalGames()
+        else -> 0
+    }
+
+    /** Eleva el contador local que respalda un logro incremental hasta [value]. */
+    private suspend fun ensureLocalCounterAtLeast(id: AchievementId, value: Int) = when (id) {
+        AchievementId.THE_FLIPPER -> repository.ensureTotalCapturesAtLeast(value)
+        AchievementId.ROK_MASTER -> repository.ensureTotalPromotionsAtLeast(value)
+        AchievementId.UNSTOPPABLE, AchievementId.GRANDMASTER -> repository.ensureTotalWinsAtLeast(value)
+        AchievementId.PLAY_10_GAMES -> repository.ensureTotalGamesAtLeast(value)
+        else -> Unit
+    }
+
+    /** Persiste el unlock de paleta en DataStore para los logros de paleta; no-op para el resto. */
+    private suspend fun unlockPaletteLocal(id: AchievementId) = when (id) {
+        AchievementId.HALLOWEEN_THEME -> repository.unlockHalloween()
+        AchievementId.CHRISTMAS_THEME -> repository.unlockChristmas()
+        AchievementId.THE_FIRST_LIGHT -> repository.unlockAurora()
+        AchievementId.THE_DARK_SIDE -> repository.unlockEmber()
+        else -> Unit
+    }
+
+    /** Extrae el claim `sub` (userId) del JWT sin verificar la firma. Null si no se puede parsear. */
+    private fun userIdFromToken(token: String): String? = runCatching {
+        val payload = token.split(".").getOrNull(1) ?: return null
+        val decoded = base64UrlDecode(payload)
+        Regex(""""sub"\s*:\s*"([^"]+)"""").find(decoded)?.groupValues?.get(1)
+    }.getOrNull()
+
+    /** Decodifica base64 URL-safe a texto UTF-8 en Kotlin puro (sin dependencias de Android). */
+    private fun base64UrlDecode(input: String): String {
+        val padded = buildString {
+            append(input.replace('-', '+').replace('_', '/'))
+            repeat((4 - input.length % 4) % 4) { append('=') }
         }
+        val table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        val bytes = mutableListOf<Byte>()
+        var i = 0
+        while (i + 3 < padded.length) {
+            val n = (table.indexOf(padded[i]) shl 18) or
+                    (table.indexOf(padded[i + 1]) shl 12) or
+                    (if (padded[i + 2] == '=') 0 else table.indexOf(padded[i + 2]) shl 6) or
+                    (if (padded[i + 3] == '=') 0 else table.indexOf(padded[i + 3]))
+            bytes.add((n shr 16).toByte())
+            if (padded[i + 2] != '=') bytes.add((n shr 8 and 0xFF).toByte())
+            if (padded[i + 3] != '=') bytes.add((n and 0xFF).toByte())
+            i += 4
+        }
+        return bytes.toByteArray().decodeToString()
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -190,6 +318,22 @@ class AchievementsManager(
         if (submitted) repository.updateCachedSteps(achievementResId, steps)
     }
 }
+
+// ── Logros incrementales y su máximo ─────────────────────────────────────────
+
+/**
+ * Máximo de pasos de cada logro incremental (espejo de `AchievementsMetadata.maxSteps`
+ * en el cliente y de `AchievementDao.INCREMENTAL_THRESHOLDS` en el servidor).
+ * Un logro presente aquí se trata como incremental en [AchievementsManager.reconcileAchievements];
+ * el resto, como one-shot. Mantener sincronizado con ambas fuentes.
+ */
+private val INCREMENTAL_MAX: Map<AchievementId, Int> = mapOf(
+    AchievementId.PLAY_10_GAMES to 10,
+    AchievementId.THE_FLIPPER to 50,
+    AchievementId.ROK_MASTER to 25,
+    AchievementId.UNSTOPPABLE to 10,
+    AchievementId.GRANDMASTER to 50,
+)
 
 // ── Mapeo AchievementId ↔ Android resource ID ────────────────────────────────
 

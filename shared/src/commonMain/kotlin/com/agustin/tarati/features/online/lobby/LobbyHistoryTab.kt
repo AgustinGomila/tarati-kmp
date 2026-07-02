@@ -31,6 +31,7 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.network.models.GameHistoryDto
+import com.agustin.tarati.network.models.ProfileStatsDto
 import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
@@ -40,6 +41,10 @@ import com.agustin.tarati.shared.generated.resources.error
 import com.agustin.tarati.shared.generated.resources.loss
 import com.agustin.tarati.shared.generated.resources.moves
 import com.agustin.tarati.shared.generated.resources.no_games_found
+import com.agustin.tarati.shared.generated.resources.profile_games_played
+import com.agustin.tarati.shared.generated.resources.profile_stat_draw_short
+import com.agustin.tarati.shared.generated.resources.profile_stat_loss_short
+import com.agustin.tarati.shared.generated.resources.profile_stat_win_short
 import com.agustin.tarati.shared.generated.resources.rated
 import com.agustin.tarati.shared.generated.resources.rated_info_card
 import com.agustin.tarati.shared.generated.resources.rating
@@ -47,6 +52,7 @@ import com.agustin.tarati.shared.generated.resources.result
 import com.agustin.tarati.shared.generated.resources.win
 import com.agustin.tarati.ui.components.carditem.GameCardItem
 import com.agustin.tarati.ui.components.game.CobColorIndicator
+import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.format
@@ -61,6 +67,7 @@ internal fun GameHistoryTab(
     onNavigateToGameDetails: ((gameId: String) -> Unit)? = null,
 ) {
     val state by viewModel.history.collectAsState()
+    val myStats by viewModel.myStats.collectAsState()
     val listState = rememberLazyListState()
 
     // Cargar al entrar en el tab (solo si no hay datos ya).
@@ -83,6 +90,11 @@ internal fun GameHistoryTab(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // ── Estadísticas sumarizadas del control de tiempo seleccionado ─────────
+        myStats?.let { stats ->
+            HistoryStatsRow(stats = stats, timeControlFilter = state.filters.timeControl)
+        }
+
         // ── Filtros ────────────────────────────────────────────────────────────
         HistoryFilterRow(state = state, viewModel = viewModel)
 
@@ -127,6 +139,36 @@ internal fun GameHistoryTab(
             }
         }
     }
+}
+
+/**
+ * Fila de estadísticas sumarizadas del control de tiempo seleccionado en los filtros
+ * (o del total si no hay ninguno), con el estilo [LobbyStatsRow] de las demás pestañas.
+ * Refleja siempre el control de tiempo, independiente del filtro de resultado.
+ */
+@Composable
+private fun HistoryStatsRow(stats: ProfileStatsDto, timeControlFilter: String?) {
+    val s = when (timeControlFilter) {
+        TimeControl.BULLET.key -> stats.bullet
+        TimeControl.BLITZ.key -> stats.blitz
+        TimeControl.RAPID.key -> stats.rapid
+        TimeControl.CLASSICAL.key -> stats.classical
+        else -> stats.total
+    }
+    LobbyStatsRow(
+        stats = listOf(
+            StatChip(
+                icon = TaratiIcons.Leaderboard,
+                text = localizedString(Res.string.profile_games_played).replace($$"%1$s", "${s.games}"),
+            ),
+            StatChip(
+                icon = TaratiIcons.EmojiEvents,
+                text = "${s.wins}${localizedString(Res.string.profile_stat_win_short)}" +
+                        " / ${s.draws}${localizedString(Res.string.profile_stat_draw_short)}" +
+                        " / ${s.losses}${localizedString(Res.string.profile_stat_loss_short)}",
+            ),
+        ),
+    )
 }
 
 @Composable

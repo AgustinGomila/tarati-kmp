@@ -213,7 +213,7 @@ derecho del reclamante a reclamar el empate en una etapa posterior. Los movimien
 cualquier notación adecuada y etiquetando o numerando los puntos de parada, por ejemplo, de manera similar a las
 referencias de mapa.
 
-En el segundo juego, solo se usa un conjunto de piezas de juego, preferiblemente consistente en 22 piezas reversibles
+En el segundo juego, solo se usa un conjunto de piezas de juego, preferiblemente consistente en `22` piezas reversibles
 que tienen colores claro y oscuro en caras respectivas.
 
 Como en el primer juego, cada jugador elige un color claro u oscuro y coloca una pieza en cada uno de sus cuatro puntos

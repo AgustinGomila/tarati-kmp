@@ -55,6 +55,9 @@ class AuthViewModel(
     private val httpClient: io.ktor.client.HttpClient,
     // Opcional (nullable) para no romper construcciones directas en tests; Koin inyecta el real.
     private val entitlementsRepository: com.agustin.tarati.services.billing.EntitlementsRepository? = null,
+    // Reconcilia logros cross-platform al establecerse la sesión (Android: Play Games ↔ servidor;
+    // Desktop/Web: pull desde el servidor). Nullable por la misma razón que entitlementsRepository.
+    private val achievementsManager: com.agustin.tarati.services.achievements.IAchievementsManager? = null,
 ) : ViewModel(), IAuthViewModel {
 
     private val logger = getLogger("AuthViewModel")
@@ -105,6 +108,8 @@ class AuthViewModel(
             // Cargar ownership cross-platform para la sesión recién establecida.
             // Funnel común de login/guest/restore — no bloquea la autenticación.
             viewModelScope.launch { entitlementsRepository?.refresh() }
+            // Reconciliar logros cross-platform para la sesión recién establecida.
+            viewModelScope.launch { achievementsManager?.syncFromServer() }
 
             logger.debug("Authenticated as ${userInfo.username}")
             Result.success(userInfo)
@@ -544,6 +549,8 @@ class AuthViewModel(
                 _accessToken = token
                 _authState.value = AuthState.Authenticated(userInfo = userInfo, tokenExpiry = expiresAt)
                 logger.debug("Session restored for ${userInfo.username}")
+                // Reconciliar logros cross-platform para la sesión restaurada.
+                viewModelScope.launch { achievementsManager?.syncFromServer() }
             } else {
                 // Token expirado — intentar renovar silenciosamente si hay refresh token
                 logger.debug("Stored token expired, attempting silent refresh")
