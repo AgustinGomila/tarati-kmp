@@ -18,10 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -87,6 +85,8 @@ import com.agustin.tarati.core.domain.game.play.StableHistoryList
 import com.agustin.tarati.core.utils.FeatureFlags
 import com.agustin.tarati.features.game.GameEvents
 import com.agustin.tarati.features.game.IGameModel
+import com.agustin.tarati.features.game6.GameMode
+import com.agustin.tarati.features.game6.GameModeSwitch
 import com.agustin.tarati.features.online.game.SpectatingState
 import com.agustin.tarati.network.models.OnlineGame
 import com.agustin.tarati.network.models.OnlineGameStatus
@@ -310,25 +310,16 @@ fun Sidebar(
     val windowInfo = LocalWindowInfo.current
     val isLandscape = windowInfo.containerSize.width > windowInfo.containerSize.height
 
-    Surface(
-        modifier = modifier
-            .width(300.dp)
-            .fillMaxHeight(),
-        tonalElevation = 8.dp,
-        shape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
+    SidebarShell(
+        modifier = modifier,
+        header = {
             SidebarHeader(
                 onSettings = events::onSettings,
                 onShowAchievements = events::onShowAchievements,
             )
-
+        },
+        controls = {
+            GameModeSwitch(current = GameMode.SINGLE)
             GameControlsSection(
                 boardOrientation = sidebarState.boardOrientation,
                 isEditing = sidebarState.isEditing,
@@ -336,6 +327,8 @@ fun Sidebar(
                 onEditBoard = events::onEditBoard,
                 onRotateBoard = events::onRotateBoard,
             )
+        },
+        playerConfig = {
 
             // PlayerConfigSection is always visible regardless of orientation.
             // Hiding it in landscape was a bug: player-type selection (Human / AI)
@@ -386,7 +379,8 @@ fun Sidebar(
                     }
                 }
             }
-
+        },
+        moveHistory = {
             MoveHistorySection(
                 modifier = Modifier.weight(1f),
                 isLandscape = isLandscape,
@@ -400,11 +394,11 @@ fun Sidebar(
                 onOnlineLobby = events::onOnlineLobby,
                 onSaveGame = events::onSaveGame,
             )
-
-            // AboutFooter is always visible regardless of orientation.
+        },
+        footer = {
             AboutFooter(onAboutClick = events::onAboutClick)
-        }
-    }
+        },
+    )
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────

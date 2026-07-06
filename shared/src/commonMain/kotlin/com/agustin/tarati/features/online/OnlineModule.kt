@@ -4,6 +4,7 @@ package com.agustin.tarati.features.online
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.achievements.AchievementsViewModel
 import com.agustin.tarati.features.achievements.IAchievementsViewModel
+import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.features.online.auth.AuthRepository
 import com.agustin.tarati.features.online.auth.AuthViewModel
 import com.agustin.tarati.features.online.auth.IAuthViewModel
@@ -24,6 +25,7 @@ import com.agustin.tarati.features.online.supporter.SupporterViewModel
 import com.agustin.tarati.features.online.tournament.ITournamentViewModel
 import com.agustin.tarati.features.online.tournament.TournamentRepository
 import com.agustin.tarati.features.online.tournament.TournamentViewModel
+import com.agustin.tarati.network.client.MpOnlineClient
 import com.agustin.tarati.network.client.OnlineGameClient
 import com.agustin.tarati.network.client.TaratiWebSocketClient
 import com.agustin.tarati.services.billing.EntitlementSyncService
@@ -153,6 +155,21 @@ val onlineModule: Module = module {
         }
     }
 
+    // ============ Multiplayer (game6) Online Client ============
+
+    /**
+     * Cliente del juego multijugador online (M7). Reusa el **mismo** [TaratiWebSocketClient]: consume
+     * su flujo de mensajes (filtrando los MP) y envía por su `send`. Singleton compartido por el
+     * lobby de mesas y la partida MP online.
+     */
+    single {
+        val ws = get<TaratiWebSocketClient>()
+        MpOnlineClient(
+            incoming = ws.messages,
+            sendMessage = ws::send,
+        )
+    }
+
     // ============ ViewModels ============
 
     /**
@@ -242,6 +259,22 @@ val onlineModule: Module = module {
             authViewModel = get(),
         )
     } bind IOnlineLobbyViewModel::class
+
+    // Lobby de mesas del juego multijugador (M7.2). Singleton: comparte el refresco/estado con el
+    // MpOnlineClient (también single). La pantalla arranca/detiene el polling.
+    single {
+        val authVm = get<IAuthViewModel>()
+        val repo = get<OnlineLobbyRepository>()
+        MpLobbyViewModel(
+            client = get(),
+            getToken = {
+                if (authVm.isTokenExpiringSoon()) authVm.refreshToken()
+                authVm.accessToken
+            },
+            fetchTables = repo::getMpTables,
+            fetchLiveGames = repo::getMpLiveGames,
+        )
+    }
 
     // ============ Torneos ============
 

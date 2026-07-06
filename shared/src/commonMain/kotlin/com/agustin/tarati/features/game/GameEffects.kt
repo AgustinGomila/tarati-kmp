@@ -3,9 +3,7 @@ package com.agustin.tarati.features.game
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +60,7 @@ import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.tarati
 import com.agustin.tarati.ui.components.bottombar.BottomGameBar
+import com.agustin.tarati.ui.components.bottombar.rememberBoardTilt
 import com.agustin.tarati.ui.components.editor.DistributionState
 import com.agustin.tarati.ui.components.editor.EditActionState
 import com.agustin.tarati.ui.components.editor.EditColorState
@@ -100,6 +99,17 @@ import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Flag de **nivel de proceso** que recuerda si la transición del logo (splash → indicador de turno) ya
+ * se reprodujo en esta ejecución de la app. `rememberSaveable` solo sobrevive rotaciones, pero al
+ * cambiar de modo (single↔multi) el subárbol de [GameEffects] se desmonta y su estado se pierde → la
+ * animación se re-disparaba. Con esta bandera de proceso, la transición aparece **solo al iniciar la
+ * app** y nunca más durante la ejecución (los remontajes ya la ven en su posición final).
+ */
+private object LogoTransitionState {
+    var played = false
+}
 
 @Composable
 fun GameEffects(
@@ -267,52 +277,21 @@ fun MainContent(
     )
 
     // ── Tilt inercial del tablero ─────────────────────────────────────────────
-    //
-    // Patrón idéntico a CreateCardBoard.kt:
-    //   1. Kick rápido con tween(80ms): snap al ángulo de impacto.
-    //   2. Spring suave con StiffnessLow: retorno amortiguado a 0°.
-    //
-    // El guard firstRender evita disparar la animación en la composición inicial.
-    // Solo en portrait: en landscape el tablero usa boardEndPadding.
-    val boardTiltY = remember { Animatable(0f) }
-    val boardTiltX = remember { Animatable(0f) }
-    var fabFirstRender by remember { mutableStateOf(true) }
-    var historyFirstRender by remember { mutableStateOf(true) }
-
-    val returnSpec = spring<Float>(
-        dampingRatio = Spring.DampingRatioMediumBouncy,
-        stiffness = Spring.StiffnessLow,
+    // Cabeceo compartido con el juego multijugador: kick corto (80 ms) + rebote elástico al expandir
+    // el FAB (rotationY) o abrir el panel de historial (rotationX). Ver [rememberBoardTilt].
+    val boardTilt = rememberBoardTilt(
+        isFabExpanded = isFabExpanded,
+        isHistoryPanelOpen = isHistoryPanelOpen,
     )
-
-    // FAB: al abrir se hunde el lado derecho (rotationY positivo),
-    // rebote al lado izquierdo al cerrar. Se aplica en portrait y landscape.
-    LaunchedEffect(isFabExpanded) {
-        if (fabFirstRender) {
-            fabFirstRender = false; return@LaunchedEffect
-        }
-        val kick = if (isFabExpanded) 6f else -4f
-        boardTiltY.animateTo(kick, tween(durationMillis = 80))
-        boardTiltY.animateTo(0f, returnSpec)
-    }
-
-    // Historial: al abrir se hunde la parte inferior (rotationX negativo),
-    // rebote hacia arriba al cerrar. Se aplica en portrait y landscape.
-    LaunchedEffect(isHistoryPanelOpen) {
-        if (historyFirstRender) {
-            historyFirstRender = false; return@LaunchedEffect
-        }
-        val kick = if (isHistoryPanelOpen) -8f else 5f
-        boardTiltX.animateTo(kick, tween(durationMillis = 80))
-        boardTiltX.animateTo(0f, returnSpec)
-    }
 
     // ── Logo transition ──────────────────────────────────────────────────────
     // transitionDone arranca siempre en false. Dos caminos lo ponen en true:
     //   A) La animación se completa normalmente (inicio de app normal).
     //   B) showLogoTransition llega a false antes o durante la espera de centros
     //      (tutorial automático en primer inicio, importación de partida).
-    // rememberSaveable sobrevive rotaciones sin re-animar.
-    var transitionDone by rememberSaveable { mutableStateOf(false) }
+    // Sembrado desde el flag de proceso: si ya se reprodujo (p. ej. tras un cambio de modo), arranca en
+    // true → no re-anima. `rememberSaveable` además lo conserva ante rotaciones dentro del mismo mount.
+    var transitionDone by rememberSaveable { mutableStateOf(LogoTransitionState.played) }
 
     // Centre of the TurnIndicator circle — updated every frame until stable.
     var indicatorCentreWindow by remember { mutableStateOf<Offset?>(null) }
@@ -324,15 +303,20 @@ fun MainContent(
     val splashLogoSizePx = with(density) { splashLogoSizeDp.toPx() }
     val targetLogoSizePx = with(density) { 42.dp.toPx() }
 
-    // Single animatable drives position + size together; alpha fades out at end.
-    val logoProgress = remember { Animatable(0f) }
-    val logoAlpha = remember { Animatable(1f) }
+    // Single animatable drives position + size together; alpha fades out at end. Si la transición ya
+    // se reprodujo en este proceso, arrancan en su estado FINAL (logo en el indicador y ya desvanecido)
+    // → al remontar (cambio de modo) no hay desplazamiento ni parpadeo.
+    val logoProgress = remember { Animatable(if (LogoTransitionState.played) 1f else 0f) }
+    val logoAlpha = remember { Animatable(if (LogoTransitionState.played) 0f else 1f) }
 
     // Supresión reactiva: cuando showLogoTransition se vuelve false (tutorial
     // automático o importación de partida), marca la transición como completada
     // inmediatamente, incluso si LaunchedEffect(Unit) ya está esperando los centros.
     LaunchedEffect(showLogoTransition) {
-        if (!showLogoTransition) transitionDone = true
+        if (!showLogoTransition) {
+            transitionDone = true
+            LogoTransitionState.played = true // el arranque ya pasó → no reproducir en remontajes
+        }
     }
 
     // Fire once on entry. Chequea transitionDone después de cada suspensión
@@ -356,6 +340,7 @@ fun MainContent(
             animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
         )
         transitionDone = true
+        LogoTransitionState.played = true // reproducida una vez → no repetir en esta ejecución
         logoAlpha.animateTo(
             targetValue = 0f,
             animationSpec = tween(durationMillis = 200),
@@ -424,34 +409,38 @@ fun MainContent(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TaratiTopBar(
-                drawerState = drawerState,
-                title = localizedString(Res.string.tarati),
-                navigationType = if (LocalScreenLayout.current == ScreenLayout.Expanded)
-                    TopBarNavigationType.None
-                else
-                    TopBarNavigationType.Menu,
-                isEditing = isEditing,
-                actions = {
-                    // Pill espectador — visible cuando se está observando una partida
-                    if (spectatingState != null) {
-                        SpectatingPill(
-                            state = spectatingState,
-                            onStop = onStopSpectating,
-                        )
-                    }
-                    // Search bar — oculta durante partida propia activa
-                    val state = connectionState
-                    if (state != null) {
-                        OnlineSearchBar(
-                            connectionState = state,
-                            matchmakingState = matchmakingState,
-                            onCreateSearch = onCreateSearch,
-                            onCancelSearch = onCancelSearch,
-                        )
-                    }
-                },
-            )
+            // La barra superior solo se muestra en pantallas compactas (Android/teléfono), donde
+            // aporta la hamburguesa que abre el drawer del sidebar y, aprovechando ese espacio, la
+            // búsqueda online. En pantallas anchas el sidebar es permanente y ya ofrece el título y
+            // el acceso "Online", así que la barra se omite para ganar altura de tablero (paridad
+            // con el juego multijugador, que no tiene barra superior).
+            if (LocalScreenLayout.current != ScreenLayout.Expanded) {
+                TaratiTopBar(
+                    drawerState = drawerState,
+                    title = localizedString(Res.string.tarati),
+                    navigationType = TopBarNavigationType.Menu,
+                    isEditing = isEditing,
+                    actions = {
+                        // Pill espectador — visible cuando se está observando una partida
+                        if (spectatingState != null) {
+                            SpectatingPill(
+                                state = spectatingState,
+                                onStop = onStopSpectating,
+                            )
+                        }
+                        // Search bar — oculta durante partida propia activa
+                        val state = connectionState
+                        if (state != null) {
+                            OnlineSearchBar(
+                                connectionState = state,
+                                matchmakingState = matchmakingState,
+                                onCreateSearch = onCreateSearch,
+                                onCancelSearch = onCancelSearch,
+                            )
+                        }
+                    },
+                )
+            }
         },
         bottomBar = {},
     ) { innerPadding ->
@@ -475,8 +464,8 @@ fun MainContent(
                     modifier = Modifier
                         .weight(1f)
                         .graphicsLayer {
-                            rotationX = boardTiltX.value
-                            rotationY = boardTiltY.value
+                            rotationX = boardTilt.rotationX
+                            rotationY = boardTilt.rotationY
                             // cameraDistance en px: valor estándar de Material para perspectiva sutil.
                             // Sin esto, rotaciones > ~10° producen distorsión de perspectiva excesiva.
                             cameraDistance = 12f * density.density

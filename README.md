@@ -15,7 +15,7 @@
 
 **Multiplatform implementation (Android · Desktop · Web) of the strategy game Tarati**
 
-[Play Online](https://tarati.tech) · [Google Play](#download) · [Core Rules](#core-rules) · [Technologies](#technologies) · [Download Desktop](#desktop)
+[Play Online](https://tarati.tech) · [Google Play](#download) · [Core Rules](#core-rules) · [Multiplayer](#multiplayer-mode--tarati-six-26-players) · [Technologies](#technologies) · [Download Desktop](#desktop)
 
 </div>
 
@@ -137,6 +137,39 @@ The game ends when:
 
 ---
 
+## Multiplayer Mode — Tarati Six (2–6 players)
+
+Beyond the classic two-player game, Tarati includes a distinct **multiplayer mode** based on the *cubic* variant from
+Spencer-Brown's patent: an expanded board and cube-shaped pieces for **2 to 6 players**. It is a separate game engine —
+it does not touch the published two-player Tarati.
+
+### Board and pieces
+
+- Expanded board of **49 vertices** with **6 equidistant bases** (the classic board's A–B–C centre is embedded intact,
+  plus two new rings).
+- **Cubic pieces** in up to 6 colors — one color per player (each cube face is a player). Each player starts with 4
+  pieces on their base.
+- With fewer than 6 players, bases are placed as far apart as possible (2 → opposite, 3 → alternating, …).
+
+### Rules (distinct from classic Tarati)
+
+- Players move in seat order; a piece slides along a line to an adjacent free stop in **any direction**.
+- **Base exit**: a piece leaves its base only through its two radial edges — no outer-ring move on its first step.
+- **Capture by conversion**: finishing adjacent to other players' pieces flips them to your color (they change owner,
+  they are not removed). The **pre-adjacency rule** applies (you must approach from outside), as in classic Tarati.
+- A player who cannot move, or whose pieces are all captured, **retires**. The game ends when **two players remain**:
+  the one with the most pieces on the board wins; a tie is a **shared victory**. Stalemates resolve by piece majority
+  (triple repetition · no-capture limit · per-turn timer).
+- A single piece type (the cube): no promotion, no roks, no dead pieces.
+
+### Ways to play
+
+- **Local** — hot-seat (2–6 humans) or against greedy bots, on any platform. Undo/redo, pre-moves and board rotation.
+- **Online tables** — create or join a public table (2–6 seats), fill empty seats with bots, and play once the host
+  starts. Spectator mode, per-turn timer, reconnection with grace. Casual (unrated) in the current MVP.
+
+---
+
 ## Achievements
 
 Tarati got achievements! (Android)
@@ -177,6 +210,11 @@ And there are **secret ones** hiding. Figure them out yourself.
 | <img src="/screenshots/screenshot11.png" width="450"/> | <img src="/screenshots/screenshot13.png" width="450"/> |
 |--------------------------------------------------------|--------------------------------------------------------|
 | <img src="/screenshots/screenshot12.png" width="450"/> | <img src="/screenshots/screenshot14.png" width="450"/> |
+
+### Multiplayer (Android)
+
+| <img src="/screenshots/screenshot15.png" width="300"/> | <img src="/screenshots/screenshot16.png" width="300"/> | <img src="/screenshots/screenshot17.png" width="300"/> |
+|--------------------------------------------------------|--------------------------------------------------------|--------------------------------------------------------|
 
 Intuitive interface built with Jetpack Compose / Compose Multiplatform.
 
@@ -228,9 +266,12 @@ All desktop installers and the Android APK are also published on itch.io:
 - **Interactive tutorial** — guide bubbles overlaid on the board
 - **Achievements** — cross-platform, synced to server; Google Play Games integration on Android
 - **Bilingual support** — Spanish and English with in-app selector
-- **Online multiplayer** — matchmaking, Glicko-2 rating, leaderboard, public profiles, follows, challenges,
+- **Online play (classic 2-player)** — matchmaking, Glicko-2 rating, leaderboard, public profiles, follows, challenges,
   spectator mode, rematches, reconnection and tournaments (Round Robin, Swiss, Arena & single-elimination)
   at [tarati.tech](https://tarati.tech)
+- **Multiplayer mode (Tarati Six)** — a second game on an expanded 49-vertex board with cubic pieces for 2–6 players:
+  local hot-seat, vs bots, or online public tables with spectators
+  (see [Multiplayer Mode](#multiplayer-mode--tarati-six-26-players))
 - **Guest access** — play online without registering
 - **Adaptive sidebar** — in wide-screen layouts, lobby, settings and library coexist alongside the board
 - **Multiplatform** — same shared codebase across Android, Desktop and Web
@@ -280,8 +321,9 @@ shared/commonMain/
 │   │   └── repositories/      # Repository implementations
 │   ├── domain/
 │   │   ├── ai/                # Engine, evaluator, minimax strategy
-│   │   ├── game/              # Board, game state, move logic
+│   │   ├── game/              # Board, game state, move logic (classic 2-player)
 │   │   │   └── time/          # Time control (modes, clock state)
+│   │   ├── game6/             # Multiplayer engine — Board25 (49 vertices), cubic pieces, MP rules, greedy bot, MP notation
 │   │   ├── repository/        # Repository interfaces
 │   │   └── tutorial/          # Tutorial step definitions
 │   └── utils/
@@ -291,7 +333,8 @@ shared/commonMain/
 │   └── SharedModule.kt        # Shared Koin modules
 ├── features/
 │   ├── achievements/          # Achievements screen, badges, ViewModel
-│   ├── game/                  # Main game screen and ViewModels
+│   ├── game/                  # Main game screen and ViewModels (classic 2-player)
+│   ├── game6/                 # Multiplayer mode UI — Board25 renderer, adaptive scaffold, local & online screens, tables lobby
 │   ├── detail/                # Game detail screen
 │   ├── library/               # Saved games library
 │   ├── online/                # Online multiplayer
@@ -309,7 +352,7 @@ shared/commonMain/
 ├── network/
 │   ├── client/                # TaratiWebSocketClient, HTTP client
 │   ├── models/                # DTOs shared with server
-│   └── protocol/              # ClientMessage / ServerMessage sealed classes
+│   └── protocol/              # ClientMessage / ServerMessage sealed classes (incl. nested MP protocol)
 ├── services/
 │   ├── achievements/          # Cross-platform achievements, server sync
 │   ├── ai/                    # AI service and ViewModel
@@ -382,20 +425,22 @@ server/
 ├── config/                    # ServerConfig, AuthRateLimiter
 ├── database/
 │   ├── dao/                   # UserDao, GameDao, SessionDao, FollowDao, TournamentDao, AchievementDao, EntitlementDao
-│   └── tables/                # Exposed table definitions (PostgreSQL)
+│   └── tables/                # Exposed table definitions (PostgreSQL) — incl. mp_games (multiplayer results)
 ├── entitlements/              # EntitlementService, GooglePlayValidator
 ├── game/                      # GameSessionManager (facade), ClockManager, PostGameProcessor, SessionRecovery, RematchCoordinator, SessionStore, SessionBroadcaster
+│   └── mp/                    # Multiplayer sessions & tables — MpGameSessionManager, MpTableManager, MpGameRecord
 ├── matchmaking/               # MatchmakingEngine (Glicko-2 queue)
 ├── metrics/                   # TaratiMetrics (Prometheus)
 ├── models/                    # Role, User, AuthResponse
 ├── rating/                    # Glicko-2 RatingCalculator, RatingService
 ├── redis/                     # TaratiRedisClient (Kreds)
-├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby Routes
+├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby + MP tables/live Routes
 ├── services/                  # AuthService, EmailService, GuestCleanupJob
 └── tournament/                # TournamentEngine (Round Robin, Swiss, Arena & Elimination), TournamentManager (facade), TournamentNotifier, ArenaCoordinator, EliminationCoordinator
 ```
 
-500+ tests (400+ client · 114 server) and Compose previews.
+600+ tests (client · server) and Compose previews — including the game6 multiplayer engine (Board25, rules, notation,
+cut/stalemate, greedy bot) and the multiplayer server (tables, sessions, persistence).
 
 ---
 

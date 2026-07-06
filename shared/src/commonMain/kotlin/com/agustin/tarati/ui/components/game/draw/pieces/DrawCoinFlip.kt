@@ -78,6 +78,62 @@ fun DrawScope.drawCoinFlip(
 }
 
 /**
+ * Volteo de moneda con colores de origen ([sourceColors], cara frontal) y destino ([targetColors],
+ * cara trasera) **explícitos**, y semilla de ángulo [flipSeed] (reemplaza `vertex.hashCode()`), para
+ * reutilizar el volteo en tableros con más de dos colores (p. ej. el multijugador). [conversionProgress]
+ * 0→1 rota 180°. [isUpgraded] agrega el motivo central de Rok (siempre `false` en multijugador).
+ */
+fun DrawScope.drawCoinFlip(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    hourOfDay: Float,
+    lightOfDay: LightOfDay,
+    sourceColors: PieceColor,
+    targetColors: PieceColor,
+    flipSeed: Int,
+    colors: BoardColors,
+    isUpgraded: Boolean = false,
+) {
+    val theta = conversionProgress * PI.toFloat()
+    val cosA = cos(theta)
+    val sinA = sin(theta)
+    val faceScaleX = abs(cosA)
+    val showingBack = cosA < 0f
+
+    val visibleColors = if (showingBack) targetColors else sourceColors
+    val visibleFill = createOrganicColor(visibleColors, hourOfDay, colors)
+    val rokColor = if (showingBack) sourceColors.baseColor else targetColors.baseColor
+
+    val rimW = radius * COIN_EDGE_THICKNESS * sinA
+    val sideSign = if (cosA >= 0f) -1f else 1f
+    val shiftedPos = Offset(position.x - sideSign * rimW / 2f, position.y)
+
+    val flipAngleDeg = (flipSeed * 137.508f) % 360f
+    val flipRad = (flipAngleDeg * PI / 180.0).toFloat()
+    val cosFlip = cos(flipRad)
+    val sinFlip = sin(flipRad)
+
+    rotate(degrees = flipAngleDeg, pivot = position) {
+        drawFlipShadow(position, radius, sinA, lightOfDay, cosFlip, sinFlip, colors.boardVertexColor)
+        if (sinA > 0.01f) {
+            drawFlipEdge(shiftedPos, radius, faceScaleX, sinA, cosA, sourceColors, targetColors)
+        }
+        if (faceScaleX > 0.01f) {
+            drawFlipFace(
+                position = shiftedPos,
+                radius = radius,
+                faceScaleX = faceScaleX,
+                fillColor = visibleFill,
+                borderColor = visibleColors.borderColor,
+                isUpgraded = isUpgraded,
+                rokColor = rokColor,
+            )
+        }
+    }
+}
+
+/**
  * Sombra oval que se aleja y difumina mientras la pieza se eleva durante el volteo.
  *
  * Implementada con `expect/actual` porque usa blur nativo de la plataforma:

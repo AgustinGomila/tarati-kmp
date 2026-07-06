@@ -18,6 +18,7 @@ enum class DisplayMode { FullScreen, CompanionPanel }
 sealed interface CompanionPanelDestination {
     data object None : CompanionPanelDestination
     data object Lobby : CompanionPanelDestination
+    data object MpLobby : CompanionPanelDestination
     data object Settings : CompanionPanelDestination
     data object OnlineSettings : CompanionPanelDestination
     data object Supporter : CompanionPanelDestination
@@ -58,6 +59,15 @@ class CompanionPanelController {
         destination = dest
     }
 
+    /**
+     * Alterna el panel para [dest]: si ese mismo destino ya es el que está abierto, lo cierra; si no,
+     * navega a él. Para los botones de entrada (Settings/Logros/Online/Biblioteca/…) que abren su
+     * pestaña a la derecha y deben cerrarla al volver a tocarlos.
+     */
+    fun toggle(dest: CompanionPanelDestination) {
+        if (destination == dest) close() else navigate(dest)
+    }
+
     fun back() {
         destination = backStack.removeLastOrNull() ?: CompanionPanelDestination.None
     }
@@ -68,4 +78,5 @@ class CompanionPanelController {
     }
 }
 
-val LocalCompanionPanelController: ProvidableCompositionLocal<CompanionPanelController> = compositionLocalOf { CompanionPanelController() }
+val LocalCompanionPanelController: ProvidableCompositionLocal<CompanionPanelController> =
+    compositionLocalOf { CompanionPanelController() }

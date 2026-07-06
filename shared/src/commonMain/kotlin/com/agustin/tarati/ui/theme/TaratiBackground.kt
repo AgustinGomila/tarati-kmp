@@ -91,7 +91,11 @@ private val BACKGROUND_VARIANTS = listOf(
 
 // ── Dibujo ────────────────────────────────────────────────────────────────────
 
-private fun DrawScope.drawBoardOverlay(boardColors: BoardColors, spec: BoardOverlaySpec) {
+private fun DrawScope.drawBoardOverlay(
+    boardColors: BoardColors,
+    spec: BoardOverlaySpec,
+    drawSilhouette: DrawScope.(BoardColors, Size) -> Unit,
+) {
     val shortSide = minOf(size.width, size.height)
     val boardSize = shortSide * spec.boardSizeFraction
     val boardLeft = size.width * spec.centerXFraction - boardSize / 2f
@@ -109,19 +113,24 @@ private fun DrawScope.drawBoardOverlay(boardColors: BoardColors, spec: BoardOver
             pivot = Offset(size.width / 2f, size.height * spec.centerYFraction),
         ) {
             translate(left = boardLeft, top = boardTop) {
-                drawBoardBackground(
-                    canvasSize = Size(boardSize, boardSize),
-                    orientation = BoardOrientation.PORTRAIT_WHITE,
-                    regionsVisible = true,
-                    perimeterVisible = false,
-                    bordersVisible = false,
-                    baseBoardVisible = false,
-                    noiseVisible = false,
-                    colors = subtleColors,
-                )
+                drawSilhouette(subtleColors, Size(boardSize, boardSize))
             }
         }
     }
+}
+
+/** Silueta del tablero de Tarati (juego 1) para el fondo decorativo. */
+fun DrawScope.drawTaratiSilhouette(colors: BoardColors, canvasSize: Size) {
+    drawBoardBackground(
+        canvasSize = canvasSize,
+        orientation = BoardOrientation.PORTRAIT_WHITE,
+        regionsVisible = true,
+        perimeterVisible = false,
+        bordersVisible = false,
+        baseBoardVisible = false,
+        noiseVisible = false,
+        colors = colors,
+    )
 }
 
 /**
@@ -149,7 +158,12 @@ private const val BACKGROUND_DARKEN_ALPHA = 0.28f
  * 90° en sentido horario para que el layout coincida con la orientación visual
  * de la pantalla. El glow queda centrado verticalmente.
  */
-fun DrawScope.drawAppBackground(boardColors: BoardColors, variant: Int = 0, isLandscape: Boolean = false) {
+fun DrawScope.drawAppBackground(
+    boardColors: BoardColors,
+    variant: Int = 0,
+    isLandscape: Boolean = false,
+    drawSilhouette: DrawScope.(BoardColors, Size) -> Unit = { c, sz -> drawTaratiSilhouette(c, sz) },
+) {
     val base = BACKGROUND_VARIANTS[variant.coerceIn(0, BACKGROUND_VARIANTS.lastIndex)]
     val v = if (isLandscape) base.rotateCW() else base
 
@@ -161,7 +175,7 @@ fun DrawScope.drawAppBackground(boardColors: BoardColors, variant: Int = 0, isLa
 
     drawRect(color = Color.Black.copy(alpha = BACKGROUND_DARKEN_ALPHA))
 
-    v.specs.forEach { drawBoardOverlay(boardColors, it) }
+    v.specs.forEach { drawBoardOverlay(boardColors, it, drawSilhouette) }
 
     // Pase único de textura de grano sobre todo el espacio de fondo. Los tableros
     // traslúcidos no aplican su grano individual (noiseVisible = false): si lo
@@ -219,6 +233,24 @@ fun TaratiBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    AppBackground(
+        drawSilhouette = { colors, sz -> drawTaratiSilhouette(colors, sz) },
+        modifier = modifier,
+        content = content,
+    )
+}
+
+/**
+ * Versión genérica del fondo decorativo: idéntica a [TaratiBackground] salvo por el dibujante de
+ * la silueta de tablero ([drawSilhouette]), lo que permite fondos con el tablero de Tarati o con el
+ * tablero multijugador sin duplicar el gradiente, el grano ni el resplandor.
+ */
+@Composable
+fun AppBackground(
+    drawSilhouette: DrawScope.(BoardColors, Size) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
     val boardColors = getBoardColors()
     val variant = remember { Random.nextInt(BACKGROUND_VARIANTS.size) }
 
@@ -227,7 +259,7 @@ fun TaratiBackground(
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            drawAppBackground(boardColors, variant, isLandscape)
+            drawAppBackground(boardColors, variant, isLandscape, drawSilhouette)
         }
         content()
     }

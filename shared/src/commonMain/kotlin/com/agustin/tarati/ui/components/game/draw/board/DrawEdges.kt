@@ -156,14 +156,23 @@ fun DrawScope.drawFireballEdgeHighlightFromVertex(
 //
 // Arc positions grow geometrically with [ratio], giving a natural
 // "accelerating away" appearance as the wave travels from O toward D.
-fun DrawScope.drawForceArcDynamicHighlight(
-    highlight: DynamicEdgeHighlight,
-    colors: BoardColors,
-) {
-    val from = highlight.from
-    val to = highlight.to
+fun DrawScope.drawForceArcDynamicHighlight(highlight: DynamicEdgeHighlight, colors: BoardColors) {
     val progress = (Clock.System.now().toEpochMilliseconds() % highlight.duration) / highlight.duration.toFloat()
+    drawForceArcDynamicHighlight(highlight.from, highlight.to, progress, colors, highlight.pulse)
+}
 
+/**
+ * Variante con posiciones ([from]→[to]) y [progress] (0→1) **explícitos**: la onda de arcos viaja de
+ * [from] a [to] según [progress]. Para reutilizar el efecto de captura en tableros con más de dos
+ * colores (p. ej. el multijugador), donde el progreso lo maneja la animación del movimiento y no el reloj.
+ */
+fun DrawScope.drawForceArcDynamicHighlight(
+    from: Offset,
+    to: Offset,
+    progress: Float,
+    colors: BoardColors,
+    pulse: Boolean = false,
+) {
     val dx = to.x - from.x
     val dy = to.y - from.y
     val dist = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
@@ -180,7 +189,7 @@ fun DrawScope.drawForceArcDynamicHighlight(
     repeat(arcCount - 1) { denom *= ratio }
 
     val pulseTime = (Clock.System.now().toEpochMilliseconds() % 1000L) / 1000f
-    val pulse = if (highlight.pulse) (0.8f + 0.2f * sin(pulseTime * 2 * PI).toFloat()) else 1f
+    val pulseFactor = if (pulse) (0.8f + 0.2f * sin(pulseTime * 2 * PI).toFloat()) else 1f
 
     repeat(arcCount) { i ->
         var ratioI = 1f
@@ -202,7 +211,7 @@ fun DrawScope.drawForceArcDynamicHighlight(
         // Base half-height: grows with arcRadius so further arcs are taller,
         // matching the expanding wave feel. Pulse modulates size, not alpha.
         // halfHeight grows 3× from O to D: near O stays compact, near D opens wide.
-        val h = arcRadius * 0.22f * (1f + 2f * distFraction) * pulse
+        val h = arcRadius * 0.22f * (1f + 2f * distFraction) * pulseFactor
 
         // Shared bulge ratios — both CPs on the D side (see buildCrescent KDoc).
         //   convexRatio: outer arc CP. Actual visible midpoint = 0.5·convexRatio·H → 0.9·H toward D.
@@ -312,16 +321,25 @@ private fun buildCrescent(
 // ── DynamicForceArcImpact: concentric ring burst at B when force arcs arrive ((B)) ──────
 //
 // [arcStrokeFactor] and [arcFadeFactor] drive all 5 luminous passes.
-fun DrawScope.drawForceArcImpactHighlight(
-    highlight: DynamicEdgeHighlight,
-    colors: BoardColors,
-) {
-    val center = highlight.from
+fun DrawScope.drawForceArcImpactHighlight(highlight: DynamicEdgeHighlight, colors: BoardColors) {
     val progress = (Clock.System.now().toEpochMilliseconds() % highlight.duration) / highlight.duration.toFloat()
+    drawForceArcImpactHighlight(highlight.from, progress, colors, highlight.pulse)
+}
+
+/**
+ * Variante con [center] y [progress] (0→1) **explícitos**: el estallido de anillos en [center] según
+ * [progress]. Para reutilizar en tableros con más de dos colores (p. ej. el multijugador).
+ */
+fun DrawScope.drawForceArcImpactHighlight(
+    center: Offset,
+    progress: Float,
+    colors: BoardColors,
+    pulse: Boolean = false,
+) {
     val baseRadius = minOf(size.width, size.height) * arcBaseRadiusFactor
 
     val pulseTime = (Clock.System.now().toEpochMilliseconds() % 1000L) / 1000f
-    val pulse = if (highlight.pulse) (0.8f + 0.2f * sin(pulseTime * 2 * PI).toFloat()) else 1f
+    val pulseFactor = if (pulse) (0.8f + 0.2f * sin(pulseTime * 2 * PI).toFloat()) else 1f
 
     // (color, fadeMultiplier, strokeMultiplier, isCore)
     // isCore = true → the central ring is drawn fully opaque (alpha 1f)
@@ -340,7 +358,7 @@ fun DrawScope.drawForceArcImpactHighlight(
     repeat(ringCount) { i ->
         val offset = i / ringCount.toFloat()
         val localP = ((progress - offset + 1f) % 1f)
-        val fade = ((1f - localP) * pulse).coerceIn(0f, 1f)
+        val fade = ((1f - localP) * pulseFactor).coerceIn(0f, 1f)
         if (fade <= 0.02f) return@repeat
         val ringRadius = baseRadius * (0.5f + localP * 2.0f)
 
@@ -526,11 +544,24 @@ fun DrawScope.drawDynamicEdgeElectricHighlight(
     variationFactor: Float,
     randomSegments: Int,
     colors: BoardColors,
-) {
-    val fromPos = highlight.from
-    val toPos = highlight.to
+): Unit = drawDynamicEdgeElectricHighlight(
+    highlight.from, highlight.to, variationFactor, randomSegments, colors, highlight.pulse,
+)
 
-    drawEdgeElectricHighlight(variationFactor, randomSegments, fromPos, toPos, highlight.pulse, colors)
+/**
+ * Variante con posiciones ([from]→[to]) **explícitas** del rayo eléctrico. Para reutilizar el efecto
+ * en tableros con más de dos colores (p. ej. el multijugador). El rayo se redibuja con
+ * [variationFactor]/[randomSegments] nuevos por frame (parpadeo); no depende de un progreso.
+ */
+fun DrawScope.drawDynamicEdgeElectricHighlight(
+    from: Offset,
+    to: Offset,
+    variationFactor: Float,
+    randomSegments: Int,
+    colors: BoardColors,
+    pulse: Boolean = false,
+) {
+    drawEdgeElectricHighlight(variationFactor, randomSegments, from, to, pulse, colors)
 }
 
 /**

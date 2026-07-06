@@ -28,21 +28,49 @@ internal fun DrawScope.drawConversionFromCenter(
     pieceColors: PieceColor,
     colors: BoardColors,
 ) {
-    val conversionProgress = animatedCob.conversionProgress
     val cob = animatedCob.cob
+    val targetColors = getPieceColors(Cob(cob.color.opponent, cob.isUpgraded), colors)
+    drawConversionFromCenter(
+        position = position,
+        radius = radius,
+        conversionProgress = animatedCob.conversionProgress,
+        hourOfDay = hourOfDay,
+        lightOfDay = lightOfDay,
+        waveColor = waveColor,
+        sourceColors = pieceColors,
+        targetColors = targetColors,
+        colors = colors,
+    )
+}
 
-    // 1. Base completa sin textura propia — la textura se aplica al final sobre todas las capas.
-    drawOrganicCob(position, radius, hourOfDay, lightOfDay, pieceColors, colors, withTexture = false)
+/**
+ * Conversión "desde el centro" con colores de origen y destino **explícitos** (no derivados de
+ * `CobColor.opponent`), para reutilizar la misma transformación en tableros con más de dos colores
+ * (p. ej. el juego multijugador). El [conversionProgress] va de 0 (pieza original) a 1 (color
+ * convertido).
+ */
+internal fun DrawScope.drawConversionFromCenter(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    hourOfDay: Float,
+    lightOfDay: LightOfDay,
+    waveColor: Color,
+    sourceColors: PieceColor,
+    targetColors: PieceColor,
+    colors: BoardColors,
+) {
+    // 1. Base completa (color de origen) sin textura propia.
+    drawOrganicCob(position, radius, hourOfDay, lightOfDay, sourceColors, colors, withTexture = false)
 
     // 2. Nuevo color expandiéndose desde el centro.
     if (conversionProgress > 0f) {
         val expansionRadius = radius * conversionProgress
-        val targetColors = getPieceColors(Cob(cob.color.opponent, cob.isUpgraded), colors)
         val organicTargetColor = createOrganicColor(targetColors, hourOfDay, colors)
 
         data class CircleSpec(
             val color: Color,
-            val style: DrawStyle = Fill
+            val style: DrawStyle = Fill,
         )
 
         listOf(
@@ -92,6 +120,46 @@ internal fun DrawScope.drawConversionFromBorder(
             organicOriginalColor,
             originalColors.borderColor,
             shrinkingBorderWidth
+        )
+    }
+
+    // 3. Textura única sobre ambas capas.
+    with(NoiseTexture) { applyNoise(position, radius) }
+
+    // 4. Onda durante la expansión.
+    shockWaveEffect(conversionProgress, position, radius, waveColor)
+}
+
+/**
+ * Conversión "desde el borde" con colores de origen y destino **explícitos** (no derivados de
+ * `CobColor.opponent`), para reutilizar la transformación en tableros con más de dos colores
+ * (p. ej. el multijugador). [conversionProgress] va de 0 (pieza original) a 1 (color convertido).
+ */
+internal fun DrawScope.drawConversionFromBorder(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    waveColor: Color,
+    hourOfDay: Float,
+    sourceColors: PieceColor,
+    targetColors: PieceColor,
+    colors: BoardColors,
+) {
+    // 1. Color objetivo como base completa.
+    val organicTargetColor = createOrganicColor(targetColors, hourOfDay, colors)
+    drawCobWithBorder(position, radius, organicTargetColor, targetColors.borderColor)
+
+    // 2. Pieza original contrayéndose desde el borde.
+    if (conversionProgress < 1f) {
+        val shrinkingRadius = radius * (1f - conversionProgress)
+        val organicOriginalColor = createOrganicColor(sourceColors, hourOfDay, colors)
+        val shrinkingBorderWidth = radius * 0.3f * (shrinkingRadius / radius)
+        drawCobWithBorder(
+            position,
+            shrinkingRadius,
+            organicOriginalColor,
+            sourceColors.borderColor,
+            shrinkingBorderWidth,
         )
     }
 

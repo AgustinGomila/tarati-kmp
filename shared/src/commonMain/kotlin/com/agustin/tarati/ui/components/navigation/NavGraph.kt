@@ -1,12 +1,16 @@
 package com.agustin.tarati.ui.components.navigation
 
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,6 +22,12 @@ import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
 import com.agustin.tarati.features.game.GameScreen
 import com.agustin.tarati.features.game.IGameModel
+import com.agustin.tarati.features.game6.GameMode
+import com.agustin.tarati.features.game6.GameModeController
+import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.MpGameScreen
+import com.agustin.tarati.features.game6.MpLobbyScreen
+import com.agustin.tarati.features.game6.MpLocalGameViewModel
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel
 import com.agustin.tarati.features.library.IGamesLibraryViewModel
@@ -31,11 +41,11 @@ import com.agustin.tarati.features.online.social.LeaderboardScreen
 import com.agustin.tarati.features.online.social.PublicProfileScreen
 import com.agustin.tarati.features.online.supporter.SupporterScreen
 import com.agustin.tarati.features.online.tournament.TournamentDetailScreen
-import com.agustin.tarati.features.store.StoreScreen
 import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.features.settings.LanguageAwareSettingsScreen
 import com.agustin.tarati.features.settings.OnlineSettingsScreen
 import com.agustin.tarati.features.settings.SettingsViewModel
+import com.agustin.tarati.features.store.StoreScreen
 import com.agustin.tarati.services.clipboard.GameClipboardHelper
 import com.agustin.tarati.ui.components.game.animation.BoardAnimationViewModel
 import com.agustin.tarati.ui.components.game.animation.BoardGeometryViewModel
@@ -83,6 +93,12 @@ fun NavGraph(
     // Estado de transferencia entre el lobby y GameScreen.
     val pendingMatchmaking = remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
+    // VM del multijugador local: vive a nivel del **body del NavGraph** (no dentro del composable de
+    // GameScreenDest) para que la partida en curso y la config del Sidebar (nº jugadores, humano/IA)
+    // sobrevivan tanto el cambio de modo Single↔Multi como la navegación a otras pantallas
+    // (Settings/Logros) y vuelta — igual que el juego single vive en `gameViewModel` (scope Activity).
+    val mpViewModel = remember { MpLocalGameViewModel() }
+
     NavHost(
         navController = navController,
         startDestination = SplashScreenDest.route,
@@ -97,44 +113,89 @@ fun NavGraph(
         }
 
         composable(route = GameScreenDest.route) {
-            // En Expanded, las acciones de navegación populan el panel lateral en lugar
-            // de navegar en el NavGraph — el tablero permanece visible en todo momento.
-            val layout = LocalScreenLayout.current
-            val companion = LocalCompanionPanelController.current
+            // El modo de juego vive a nivel de app (AppContent, `LocalGameModeController`); acá se lee.
+            // El fallback es defensivo — AppContent siempre lo provee.
+            val gameModeController = LocalGameModeController.current
+                ?: rememberSaveable(saver = GameModeController.Saver) { GameModeController() }
+            CompositionLocalProvider(LocalGameModeController provides gameModeController) {
+                val layout = LocalScreenLayout.current
+                val companion = LocalCompanionPanelController.current
 
-            GameScreen(
-                viewModel = gameViewModel,
-                animationViewModel = animationViewModel,
-                geometryViewModel = geometryViewModel,
-                settingsViewModel = settingsViewModel,
-                onNavigateToSettings = {
-                    if (layout == ScreenLayout.Expanded)
-                        companion.navigate(CompanionPanelDestination.Settings)
-                    else
-                        navController.navigate(SettingsScreenDest.route)
-                },
-                onNavigateToAchievements = {
-                    if (layout == ScreenLayout.Expanded)
-                        companion.navigate(CompanionPanelDestination.Achievements)
-                    else
-                        navController.navigate(AchievementsDest.route)
-                },
-                onGamesLibrary = {
-                    if (layout == ScreenLayout.Expanded)
-                        companion.navigate(CompanionPanelDestination.Library)
-                    else
-                        navController.navigate(GamesLibraryDest.route)
-                },
-                onOnlineLobby = {
-                    if (layout == ScreenLayout.Expanded)
-                        companion.navigate(CompanionPanelDestination.Lobby)
-                    else
-                        navController.navigate(ScreenDestinations.OnlineLobbyDest.route)
-                },
-                onSaveGame = { match -> gamesLibraryViewModel.saveCurrentGame(match) },
-                onNavigateToLogin = { suspendAction -> onShowLogin(suspendAction) },
-                initialMatchmaking = pendingMatchmaking.value.also { pendingMatchmaking.value = null },
-            )
+                when (gameModeController.mode) {
+                    GameMode.MULTI -> MpGameScreen(
+                        viewModel = mpViewModel,
+                        // Mismo comportamiento que Single: en Expanded (web/tablet) despliega en el
+                        // panel lateral derecho; en compacto navega a pantalla completa.
+                        onNavigateToSettings = {
+                            if (layout == ScreenLayout.Expanded)
+                                companion.toggle(CompanionPanelDestination.Settings)
+                            else
+                                navController.navigate(SettingsScreenDest.route)
+                        },
+                        onNavigateToAchievements = {
+                            if (layout == ScreenLayout.Expanded)
+                                companion.toggle(CompanionPanelDestination.Achievements)
+                            else
+                                navController.navigate(AchievementsDest.route)
+                        },
+                        // En modo Multi, "Online" abre el lobby de **mesas** MP (no el matchmaking 2p):
+                        // en Expanded (web/tablet) en el panel lateral; en compacto a pantalla completa.
+                        onNavigateToOnline = {
+                            val openMpLobby: () -> Unit = {
+                                if (layout == ScreenLayout.Expanded)
+                                    companion.toggle(CompanionPanelDestination.MpLobby)
+                                else
+                                    navController.navigate(ScreenDestinations.MpLobbyDest.route)
+                            }
+                            // El modo online multijugador exige sesión: sin ella, se muestra el login
+                            // sheet **sobre el tablero** (sin pre-acceder a la UI de mesas) y solo tras
+                            // el acceso se abre el lobby. Si se cierra el modal, se queda en el tablero.
+                            if (authViewModel.isAuthenticated) openMpLobby()
+                            else onShowLogin { openMpLobby() }
+                        },
+                        settingsViewModel = settingsViewModel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+
+                    GameMode.SINGLE -> {
+                        // En Expanded, las acciones de navegación populan el panel lateral en lugar
+                        // de navegar en el NavGraph — el tablero permanece visible en todo momento.
+                        GameScreen(
+                            viewModel = gameViewModel,
+                            animationViewModel = animationViewModel,
+                            geometryViewModel = geometryViewModel,
+                            settingsViewModel = settingsViewModel,
+                            onNavigateToSettings = {
+                                if (layout == ScreenLayout.Expanded)
+                                    companion.toggle(CompanionPanelDestination.Settings)
+                                else
+                                    navController.navigate(SettingsScreenDest.route)
+                            },
+                            onNavigateToAchievements = {
+                                if (layout == ScreenLayout.Expanded)
+                                    companion.toggle(CompanionPanelDestination.Achievements)
+                                else
+                                    navController.navigate(AchievementsDest.route)
+                            },
+                            onGamesLibrary = {
+                                if (layout == ScreenLayout.Expanded)
+                                    companion.toggle(CompanionPanelDestination.Library)
+                                else
+                                    navController.navigate(GamesLibraryDest.route)
+                            },
+                            onOnlineLobby = {
+                                if (layout == ScreenLayout.Expanded)
+                                    companion.toggle(CompanionPanelDestination.Lobby)
+                                else
+                                    navController.navigate(ScreenDestinations.OnlineLobbyDest.route)
+                            },
+                            onSaveGame = { match -> gamesLibraryViewModel.saveCurrentGame(match) },
+                            onNavigateToLogin = { suspendAction -> onShowLogin(suspendAction) },
+                            initialMatchmaking = pendingMatchmaking.value.also { pendingMatchmaking.value = null },
+                        )
+                    }
+                }
+            }
         }
 
         composable(route = SettingsScreenDest.route) {
@@ -256,6 +317,14 @@ fun NavGraph(
                 },
                 onNavigateToSupporter = { navController.navigate(SupporterDest.route) },
                 viewModel = onlineLobbyViewModel,
+            )
+        }
+
+        composable(ScreenDestinations.MpLobbyDest.route) {
+            MpLobbyScreen(
+                onBack = { navController.popBackStack() },
+                // Al arrancar la partida, volver al tablero (GameScreenDest → MpGameScreen la muestra).
+                onGameStarted = { navController.popBackStack() },
             )
         }
 

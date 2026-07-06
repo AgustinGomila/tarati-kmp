@@ -45,23 +45,27 @@ private const val HALO_RADIUS_RATIO = 1.45f
 /**
  * Dibuja el estado de pre-selección: halo pulsante sobre la pieza elegida
  * y dots sobre los destinos válidos. No-op si [preMoveFromVertex] es null.
+ *
+ * Núcleo compartido basado en una función de posición ([positionOf]) para que lo reutilicen
+ * tanto el tablero de Tarati (vía la sobrecarga de [VisualPositionCache]) como el del juego
+ * multijugador (`Board25`, con su `Map<Vertex, Offset>`). El aspecto visual es idéntico.
  */
 fun DrawScope.drawPreMoveSelection(
     preMoveFromVertex: Vertex?,
-    preMoveValidTargets: List<Vertex>,
-    positionCache: VisualPositionCache,
+    preMoveValidTargets: Collection<Vertex>,
+    positionOf: (Vertex) -> Offset,
     pieceRadius: Float,
     colors: BoardColors,
     tickMs: Long,
 ) {
     if (preMoveFromVertex == null) return
 
-    val fromPos = positionCache[preMoveFromVertex]
+    val fromPos = positionOf(preMoveFromVertex)
     val accent = colors.neutralColor
 
     // Dots sobre targets válidos — debajo del halo para evitar solapes.
     preMoveValidTargets.forEach { target ->
-        val targetPos = positionCache[target]
+        val targetPos = positionOf(target)
         drawCircle(
             color = accent,
             center = targetPos,
@@ -89,17 +93,23 @@ fun DrawScope.drawPreMoveSelection(
     )
 }
 
-/** Dibuja la flecha del pre-movimiento confirmado. No-op si [pendingPreMove] es null. */
+/**
+ * Dibuja la flecha del pre-movimiento confirmado (de [from] a [to]). No-op si alguno es null.
+ *
+ * Núcleo compartido basado en [positionOf] (ver [drawPreMoveSelection]); los vértices se pasan
+ * sueltos para no acoplar el tipo de movimiento (Tarati `Move` vs. `game6` `MpMove`).
+ */
 fun DrawScope.drawPreMoveArrow(
-    pendingPreMove: Move?,
-    positionCache: VisualPositionCache,
+    from: Vertex?,
+    to: Vertex?,
+    positionOf: (Vertex) -> Offset,
     pieceRadius: Float,
     colors: BoardColors,
 ) {
-    if (pendingPreMove == null) return
+    if (from == null || to == null) return
 
-    val fromPos = positionCache[pendingPreMove.from]
-    val toPos = positionCache[pendingPreMove.to]
+    val fromPos = positionOf(from)
+    val toPos = positionOf(to)
     val (start, end) = shortenEndpoints(
         from = fromPos,
         to = toPos,
@@ -118,6 +128,42 @@ fun DrawScope.drawPreMoveArrow(
         alpha = PRE_MOVE_ALPHA,
     )
 }
+
+// ── Sobrecargas de Tarati (VisualPositionCache / Move) ──────────────────────────
+//
+// Preservan las firmas que usa el tablero de Tarati y delegan en el núcleo compartido, de modo que
+// el juego publicado no cambia y el dibujo del pre-move es el mismo para single y multijugador.
+
+/** @see drawPreMoveSelection */
+fun DrawScope.drawPreMoveSelection(
+    preMoveFromVertex: Vertex?,
+    preMoveValidTargets: List<Vertex>,
+    positionCache: VisualPositionCache,
+    pieceRadius: Float,
+    colors: BoardColors,
+    tickMs: Long,
+): Unit = drawPreMoveSelection(
+    preMoveFromVertex = preMoveFromVertex,
+    preMoveValidTargets = preMoveValidTargets,
+    positionOf = positionCache::get,
+    pieceRadius = pieceRadius,
+    colors = colors,
+    tickMs = tickMs,
+)
+
+/** @see drawPreMoveArrow */
+fun DrawScope.drawPreMoveArrow(
+    pendingPreMove: Move?,
+    positionCache: VisualPositionCache,
+    pieceRadius: Float,
+    colors: BoardColors,
+): Unit = drawPreMoveArrow(
+    from = pendingPreMove?.from,
+    to = pendingPreMove?.to,
+    positionOf = positionCache::get,
+    pieceRadius = pieceRadius,
+    colors = colors,
+)
 
 // ── Helpers privados ──────────────────────────────────────────────────────────
 

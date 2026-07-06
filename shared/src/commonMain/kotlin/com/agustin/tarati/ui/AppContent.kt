@@ -7,8 +7,8 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,9 @@ import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
 import com.agustin.tarati.features.game.IGameModel
+import com.agustin.tarati.features.game6.GameModeController
+import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel
 import com.agustin.tarati.features.library.IGamesLibraryViewModel
@@ -66,12 +70,12 @@ import com.agustin.tarati.features.online.social.LeaderboardScreen
 import com.agustin.tarati.features.online.social.PublicProfileScreen
 import com.agustin.tarati.features.online.supporter.SupporterScreen
 import com.agustin.tarati.features.online.tournament.TournamentDetailScreen
-import com.agustin.tarati.features.store.StoreScreen
 import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.features.settings.LanguageAwareSettingsScreen
-import com.agustin.tarati.features.settings.SettingsRepository
 import com.agustin.tarati.features.settings.OnlineSettingsScreen
+import com.agustin.tarati.features.settings.SettingsRepository
 import com.agustin.tarati.features.settings.SettingsViewModel
+import com.agustin.tarati.features.store.StoreScreen
 import com.agustin.tarati.services.clipboard.GameClipboardHelper
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.services.notifications.AlertHost
@@ -96,6 +100,7 @@ import com.agustin.tarati.ui.layout.CompanionPanelDestination.GameDetails
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Leaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Library
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Lobby
+import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpLobby
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.None
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.OnlineSettings
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Profile
@@ -145,6 +150,10 @@ fun AppContent(
 
     val companion = remember { CompanionPanelController() }
 
+    // Modo de juego (single/multi) a nivel de app: disponible tanto en el NavGraph como en el panel
+    // lateral (Settings/Tienda), para que sus previews de tablero se adapten al modo activo.
+    val gameModeController = rememberSaveable(saver = GameModeController.Saver) { GameModeController() }
+
     // Ancho redimensionable del panel lateral (Expanded). El valor persistido se
     // adopta mientras el usuario no esté arrastrando; al soltar, se guarda.
     val settingsRepo: SettingsRepository = koinInject()
@@ -193,6 +202,7 @@ fun AppContent(
                 CompositionLocalProvider(
                     LocalScreenLayout provides layout,
                     LocalCompanionPanelController provides companion,
+                    LocalGameModeController provides gameModeController,
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (layout == ScreenLayout.Expanded) {
@@ -360,6 +370,15 @@ private fun CompanionPane(
 
     when (val dest = controller.destination) {
         None -> Unit
+
+        MpLobby -> MpLobbyScreen(
+            displayMode = DisplayMode.CompanionPanel,
+            onBack = controller::close,
+            // Consistencia con el lobby single online (`onMatchFound` no-op): al arrancar la partida el
+            // panel NO se cierra — el tablero se muestra en el primario y el lobby queda abierto para
+            // crear/unirse a otra mesa. Se cierra solo con la X o re-tocando el botón Online (toggle).
+            onGameStarted = { },
+        )
 
         Lobby -> OnlineLobbyScreen(
             displayMode = DisplayMode.CompanionPanel,

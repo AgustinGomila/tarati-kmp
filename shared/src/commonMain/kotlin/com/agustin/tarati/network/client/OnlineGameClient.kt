@@ -678,6 +678,11 @@ class OnlineGameClient(
                 _tournamentEvents.tryEmit(TournamentEvent.Cancelled(message.tournamentId))
                 logger.info("Tournament cancelled: ${message.tournamentId}")
             }
+
+            // ── Multijugador ─────────────────────────────────────────────────
+            // El protocolo MP (mesas 2–6) lo consume su propio cliente (M7). En el cliente
+            // 2-jugadores se ignora: mantiene el juego nuevo aislado del publicado.
+            is ServerMessage.Mp -> Unit
         }
     }
 

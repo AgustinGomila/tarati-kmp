@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
+import com.agustin.tarati.features.game6.GameMode
+import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.StaticBoard25Renderer
 import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.services.billing.LockedPalettes
 import com.agustin.tarati.ui.theme.BoardPalette
@@ -178,16 +181,18 @@ fun PaletteBoardTile(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Renderizar el minitablero con la paleta propia de este tile.
-            // CompositionLocalProvider aísla el cambio de paleta para que no
-            // afecte al resto del árbol de composición.
+            // Renderizar el minitablero con la paleta propia de este tile, y con el tablero del **modo
+            // activo** (single = tablero `30`, multi = tablero `25`). CompositionLocalProvider aísla el
+            // cambio de paleta para que no afecte al resto del árbol de composición.
             CompositionLocalProvider(LocalBoardPalette provides palette) {
-                StaticBoardRenderer(
-                    modifier = Modifier
-                        .size(tileSize)
-                        .then(if (isLocked) Modifier.alpha(0.35f) else Modifier),
-                    gameState = initialState,
-                )
+                val tileModifier = Modifier
+                    .size(tileSize)
+                    .then(if (isLocked) Modifier.alpha(0.35f) else Modifier)
+                if (LocalGameModeController.current?.mode == GameMode.MULTI) {
+                    StaticBoard25Renderer(modifier = tileModifier)
+                } else {
+                    StaticBoardRenderer(modifier = tileModifier, gameState = initialState)
+                }
             }
 
             if (isLocked) {

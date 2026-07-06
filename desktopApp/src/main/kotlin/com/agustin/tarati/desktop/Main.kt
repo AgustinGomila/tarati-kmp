@@ -1,6 +1,9 @@
 package com.agustin.tarati.desktop
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
@@ -45,6 +48,14 @@ fun main(): Unit = application {
                 // Inject ISoundService from Koin and provide it to the Compose tree
                 // via CompositionLocal so GameScreen can access it with LocalSoundService.current
                 val soundService: ISoundService = koinInject()
+
+                // Aplica el estado de sonido (habilitado/volumen) de Settings al servicio, como en
+                // Android — sin esto el toggle y el volumen de Settings se ignoraban en Desktop.
+                val settings by settingsViewModel.settingsState.collectAsState()
+                LaunchedEffect(settings.soundState.soundEnabled, settings.soundState.soundVolume) {
+                    soundService.setSoundEnabled(settings.soundState.soundEnabled)
+                    soundService.setVolume(settings.soundState.soundVolume)
+                }
 
                 // Language-aware wrapper - updates JVM Locale when language changes
                 DesktopLanguageAwareApp(viewModel = settingsViewModel) {

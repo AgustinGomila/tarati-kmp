@@ -641,4 +641,41 @@
     <string name="supporter_unlock_cta">Beneficio de supporter — desbloquéalo apoyando Tarati</string>
     <string name="store_title">Tienda</string>
     <string name="store_unlock_all_cta">Desbloqueá todas las paletas y piezas — hacete supporter ♥</string>
+
+    <!-- Multijugador (game6 / Tarati Six) -->
+    <string name="game6_mode_single">Individual</string>
+    <string name="game6_mode_multi">Multi</string>
+    <string name="game6_multiplayer">Multijugador</string>
+    <string name="game6_players">Jugadores</string>
+    <string name="game6_player_n">Jugador %1$s</string>
+    <string name="game6_turn">Turno: %1$s</string>
+    <string name="game6_retired">Retirado</string>
+    <string name="game6_result_last_standing">Gana %1$s (último en pie)</string>
+    <string name="game6_result_majority">Gana %1$s (más piezas)</string>
+    <string name="game6_result_shared">Victoria compartida: %1$s</string>
+    <string name="game6_result_cut_repetition">cortada por triple repetición</string>
+    <string name="game6_result_cut_stall">cortada por demasiadas jugadas sin captura</string>
+    <string name="game6_lobby_title">Mesas multijugador</string>
+    <string name="game6_lobby_create">Crear mesa</string>
+    <string name="game6_lobby_no_tables">No hay mesas abiertas. ¡Creá una!</string>
+    <string name="game6_lobby_seats">%1$d jugadores</string>
+    <string name="game6_lobby_join">Unirse</string>
+    <string name="game6_lobby_empty_seat">Vacío</string>
+    <string name="game6_lobby_add_bot">Agregar bot</string>
+    <string name="game6_lobby_remove_bot">Quitar</string>
+    <string name="game6_lobby_start">Iniciar partida</string>
+    <string name="game6_lobby_leave">Salir</string>
+    <string name="game6_lobby_host_badge">Anfitrión</string>
+    <string name="game6_lobby_waiting_host">Esperando que el anfitrión inicie…</string>
+    <string name="game6_lobby_action_error">Acción fallida: %1$s</string>
+    <string name="game6_lobby_table_closed">La mesa se cerró</string>
+    <string name="game6_lobby_login_required">Iniciá sesión para jugar multijugador online</string>
+    <string name="game6_lobby_game_started">La partida arrancó (tablero online próximamente)</string>
+    <string name="game6_lobby_tab_tables">Mesas</string>
+    <string name="game6_lobby_tab_live">En Vivo</string>
+    <string name="game6_lobby_watch">Observar</string>
+    <string name="game6_lobby_no_live">No hay partidas en curso</string>
+    <string name="game6_lobby_live_moves">%1$d jugadas</string>
+    <string name="game6_lobby_spectating">Observando</string>
+    <string name="game6_lobby_stop_watching">Dejar de observar</string>
 </resources>

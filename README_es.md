@@ -15,7 +15,7 @@
 
 **Implementación multiplataforma (Android · Desktop · Web) del juego de estrategia Tarati**
 
-[Jugar Online](https://tarati.tech) · [Google Play](#descargar) · [Reglas](#reglas) · [Tecnologías](#tecnologías) · [Descargar Desktop](#desktop)
+[Jugar Online](https://tarati.tech) · [Google Play](#descargar) · [Reglas](#reglas) · [Multijugador](#modo-multijugador--tarati-six-26-jugadores) · [Tecnologías](#tecnologías) · [Descargar Desktop](#desktop)
 
 </div>
 
@@ -142,6 +142,43 @@ La partida termina cuando:
 
 ---
 
+## Modo Multijugador — Tarati Six (2–6 jugadores)
+
+Además del juego clásico de dos jugadores, Tarati incluye un **modo multijugador** propio basado en la variante *cúbica*
+de la patente de Spencer-Brown: un tablero ampliado y piezas con forma de cubo para **2 a 6 jugadores**. Es un motor de
+juego aparte — no toca el Tarati de dos jugadores ya publicado.
+
+### Tablero y piezas
+
+- Tablero ampliado de **49 vértices** con **6 bases equidistantes** (el centro A–B–C del tablero clásico queda embebido
+  intacto, más dos anillos nuevos).
+- **Piezas cúbicas** de hasta 6 colores — un color por jugador (cada cara del cubo es un jugador). Cada jugador arranca
+  con 4 piezas en su base.
+- Con menos de 6 jugadores, las bases se ubican lo más separadas posible (2 → opuestas, 3 → alternadas, …).
+
+### Reglas (distintas del Tarati clásico)
+
+- Los jugadores mueven por orden de asiento; una pieza se desliza por una línea hasta un punto de parada adyacente en
+  **cualquier dirección**.
+- **Salida de base**: una pieza deja su base solo por sus dos aristas radiales — nunca por el anillo exterior en su
+  primer movimiento.
+- **Captura por conversión**: terminar adyacente a piezas de otros jugadores las voltea a tu color (cambian de dueño, no
+  se eliminan). Aplica la **regla de pre-adyacencia** (hay que aproximarse desde afuera), como en el Tarati clásico.
+- Un jugador que no puede mover, o al que le capturan todas las piezas, **se retira**. La partida termina cuando quedan
+  **dos jugadores**: gana el de más piezas en el tablero; si empatan, es **victoria compartida**. Los estancamientos se
+  resuelven por mayoría de piezas (triple repetición · límite sin capturas · temporizador por turno).
+- Un único tipo de pieza (el cubo): sin promoción, sin roks, sin piezas muertas.
+
+### Formas de jugar
+
+- **Local** — hot-seat (2–6 humanos) o contra bots greedy, en cualquier plataforma. Deshacer/rehacer, pre-movimientos y
+  rotación del tablero.
+- **Mesas online** — creá o unite a una mesa pública (2–6 asientos), rellená asientos vacíos con bots y jugá cuando el
+  anfitrión inicia. Modo espectador, temporizador por turno, reconexión con gracia. Casual (sin rating) en el MVP
+  actual.
+
+---
+
 ## Logros
 
 ¡Tarati tiene logros! (Android)
@@ -182,6 +219,11 @@ Y hay **logros secretos** escondidos. Descúbrelos tú mismo.
 | <img src="/screenshots/screenshot11.png" width="500"/> | <img src="/screenshots/screenshot13.png" width="300"/> |
 |--------------------------------------------------------|--------------------------------------------------------|
 | <img src="/screenshots/screenshot12.png" width="500"/> | <img src="/screenshots/screenshot14.png" width="300"/> |
+
+### Multiplayer (Android)
+
+| <img src="/screenshots/screenshot15.png" width="300"/> | <img src="/screenshots/screenshot16.png" width="300"/> | <img src="/screenshots/screenshot17.png" width="300"/> |
+|--------------------------------------------------------|--------------------------------------------------------|--------------------------------------------------------|
 
 Interfaz intuitiva construida con Jetpack Compose / Compose Multiplatform.
 
@@ -233,9 +275,12 @@ Todos los instaladores de escritorio y el APK de Android también están publica
 - **Tutorial interactivo** — burbujas de guía superpuestas al tablero
 - **Logros** — cross-platform, sincronizados al servidor; integración Google Play Games en Android
 - **Soporte bilingüe** — español e inglés con selector in-app
-- **Multijugador online** — matchmaking, rating Glicko-2, clasificación, perfiles públicos, seguidos, desafíos,
-  modo espectador, revanchas, reconexión y torneos (Round Robin, Swiss, Arena y eliminación directa)
+- **Juego online (clásico 2 jugadores)** — matchmaking, rating Glicko-2, clasificación, perfiles públicos, seguidos,
+  desafíos, modo espectador, revanchas, reconexión y torneos (Round Robin, Swiss, Arena y eliminación directa)
   en [tarati.tech](https://tarati.tech)
+- **Modo multijugador (Tarati Six)** — un segundo juego en un tablero ampliado de 49 vértices con piezas cúbicas para
+  2–6 jugadores: local hot-seat, vs bots, o mesas públicas online con espectadores
+  (ver [Modo Multijugador](#modo-multijugador--tarati-six-26-jugadores))
 - **Acceso como invitado** — jugá online sin registrarte
 - **Panel lateral adaptativo** — en pantallas anchas, lobby, configuración y biblioteca coexisten junto al tablero
 - **Multiplataforma** — mismo código compartido entre Android, Desktop y Web
@@ -285,8 +330,9 @@ shared/commonMain/
 │   │   └── repositories/      # Implementaciones de repositorios
 │   ├── domain/
 │   │   ├── ai/                # Motor, evaluador, estrategia minimax
-│   │   ├── game/              # Tablero, estado de juego, lógica de movimientos
+│   │   ├── game/              # Tablero, estado de juego, lógica de movimientos (clásico 2 jugadores)
 │   │   │   └── time/          # Control de tiempo (modos, estado del reloj)
+│   │   ├── game6/             # Motor multijugador — Board25 (49 vértices), piezas cúbicas, reglas MP, bot greedy, notación MP
 │   │   ├── repository/        # Interfaces de repositorio
 │   │   └── tutorial/          # Definición de pasos del tutorial
 │   └── utils/
@@ -296,7 +342,8 @@ shared/commonMain/
 │   └── SharedModule.kt        # Koin modules compartidos
 ├── features/
 │   ├── achievements/          # Pantalla de logros, insignias, ViewModel
-│   ├── game/                  # Pantalla de juego principal y ViewModels
+│   ├── game/                  # Pantalla de juego principal y ViewModels (clásico 2 jugadores)
+│   ├── game6/                 # UI del modo multijugador — renderer Board25, scaffold adaptativo, pantallas local y online, lobby de mesas
 │   ├── detail/                # Pantalla de detalle de partida
 │   ├── library/               # Biblioteca de partidas guardadas
 │   ├── online/                # Multijugador online
@@ -314,7 +361,7 @@ shared/commonMain/
 ├── network/
 │   ├── client/                # TaratiWebSocketClient, cliente HTTP
 │   ├── models/                # DTOs compartidos con el servidor
-│   └── protocol/              # ClientMessage / ServerMessage (sealed classes)
+│   └── protocol/              # ClientMessage / ServerMessage (sealed classes, incl. protocolo MP anidado)
 ├── services/
 │   ├── achievements/          # Logros cross-platform, sincronización al servidor
 │   ├── ai/                    # Servicio de IA y ViewModel
@@ -387,20 +434,22 @@ server/
 ├── config/                    # ServerConfig, AuthRateLimiter
 ├── database/
 │   ├── dao/                   # UserDao, GameDao, SessionDao, FollowDao, TournamentDao, AchievementDao, EntitlementDao
-│   └── tables/                # Definiciones de tablas Exposed (PostgreSQL)
+│   └── tables/                # Definiciones de tablas Exposed (PostgreSQL) — incl. mp_games (resultados multijugador)
 ├── entitlements/              # EntitlementService, GooglePlayValidator
 ├── game/                      # GameSessionManager (fachada), ClockManager, PostGameProcessor, SessionRecovery, RematchCoordinator, SessionStore, SessionBroadcaster
+│   └── mp/                    # Sesiones y mesas multijugador — MpGameSessionManager, MpTableManager, MpGameRecord
 ├── matchmaking/               # MatchmakingEngine (cola Glicko-2)
 ├── metrics/                   # TaratiMetrics (Prometheus)
 ├── models/                    # Role, User, AuthResponse
 ├── rating/                    # Glicko-2 RatingCalculator, RatingService
 ├── redis/                     # TaratiRedisClient (Kreds)
-├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby Routes
+├── routes/                    # Auth/Admin/Tournament + Profile/Social/Game/Achievement/Billing/Lobby + MP mesas/en-vivo Routes
 ├── services/                  # AuthService, EmailService, GuestCleanupJob
 └── tournament/                # TournamentEngine (Round Robin, Swiss, Arena y Eliminación), TournamentManager (fachada), TournamentNotifier, ArenaCoordinator, EliminationCoordinator
 ```
 
-Más de 500 tests (400+ cliente · 114 servidor) y previews de Compose.
+Más de 600 tests (cliente · servidor) y previews de Compose — incluyendo el motor multijugador game6 (Board25, reglas,
+notación, cortes/estancamiento, bot greedy) y el servidor multijugador (mesas, sesiones, persistencia).
 
 ---
 

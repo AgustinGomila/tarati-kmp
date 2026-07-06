@@ -21,6 +21,8 @@ sealed class ScreenDestinations(
 
     object OnlineLobbyDest : ScreenDestinations(route = "online_lobby")
 
+    object MpLobbyDest : ScreenDestinations(route = "mp_lobby")
+
     object LeaderboardDest : ScreenDestinations(route = "leaderboard")
 
     object PublicProfileDest : ScreenDestinations(route = "public_profile/{userId}") {

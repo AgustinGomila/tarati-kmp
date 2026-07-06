@@ -1,5 +1,6 @@
 package com.agustin.tarati.ui.components.game.draw.board
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -11,8 +12,6 @@ import com.agustin.tarati.ui.components.game.BoardState
 import com.agustin.tarati.ui.components.game.highlights.HighlightAction
 import com.agustin.tarati.ui.components.game.highlights.base.VertexHighlight
 import com.agustin.tarati.ui.theme.BoardColors
-import kotlin.math.PI
-import kotlin.math.sin
 import kotlin.time.Clock
 
 fun DrawScope.drawVertices(
@@ -74,36 +73,54 @@ fun DrawScope.drawVertexHighlight(
     val pos = getVisualPosition(highlight.vertex, canvasSize, orientation)
     val baseRadius = minOf(canvasSize.width, canvasSize.height) * 0.03f
 
-    // Efecto de pulso si está activado
-    val pulseFactor =
-        if (highlight.pulse) {
-            val pulseTime = Clock.System.now().toEpochMilliseconds() % 1000L / 1000f
-            (0.7f + 0.3f * sin(pulseTime * 2 * PI).toFloat())
-        } else {
-            1f
-        }
+    // Efecto de pulso si está activado (fórmula compartida con el juego multijugador).
+    val pulse =
+        if (highlight.pulse) pulseFactor(Clock.System.now().toEpochMilliseconds()) else 1f
 
-    val pulseRadius = baseRadius * pulseFactor
+    drawVertexHighlightAt(
+        action = highlight.action,
+        position = pos,
+        pulseRadius = baseRadius * pulse,
+        colors = colors,
+    )
 
-    when (highlight.action) {
+    // TODO: Si hay mensaje, dibujar texto (opcional)
+    highlight.messageResId?.let {
+        // drawContext.canvas.nativeCanvas.drawText(...)
+    }
+}
+
+/**
+ * Dibuja el resaltado de un vértice en una [position] ya calculada, con un [pulseRadius] dado.
+ * Separado de [drawVertexHighlight] para poder reutilizar el mismo estilo (MOVE/CAPTURE/UPGRADE)
+ * en tableros con geometría propia (p. ej. el juego multijugador), sin depender de
+ * `getVisualPosition` de Tarati.
+ */
+fun DrawScope.drawVertexHighlightAt(
+    action: HighlightAction,
+    position: Offset,
+    pulseRadius: Float,
+    colors: BoardColors,
+) {
+    when (action) {
         HighlightAction.CAPTURE -> {
             val ringRadius = pulseRadius * 3.0f
             val glowRadius = pulseRadius * 3.8f
 
             drawCircle(
                 color = colors.highlightVertexCapture1Color.copy(alpha = 0.25f),
-                center = pos,
+                center = position,
                 radius = glowRadius,
             )
             drawCircle(
                 color = colors.highlightVertexCapture2Color.copy(alpha = 0.9f),
-                center = pos,
+                center = position,
                 radius = ringRadius,
                 style = Stroke(width = 4f),
             )
             drawCircle(
                 color = colors.highlightVertexCapture3Color.copy(alpha = 0.6f),
-                center = pos,
+                center = position,
                 radius = ringRadius * 0.85f,
                 style = Stroke(width = 2f),
             )
@@ -112,18 +129,18 @@ fun DrawScope.drawVertexHighlight(
         HighlightAction.UPGRADE -> {
             drawCircle(
                 color = colors.highlightVertexUpgrade1Color.copy(alpha = 0.3f),
-                center = pos,
+                center = position,
                 radius = pulseRadius * 2f,
             )
             drawCircle(
                 color = colors.highlightVertexUpgrade1Color,
-                center = pos,
+                center = position,
                 radius = pulseRadius * 1.6f,
                 style = Stroke(width = 4f),
             )
             drawCircle(
                 color = colors.highlightVertexUpgrade2Color,
-                center = pos,
+                center = position,
                 radius = pulseRadius * 0.6f,
             )
         }
@@ -132,20 +149,15 @@ fun DrawScope.drawVertexHighlight(
             // Movimiento común, iluminar vértices adyacentes.
             drawCircle(
                 color = colors.highlightVertexAdjacent1Color.copy(alpha = 0.6f),
-                center = pos,
+                center = position,
                 radius = pulseRadius * 0.8f,
                 style = Stroke(width = 3f),
             )
             drawCircle(
                 color = colors.highlightVertexAdjacent2Color,
-                center = pos,
+                center = position,
                 radius = pulseRadius * 0.4f,
             )
         }
-    }
-
-    // TODO: Si hay mensaje, dibujar texto (opcional)
-    highlight.messageResId?.let {
-        // drawContext.canvas.nativeCanvas.drawText(...)
     }
 }

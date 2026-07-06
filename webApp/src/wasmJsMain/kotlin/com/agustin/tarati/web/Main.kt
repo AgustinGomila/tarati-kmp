@@ -1,6 +1,8 @@
 package com.agustin.tarati.web
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +50,14 @@ fun main() {
         ) {
             val settingsViewModel: ISettingsViewModel = koinViewModel<WasmSettingsViewModel>()
             val soundService: ISoundService = koinInject()
+
+            // Aplica el estado de sonido (habilitado/volumen) de Settings al servicio, como en
+            // Android — sin esto el toggle y el volumen de Settings se ignoraban en Web.
+            val settings by settingsViewModel.settingsState.collectAsState()
+            LaunchedEffect(settings.soundState.soundEnabled, settings.soundState.soundVolume) {
+                soundService.setSoundEnabled(settings.soundState.soundEnabled)
+                soundService.setVolume(settings.soundState.soundVolume)
+            }
 
             WasmLanguageAwareApp(settingsViewModel) {
                 CompositionLocalProvider(LocalSoundService provides soundService) {

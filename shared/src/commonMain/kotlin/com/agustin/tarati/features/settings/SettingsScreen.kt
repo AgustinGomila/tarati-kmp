@@ -84,13 +84,13 @@ import com.agustin.tarati.shared.generated.resources.settings
 import com.agustin.tarati.shared.generated.resources.settings_achievements
 import com.agustin.tarati.shared.generated.resources.settings_install_app
 import com.agustin.tarati.shared.generated.resources.settings_online
-import com.agustin.tarati.shared.generated.resources.store_title
-import com.agustin.tarati.shared.generated.resources.supporter_title
 import com.agustin.tarati.shared.generated.resources.sound
 import com.agustin.tarati.shared.generated.resources.sound_disabled
 import com.agustin.tarati.shared.generated.resources.sound_effects
 import com.agustin.tarati.shared.generated.resources.source_code
 import com.agustin.tarati.shared.generated.resources.spanish
+import com.agustin.tarati.shared.generated.resources.store_title
+import com.agustin.tarati.shared.generated.resources.supporter_title
 import com.agustin.tarati.shared.generated.resources.user_name
 import com.agustin.tarati.shared.generated.resources.user_name_empty
 import com.agustin.tarati.shared.generated.resources.volume

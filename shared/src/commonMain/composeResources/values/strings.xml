@@ -630,4 +630,41 @@
     <string name="supporter_unlock_cta">Supporter perk — unlock it by supporting Tarati</string>
     <string name="store_title">Store</string>
     <string name="store_unlock_all_cta">Unlock every palette and piece set — become a supporter ♥</string>
+
+    <!-- Multiplayer (game6 / Tarati Six) -->
+    <string name="game6_mode_single">Single</string>
+    <string name="game6_mode_multi">Multi</string>
+    <string name="game6_multiplayer">Multiplayer</string>
+    <string name="game6_players">Players</string>
+    <string name="game6_player_n">Player %1$s</string>
+    <string name="game6_turn">Turn: %1$s</string>
+    <string name="game6_retired">Retired</string>
+    <string name="game6_result_last_standing">%1$s wins (last standing)</string>
+    <string name="game6_result_majority">%1$s wins (most pieces)</string>
+    <string name="game6_result_shared">Shared victory: %1$s</string>
+    <string name="game6_result_cut_repetition">cut by threefold repetition</string>
+    <string name="game6_result_cut_stall">cut after too many moves without a capture</string>
+    <string name="game6_lobby_title">Multiplayer tables</string>
+    <string name="game6_lobby_create">Create table</string>
+    <string name="game6_lobby_no_tables">No open tables yet. Create one!</string>
+    <string name="game6_lobby_seats">%1$d players</string>
+    <string name="game6_lobby_join">Join</string>
+    <string name="game6_lobby_empty_seat">Empty</string>
+    <string name="game6_lobby_add_bot">Add bot</string>
+    <string name="game6_lobby_remove_bot">Remove</string>
+    <string name="game6_lobby_start">Start game</string>
+    <string name="game6_lobby_leave">Leave</string>
+    <string name="game6_lobby_host_badge">Host</string>
+    <string name="game6_lobby_waiting_host">Waiting for the host to start…</string>
+    <string name="game6_lobby_action_error">Action failed: %1$s</string>
+    <string name="game6_lobby_table_closed">The table was closed</string>
+    <string name="game6_lobby_login_required">Sign in to play multiplayer online</string>
+    <string name="game6_lobby_game_started">The game has started (online board coming soon)</string>
+    <string name="game6_lobby_tab_tables">Tables</string>
+    <string name="game6_lobby_tab_live">Live</string>
+    <string name="game6_lobby_watch">Watch</string>
+    <string name="game6_lobby_no_live">No games in progress</string>
+    <string name="game6_lobby_live_moves">%1$d moves</string>
+    <string name="game6_lobby_spectating">Spectating</string>
+    <string name="game6_lobby_stop_watching">Stop watching</string>
 </resources>

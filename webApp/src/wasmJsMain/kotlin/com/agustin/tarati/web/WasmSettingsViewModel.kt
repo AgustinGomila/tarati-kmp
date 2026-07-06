@@ -13,6 +13,8 @@ import com.agustin.tarati.services.achievements.AchievementId
 import com.agustin.tarati.services.achievements.IAchievementsManager
 import com.agustin.tarati.services.billing.EntitlementsRepository
 import com.agustin.tarati.services.billing.LockedPalettes
+import com.agustin.tarati.services.billing.effectiveOwnedProducts
+import com.agustin.tarati.services.billing.lockedPaletteNames
 import com.agustin.tarati.services.localization.AppLanguage
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypeManager
@@ -39,8 +41,12 @@ class WasmSettingsViewModel(
     private val _hasTutorialBeenSeen = MutableStateFlow(false)
     override val hasTutorialBeenSeen: StateFlow<Boolean> = _hasTutorialBeenSeen
 
-    // Ownership cross-platform leído del servidor (Web no tiene billing local).
+    // Ownership cross-platform leído del servidor (Web no tiene billing local), expandido con la
+    // regla supporter (C4): el entitlement `supporter` desbloquea todo el contenido premium
+    // (paletas + piezas). Sin la expansión, las piezas premium quedaban bloqueadas pese al supporter.
     override val purchasedProductIds: StateFlow<Set<String>> = entitlementsRepository.entitlements
+        .map { effectiveOwnedProducts(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     private val boardVisualStateFlow = combine(
         repository.labelsVisibility,
@@ -115,7 +121,10 @@ class WasmSettingsViewModel(
                 initialValue = buildPaletteList(emptySet()),
             )
 
-    override val lockedPalettes: StateFlow<LockedPalettes> = MutableStateFlow(LockedPalettes.None)
+    // Gate supporter (C4): Gilded queda bloqueada salvo que el usuario sea supporter o la posea.
+    override val lockedPalettes: StateFlow<LockedPalettes> = entitlementsRepository.entitlements
+        .map { LockedPalettes(lockedPaletteNames(it)) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, LockedPalettes.None)
 
     init {
         viewModelScope.launch { achievementsManager.syncFromServer() }

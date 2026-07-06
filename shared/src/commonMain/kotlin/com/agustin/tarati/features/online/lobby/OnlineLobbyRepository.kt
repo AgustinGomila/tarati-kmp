@@ -5,6 +5,8 @@ import com.agustin.tarati.features.online.devServerUrl
 import com.agustin.tarati.network.models.Game
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
+import com.agustin.tarati.network.models.MpLiveGameDto
+import com.agustin.tarati.network.models.MpTableDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
 import com.agustin.tarati.network.models.PagedResponse
@@ -134,6 +136,28 @@ class OnlineLobbyRepository(
      */
     suspend fun getProfile(token: String, userId: String): Result<PublicProfileDto> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId") {
+            header("Authorization", "Bearer $token")
+        }.body()
+    }
+
+    /**
+     * Obtiene las mesas públicas abiertas del lobby multijugador (tablero `25`).
+     *
+     * @param token JWT del usuario autenticado.
+     */
+    suspend fun getMpTables(token: String): Result<List<MpTableDto>> = runCatching {
+        httpClient.get("$baseUrl/api/mp/tables") {
+            header("Authorization", "Bearer $token")
+        }.body()
+    }
+
+    /**
+     * Obtiene las partidas multijugador **en curso** (para observar como espectador — M7.5).
+     *
+     * @param token JWT del usuario autenticado.
+     */
+    suspend fun getMpLiveGames(token: String): Result<List<MpLiveGameDto>> = runCatching {
+        httpClient.get("$baseUrl/api/mp/games") {
             header("Authorization", "Bearer $token")
         }.body()
     }

@@ -30,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.features.settings.ISettingsViewModel
+import com.agustin.tarati.features.game6.GameMode
+import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.StaticBoard25Renderer
 import com.agustin.tarati.features.settings.PaletteSetting
 import com.agustin.tarati.features.settings.PieceTypeSetting
 import com.agustin.tarati.features.settings.SettingsViewModel
@@ -116,14 +119,16 @@ private fun StoreContent(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
             ) {
-                // ── Preview en vivo del tablero (refleja la paleta seleccionada) ──
-                StaticBoardRenderer(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .padding(16.dp),
-                    gameState = previewState,
-                )
+                // ── Preview en vivo del tablero (refleja la paleta y el modo activo) ──
+                val previewModifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .padding(16.dp)
+                if (LocalGameModeController.current?.mode == GameMode.MULTI) {
+                    StaticBoard25Renderer(modifier = previewModifier)
+                } else {
+                    StaticBoardRenderer(modifier = previewModifier, gameState = previewState)
+                }
 
                 // ── Banner supporter ──────────────────────────────────────────────
                 if (isSupporter) {

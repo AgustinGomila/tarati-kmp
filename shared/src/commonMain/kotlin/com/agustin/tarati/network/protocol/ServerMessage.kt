@@ -248,6 +248,13 @@ sealed class ClientMessage {
      */
     @Serializable
     data object Heartbeat : ClientMessage()
+
+    /**
+     * Envoltorio del protocolo del juego **multijugador** (mesas 2–6, tablero `25`).
+     * Mantiene todo el protocolo MP aislado en [MpClientMessage] sin sumar variantes al de 2 jugadores.
+     */
+    @Serializable
+    data class Mp(val payload: MpClientMessage) : ClientMessage()
 }
 
 /**
@@ -633,6 +640,15 @@ sealed class ServerMessage {
     data class TournamentCancelled(
         val tournamentId: String,
     ) : ServerMessage()
+
+    // ── Multijugador (mesas 2–6, tablero 25) ─────────────────────────────────────
+
+    /**
+     * Envoltorio del protocolo del juego **multijugador**. Mantiene todo el protocolo MP aislado en
+     * [MpServerMessage] → el cliente 2-jugadores maneja un único caso `is ServerMessage.Mp`.
+     */
+    @Serializable
+    data class Mp(val payload: MpServerMessage) : ServerMessage()
 }
 
 /**
