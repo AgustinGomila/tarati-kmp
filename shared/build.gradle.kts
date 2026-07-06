@@ -174,6 +174,11 @@ android {
         targetCompatibility = JavaVersion.toVersion(libs.versions.jvmCompatibility.get())
     }
 
+    buildFeatures {
+        // Genera com.agustin.tarati.shared.BuildConfig (DEBUG) para el actual de `isDebugBuild`.
+        buildConfig = true
+    }
+
     compose.resources {
         publicResClass = true
         packageOfResClass = "com.agustin.tarati.shared.generated.resources"

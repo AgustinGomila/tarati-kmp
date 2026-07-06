@@ -498,7 +498,9 @@
     <string name="tournament_finished_notification">El torneo finalizó — ver la clasificación final</string>
     <string name="tournament_cancelled_notification">El torneo fue cancelado</string>
     <string name="cancel_tournament">Cancelar torneo</string>
-    <string name="tournament_cancel_confirm">El torneo se cancelará para todos los inscriptos. Esta acción no se puede deshacer.</string>
+    <string name="tournament_cancel_confirm">El torneo se cancelará para todos los inscriptos. Esta acción no se puede
+        deshacer.
+    </string>
     <string name="validation_players_number">Ingresá números para la cantidad de jugadores</string>
     <string name="validation_min_players_count">El mínimo es 2 jugadores</string>
     <string name="validation_max_players_count">El máximo es 128 jugadores</string>
@@ -626,7 +628,9 @@
 
     <!-- Supporter (donación Stripe, C3) -->
     <string name="supporter_title">Apoyar Tarati</string>
-    <string name="supporter_body">Tarati es gratis — sin anuncios, sin suscripciones. Tu aporte ayuda a cubrir los costos del servidor y mantiene el juego abierto para todos. ¡Gracias ♥</string>
+    <string name="supporter_body">Tarati es gratis — sin anuncios, sin suscripciones. Tu aporte ayuda a cubrir los
+        costos del servidor y mantiene el juego abierto para todos. ¡Gracias ♥
+    </string>
     <string name="supporter_once">Único</string>
     <string name="supporter_monthly">Mensual</string>
     <string name="supporter_custom_amount">Otro monto (USD)</string>

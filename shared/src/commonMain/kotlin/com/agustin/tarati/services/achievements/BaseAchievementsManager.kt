@@ -39,7 +39,8 @@ abstract class BaseAchievementsManager(
 
     // ── Estado de paletas desbloqueadas ───────────────────────────────────────
 
-    protected val unlockedPalettes: MutableStateFlow<Set<AchievementId>> = MutableStateFlow<Set<AchievementId>>(emptySet())
+    protected val unlockedPalettes: MutableStateFlow<Set<AchievementId>> =
+        MutableStateFlow<Set<AchievementId>>(emptySet())
     override val unlockedPaletteAchievements: StateFlow<Set<AchievementId>> =
         unlockedPalettes.asStateFlow()
 

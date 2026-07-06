@@ -35,8 +35,8 @@ import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameS
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.StaticBoard25Renderer
-import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.services.billing.LockedPalettes
+import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.ui.theme.BoardPalette
 import com.agustin.tarati.ui.theme.LocalBoardPalette
 import com.agustin.tarati.ui.theme.PaletteList

@@ -75,7 +75,9 @@ object PieceTypes {
     val Triangle: PieceType = PieceType(
         id = "triangle",
         nameRes = Res.string.piece_type_triangle,
-        shape = MorphShape(sides = 3, cornerRadius = 14f, rotationDeg = -90f, sizeFrac = 1.24f),
+        // sizeFrac alto: un triángulo inscrito tiene mucha menos área que el resto → necesita más
+        // radio para verse del mismo tamaño (paridad visual con las otras formas, incl. Settings).
+        shape = MorphShape(sides = 3, cornerRadius = 14f, rotationDeg = -90f, sizeFrac = 1.42f),
         productId = PieceProducts.TRIANGLE,
         borderPattern = BorderPattern.Chevron,
         centerMotif = CenterMotif.Trefoil,

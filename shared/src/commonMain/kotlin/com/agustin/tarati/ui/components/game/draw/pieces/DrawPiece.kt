@@ -17,6 +17,7 @@ import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.ui.components.game.animation.AnimatedCob
 import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
 import com.agustin.tarati.ui.components.game.draw.board.cobShapeFor
+import com.agustin.tarati.ui.components.game.draw.common.MorphShape
 import com.agustin.tarati.ui.components.game.draw.common.createPathMeasure
 import com.agustin.tarati.ui.theme.BoardColors
 
@@ -58,11 +59,10 @@ fun DrawScope.drawPolygonSelection(
     position: Offset,
     radius: Float,
     pieceType: PieceType,
-    cob: Cob,
+    baseColor: Color,
     colors: BoardColors,
     selectionTimeMs: Long = 0L,
 ) {
-    val baseColor = if (cob.color == WHITE) colors.whiteCobSelectColor else colors.blackCobSelectColor
     val selR = radius * 1.4f
     val selPath = pieceType.shape.createPath(Size(selR * 2f, selR * 2f))
 
@@ -197,6 +197,23 @@ fun DrawScope.drawPolygonSelection(
     )
 }
 
+/** Sobrecarga por [Cob] (single 2-color): deriva el `baseColor` del bando. */
+fun DrawScope.drawPolygonSelection(
+    position: Offset,
+    radius: Float,
+    pieceType: PieceType,
+    cob: Cob,
+    colors: BoardColors,
+    selectionTimeMs: Long = 0L,
+) = drawPolygonSelection(
+    position = position,
+    radius = radius,
+    pieceType = pieceType,
+    baseColor = if (cob.color == WHITE) colors.whiteCobSelectColor else colors.blackCobSelectColor,
+    colors = colors,
+    selectionTimeMs = selectionTimeMs,
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Animaciones de conversión poligonales
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,14 +227,14 @@ private fun DrawScope.drawMorphShockWave(
     position: Offset,
     radius: Float,
     progress: Float,
-    pieceType: PieceType,
+    shape: MorphShape,
     waveColor: Color,
 ) {
     if (progress > 0.5f && progress < 0.9f) {
         val waveProgress = (progress - 0.5f) / 0.4f
         val waveAlpha = (1f - waveProgress) * 0.6f
         val waveRadius = radius * (1.1f + waveProgress * 0.4f)
-        val wavePath = pieceType.shape.createPath(Size(waveRadius * 2f, waveRadius * 2f))
+        val wavePath = shape.createPath(Size(waveRadius * 2f, waveRadius * 2f))
         translate(left = position.x - waveRadius, top = position.y - waveRadius) {
             drawPath(
                 wavePath, color = waveColor.copy(alpha = waveAlpha),
@@ -231,13 +248,49 @@ private fun DrawScope.drawMorphShockWave(
 private fun BoardColors.convertingWaveColor(cobColor: CobColor): Color =
     if (cobColor == WHITE) whiteConvertingWaveColor else blackConvertingWaveColor
 
+// ── Volteo (FLIP) ──────────────────────────────────────────────────────────────
+
 /**
- * Volteo poligonal: port de `drawCoinFlip` para piezas con forma.
- *
- * El eje se calcula con la misma fórmula áurea que el sistema circular
- * (`vertex.hashCode() × 137.508 % 360`). El `axisAngleDeg` en
- * [MorphShapeProjection] reemplaza el `rotate(flipAngleDeg)` del canvas.
+ * Volteo poligonal con **colores explícitos** origen→destino (núcleo N-color compartido por single
+ * y game6). El eje se deriva de [flipSeed] con la fórmula áurea (`seed × 137.508 % 360`). El scheme
+ * mapea la cara frontal (WHITE) a [sourceColors] y la trasera (BLACK) a [targetColors] → el volteo
+ * revela el color destino, sin depender del esquema de 2 bandos.
  */
+fun DrawScope.drawMorphConversionFlip(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    shape: MorphShape,
+    borderPattern: BorderPattern,
+    centerMotif: CenterMotif,
+    sourceColors: ShapeColors,
+    targetColors: ShapeColors,
+    flipSeed: Int,
+    boardColors: BoardColors,
+    hourOfDay: Float,
+) {
+    val flipAngleDeg = (flipSeed * 137.508f) % 360f
+    val projection = MorphShapeProjection(shape = shape, axisAngleDeg = flipAngleDeg)
+    val scheme = ShapeColorScheme { cobColor, _ -> if (cobColor == WHITE) sourceColors else targetColors }
+
+    drawMorphFlip(
+        position = position,
+        radius = radius,
+        projection = projection,
+        flipProgress = conversionProgress,
+        cobShape = CobShape(
+            shape = shape,
+            colorScheme = scheme,
+            borderPattern = borderPattern,
+            centerMotif = centerMotif
+        ),
+        cobColor = WHITE,
+        boardColors = boardColors,
+        hourOfDay = hourOfDay,
+    )
+}
+
+/** Sobrecarga por [AnimatedCob] (single 2-color): delega en el núcleo con los colores del bando. */
 fun DrawScope.drawMorphConversionFlip(
     position: Offset,
     radius: Float,
@@ -246,33 +299,65 @@ fun DrawScope.drawMorphConversionFlip(
     boardColors: BoardColors,
     hourOfDay: Float,
 ) {
-    val flipAngleDeg = (animatedCob.vertex.hashCode() * 137.508f) % 360f
-    val projection = MorphShapeProjection(shape = pieceType.shape, axisAngleDeg = flipAngleDeg)
-
-    drawMorphFlip(
+    val cob = animatedCob.cob
+    val cobShape = cobShapeFor(pieceType, cob)
+    drawMorphConversionFlip(
         position = position,
         radius = radius,
-        projection = projection,
-        flipProgress = animatedCob.conversionProgress,
-        cobShape = cobShapeFor(pieceType, animatedCob.cob),
-        cobColor = animatedCob.cob.color,
+        conversionProgress = animatedCob.conversionProgress,
+        shape = pieceType.shape,
+        borderPattern = cobShape.borderPattern,
+        centerMotif = cobShape.centerMotif,
+        sourceColors = cobShape.colorScheme.resolve(cob.color, boardColors),
+        targetColors = cobShape.colorScheme.resolve(cob.color.opponent, boardColors),
+        flipSeed = animatedCob.vertex.hashCode(),
         boardColors = boardColors,
         hourOfDay = hourOfDay,
     )
 }
 
+// ── Desde el centro (FROM_CENTER) ────────────────────────────────────────────────
+
 /**
- * Conversión desde el centro: el color objetivo crece desde el centroide cubriendo el original.
+ * Conversión desde el centro con **CobShapes explícitos** (núcleo N-color): el [targetShape] crece
+ * desde el centroide cubriendo el [sourceShape]. Ambos shapes traen su color ya resuelto (scheme
+ * fijo, ver [frozen]), así que el `cobColor` que reciben es indiferente.
  *
- * La pieza objetivo crece desde el **centroide** del polígono completo (no desde el bounding
- * box center). Esto asegura que la expansión nazca del "peso visual" de la forma.
- * A `progress = 1` la posición lerp alcanza `position`, garantizando continuidad
- * con el renderizado final de la pieza convertida.
- *
- * 1. **Original** completo en `position`.
- * 2. **Objetivo** crece desde `centroid` (p=0) hasta `position` (p=1).
+ * 1. **Original** ([sourceShape]) completo en `position`.
+ * 2. **Objetivo** ([targetShape]) crece desde `centroid` (p=0) hasta `position` (p=1).
  * 3. Onda de impacto desde el centroide.
  */
+fun DrawScope.drawMorphConversionFromCenter(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    shape: MorphShape,
+    sourceShape: CobShape,
+    targetShape: CobShape,
+    waveColor: Color,
+    boardColors: BoardColors,
+    hourOfDay: Float,
+) {
+    val rx = radius * shape.sizeFrac
+    val centroid = shape.computeCentroid(position.x, position.y, rx, rx)
+
+    // 1. Original completo como base
+    drawMorphCob(position, radius, sourceShape, WHITE, boardColors, hourOfDay)
+
+    // 2. Objetivo expandiéndose: nace en centroid (p=0), llega a position (p=1).
+    if (conversionProgress > 0f) {
+        val growPos = Offset(
+            centroid.x + (position.x - centroid.x) * conversionProgress,
+            centroid.y + (position.y - centroid.y) * conversionProgress,
+        )
+        drawMorphCob(growPos, radius * conversionProgress, targetShape, WHITE, boardColors, hourOfDay)
+    }
+
+    // 3. Onda desde el centroide
+    drawMorphShockWave(centroid, radius, conversionProgress, shape, waveColor)
+}
+
+/** Sobrecarga por [AnimatedCob] (single 2-color): delega con los shapes del bando resueltos. */
 fun DrawScope.drawMorphConversionFromCenter(
     position: Offset,
     radius: Float,
@@ -282,49 +367,61 @@ fun DrawScope.drawMorphConversionFromCenter(
     hourOfDay: Float,
 ) {
     val cob = animatedCob.cob
-    val progress = animatedCob.conversionProgress
-    val targetColor = cob.color.opponent
-    val rx = radius * pieceType.shape.sizeFrac
-    val centroid = pieceType.shape.computeCentroid(position.x, position.y, rx, rx)
-
-    // 1. Original completo como base
-    drawMorphCob(
-        position = position, radius = radius,
-        cobShape = cobShapeFor(pieceType, cob),
-        cobColor = cob.color, boardColors = boardColors, hourOfDay = hourOfDay,
-    )
-
-    // 2. Objetivo expandiéndose: nace en centroid (p=0), llega a position (p=1).
-    // El lerp garantiza continuidad visual con la pieza convertida final.
-    if (progress > 0f) {
-        val growPos = Offset(
-            centroid.x + (position.x - centroid.x) * progress,
-            centroid.y + (position.y - centroid.y) * progress,
-        )
-        drawMorphCob(
-            position = growPos, radius = radius * progress,
-            cobShape = cobShapeFor(pieceType, Cob(targetColor, cob.isUpgraded)),
-            cobColor = targetColor, boardColors = boardColors, hourOfDay = hourOfDay,
-        )
-    }
-
-    // 3. Onda desde el centroide
-    drawMorphShockWave(
-        centroid, radius, progress, pieceType,
-        boardColors.convertingWaveColor(cob.color)
+    drawMorphConversionFromCenter(
+        position = position,
+        radius = radius,
+        conversionProgress = animatedCob.conversionProgress,
+        shape = pieceType.shape,
+        sourceShape = cobShapeFor(pieceType, cob).frozen(cob.color, boardColors),
+        targetShape = cobShapeFor(pieceType, Cob(cob.color.opponent, cob.isUpgraded))
+            .frozen(cob.color.opponent, boardColors),
+        waveColor = boardColors.convertingWaveColor(cob.color),
+        boardColors = boardColors,
+        hourOfDay = hourOfDay,
     )
 }
 
+// ── Desde el borde (FROM_BORDER) ─────────────────────────────────────────────────
+
 /**
- * Conversión desde el borde: el original se contrae hacia el centroide revelando el objetivo.
+ * Conversión desde el borde con **CobShapes explícitos** (núcleo N-color): el [sourceShape] se
+ * contrae hacia el centroide revelando el [targetShape].
  *
- * La pieza original se contrae desde `position` (p=0) hacia el **centroide** (p=1).
- * El efecto visual: la forma "se retira hacia su propio corazón" antes de desaparecer.
- *
- * 1. **Objetivo** completo en `position` (base).
- * 2. **Original** contrayéndose desde `position` (p=0) hasta `centroid` (p=1).
+ * 1. **Objetivo** ([targetShape]) completo en `position` (base).
+ * 2. **Original** ([sourceShape]) contrayéndose desde `position` (p=0) hasta `centroid` (p=1).
  * 3. Onda de impacto desde el centroide.
  */
+fun DrawScope.drawMorphConversionFromBorder(
+    position: Offset,
+    radius: Float,
+    conversionProgress: Float,
+    shape: MorphShape,
+    sourceShape: CobShape,
+    targetShape: CobShape,
+    waveColor: Color,
+    boardColors: BoardColors,
+    hourOfDay: Float,
+) {
+    val rx = radius * shape.sizeFrac
+    val centroid = shape.computeCentroid(position.x, position.y, rx, rx)
+
+    // 1. Objetivo completo como base
+    drawMorphCob(position, radius, targetShape, WHITE, boardColors, hourOfDay)
+
+    // 2. Original contrayéndose: parte en position (p=0), llega al centroide (p=1).
+    if (conversionProgress < 1f) {
+        val shrinkPos = Offset(
+            position.x + (centroid.x - position.x) * conversionProgress,
+            position.y + (centroid.y - position.y) * conversionProgress,
+        )
+        drawMorphCob(shrinkPos, radius * (1f - conversionProgress), sourceShape, WHITE, boardColors, hourOfDay)
+    }
+
+    // 3. Onda desde el centroide
+    drawMorphShockWave(centroid, radius, conversionProgress, shape, waveColor)
+}
+
+/** Sobrecarga por [AnimatedCob] (single 2-color): delega con los shapes del bando resueltos. */
 fun DrawScope.drawMorphConversionFromBorder(
     position: Offset,
     radius: Float,
@@ -334,35 +431,17 @@ fun DrawScope.drawMorphConversionFromBorder(
     hourOfDay: Float,
 ) {
     val cob = animatedCob.cob
-    val progress = animatedCob.conversionProgress
-    val targetColor = cob.color.opponent
-    val rx = radius * pieceType.shape.sizeFrac
-    val centroid = pieceType.shape.computeCentroid(position.x, position.y, rx, rx)
-
-    // 1. Objetivo completo como base
-    drawMorphCob(
-        position = position, radius = radius,
-        cobShape = cobShapeFor(pieceType, Cob(targetColor, cob.isUpgraded)),
-        cobColor = targetColor, boardColors = boardColors, hourOfDay = hourOfDay,
-    )
-
-    // 2. Original contrayéndose: parte en position (p=0), llega al centroide (p=1).
-    if (progress < 1f) {
-        val shrinkPos = Offset(
-            position.x + (centroid.x - position.x) * progress,
-            position.y + (centroid.y - position.y) * progress,
-        )
-        drawMorphCob(
-            position = shrinkPos, radius = radius * (1f - progress),
-            cobShape = cobShapeFor(pieceType, cob),
-            cobColor = cob.color, boardColors = boardColors, hourOfDay = hourOfDay,
-        )
-    }
-
-    // 3. Onda desde el centroide
-    drawMorphShockWave(
-        centroid, radius, progress, pieceType,
-        boardColors.convertingWaveColor(cob.color)
+    drawMorphConversionFromBorder(
+        position = position,
+        radius = radius,
+        conversionProgress = animatedCob.conversionProgress,
+        shape = pieceType.shape,
+        sourceShape = cobShapeFor(pieceType, cob).frozen(cob.color, boardColors),
+        targetShape = cobShapeFor(pieceType, Cob(cob.color.opponent, cob.isUpgraded))
+            .frozen(cob.color.opponent, boardColors),
+        waveColor = boardColors.convertingWaveColor(cob.color),
+        boardColors = boardColors,
+        hourOfDay = hourOfDay,
     )
 }
 

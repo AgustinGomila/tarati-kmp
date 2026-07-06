@@ -42,7 +42,6 @@ import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurat
 import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurations.CIRCUMFERENCE_PAIR_SEQUENCE
 import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurations.DOMESTIC_SEQUENCE
 import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurations.GAME_OVER_FLASH
-import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurations.REGION_SEQUENCE
 import com.agustin.tarati.ui.components.game.highlights.sequences.HighlightDurations.WAVE_EXPANSION
 
 fun createGameOverSequence(matchState: MatchState): List<List<HighlightAnimation>> {

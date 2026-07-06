@@ -7,7 +7,6 @@ import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
 import com.agustin.tarati.features.online.lobby.GameHistoryUiState
 import com.agustin.tarati.features.online.lobby.HistoryFilters
-import com.agustin.tarati.features.online.lobby.OnlineLobbyViewModel.Companion.PAGE_SIZE
 import com.agustin.tarati.network.models.ServerAchievementDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

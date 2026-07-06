@@ -2,8 +2,8 @@ package com.agustin.tarati.core.domain.game6.play
 
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.game.board.Vertex
-import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.pieces.Piece
+import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import kotlinx.serialization.Serializable
 
 /**

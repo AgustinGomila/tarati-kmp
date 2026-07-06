@@ -1,10 +1,10 @@
 package com.agustin.tarati.core.domain.game.play
 
+import androidx.compose.runtime.Immutable
 import com.agustin.tarati.core.domain.game.board.GameBoard.adjacencyMap
 import com.agustin.tarati.core.domain.game.board.GameBoard.homeBases
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game.board.Vertex.Companion.parseVertex
-import androidx.compose.runtime.Immutable
 import com.agustin.tarati.core.domain.game.pieces.opponent
 import kotlinx.serialization.Serializable
 

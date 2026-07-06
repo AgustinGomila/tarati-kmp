@@ -60,10 +60,10 @@ import com.agustin.tarati.shared.generated.resources.lobby_new_search
 import com.agustin.tarati.shared.generated.resources.lobby_not_connected_to_server
 import com.agustin.tarati.shared.generated.resources.online_lobby
 import com.agustin.tarati.shared.generated.resources.profile_leaderboard
-import com.agustin.tarati.shared.generated.resources.supporter_title
 import com.agustin.tarati.shared.generated.resources.search_no_longer_available
 import com.agustin.tarati.shared.generated.resources.social_feed
 import com.agustin.tarati.shared.generated.resources.spectator_unavailable
+import com.agustin.tarati.shared.generated.resources.supporter_title
 import com.agustin.tarati.shared.generated.resources.tournaments
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar

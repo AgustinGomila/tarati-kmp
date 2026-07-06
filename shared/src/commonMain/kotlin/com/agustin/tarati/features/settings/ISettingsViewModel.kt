@@ -1,11 +1,11 @@
 package com.agustin.tarati.features.settings
 
+import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.time.TimeControlMode
 import com.agustin.tarati.services.billing.LockedPalettes
 import com.agustin.tarati.services.localization.AppLanguage
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
-import androidx.compose.runtime.Stable
 import com.agustin.tarati.ui.theme.AppTheme
 import com.agustin.tarati.ui.theme.PaletteList
 import kotlinx.coroutines.flow.StateFlow

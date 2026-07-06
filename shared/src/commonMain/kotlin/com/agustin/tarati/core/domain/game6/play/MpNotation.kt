@@ -4,6 +4,8 @@ import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game.board.Vertex.Companion.parseVertex
 import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
+import com.agustin.tarati.core.domain.game6.play.MpNotation.serializeHistory
+import com.agustin.tarati.core.domain.game6.play.MpNotation.serializeMove
 
 /**
  * Notación textual del juego multijugador (tablero `25`) — §10 del plan.

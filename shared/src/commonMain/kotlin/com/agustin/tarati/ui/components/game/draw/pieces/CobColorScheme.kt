@@ -119,4 +119,40 @@ object CobColorScheme {
             center = colors.boardVertexColor,
         )
     }
+
+    /**
+     * Scheme de color **fijo**: ignora el `CobColor` y devuelve siempre [shapeColors].
+     * Para tableros N-color (game6), donde el color lo determina el jugador, no el bando.
+     */
+    fun forShapeColors(shapeColors: ShapeColors): ShapeColorScheme = ShapeColorScheme { _, _ -> shapeColors }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de color explícito (compartidos por single y game6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** [ShapeColors] equivalentes a un [PieceColor] (game6 no usa centro → `center = null`). */
+fun PieceColor.toShapeColors(center: Color? = null): ShapeColors =
+    ShapeColors(
+        fill = baseColor,
+        border = borderColor,
+        center = center,
+        lightColor = lightColor,
+        shadowColor = shadowColor,
+    )
+
+/**
+ * Congela este scheme resolviéndolo una vez para [cobColor]: el resultado devuelve siempre las
+ * mismas [ShapeColors]. Permite pasar un color ya resuelto a funciones que reciben un scheme.
+ */
+fun ShapeColorScheme.frozenAt(cobColor: CobColor, boardColors: BoardColors): ShapeColorScheme {
+    val resolved = resolve(cobColor, boardColors)
+    return ShapeColorScheme { _, _ -> resolved }
+}
+
+/**
+ * [CobShape] con su scheme **congelado** en [cobColor]: útil para pasar un shape cuyo color ya está
+ * resuelto a funciones que llaman a `drawMorphCob` con un `cobColor` indiferente.
+ */
+fun CobShape.frozen(cobColor: CobColor, boardColors: BoardColors): CobShape =
+    copy(colorScheme = colorScheme.frozenAt(cobColor, boardColors))

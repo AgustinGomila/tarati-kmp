@@ -29,10 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.play.GameState
-import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.StaticBoard25Renderer
+import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.features.settings.PaletteSetting
 import com.agustin.tarati.features.settings.PieceTypeSetting
 import com.agustin.tarati.features.settings.SettingsViewModel

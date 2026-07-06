@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -49,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.agustin.tarati.core.domain.game.board.Region
 import com.agustin.tarati.core.domain.game.board.Vertex
+import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
@@ -65,15 +67,28 @@ import com.agustin.tarati.ui.components.game.draw.board.drawVertexHighlightAt
 import com.agustin.tarati.ui.components.game.draw.board.getHighlightsSegmentsRange
 import com.agustin.tarati.ui.components.game.draw.board.getLightOfDay
 import com.agustin.tarati.ui.components.game.draw.board.pulseFactor
+import com.agustin.tarati.ui.components.game.draw.common.MorphShape
 import com.agustin.tarati.ui.components.game.draw.common.NoiseTexture
+import com.agustin.tarati.ui.components.game.draw.pieces.CenterMotif
+import com.agustin.tarati.ui.components.game.draw.pieces.CobColorScheme
+import com.agustin.tarati.ui.components.game.draw.pieces.CobShape
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationType
+import com.agustin.tarati.ui.components.game.draw.pieces.PieceColor
+import com.agustin.tarati.ui.components.game.draw.pieces.PieceType
+import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypeManager
 import com.agustin.tarati.ui.components.game.draw.pieces.createOrganicColor
 import com.agustin.tarati.ui.components.game.draw.pieces.drawCoinFlip
 import com.agustin.tarati.ui.components.game.draw.pieces.drawConversionFromBorder
 import com.agustin.tarati.ui.components.game.draw.pieces.drawConversionFromCenter
+import com.agustin.tarati.ui.components.game.draw.pieces.drawMorphCob
+import com.agustin.tarati.ui.components.game.draw.pieces.drawMorphConversionFlip
+import com.agustin.tarati.ui.components.game.draw.pieces.drawMorphConversionFromBorder
+import com.agustin.tarati.ui.components.game.draw.pieces.drawMorphConversionFromCenter
 import com.agustin.tarati.ui.components.game.draw.pieces.drawOrganicCob
+import com.agustin.tarati.ui.components.game.draw.pieces.drawPolygonSelection
 import com.agustin.tarati.ui.components.game.draw.pieces.drawSelection
+import com.agustin.tarati.ui.components.game.draw.pieces.toShapeColors
 import com.agustin.tarati.ui.components.game.highlights.HighlightAction
 import com.agustin.tarati.ui.theme.BoardColors
 import com.agustin.tarati.ui.theme.TaratiIcons
@@ -103,6 +118,77 @@ private fun resolveConversionType(style: ConversionAnimationStyle): ConversionAn
 
         ConversionAnimationStyle.FLIP -> ConversionAnimationType.FLIP
         ConversionAnimationStyle.SURPRISE -> ConversionAnimationType.entries.random()
+    }
+
+/**
+ * [CobShape] de una pieza poligonal MP: la forma/guarda/patrón del [pieceType] con el color del
+ * jugador ([pieceColor]) inyectado vía un scheme fijo. Sin motivo central (MP no tiene roks), como
+ * `cobShapeFor` para un cob sin mejorar.
+ */
+private fun mpCobShape(pieceType: PieceType, pieceColor: PieceColor): CobShape =
+    CobShape(
+        shape = pieceType.shape,
+        colorScheme = CobColorScheme.forShapeColors(pieceColor.toShapeColors()),
+        borderPattern = pieceType.borderPattern,
+        centerMotif = CenterMotif.None,
+    )
+
+/**
+ * Reducción del `cornerRadius` de los polígonos en MP. `cornerRadius` es **absoluto** (px en el
+ * espacio `radius*2`); como las piezas MP son ~1/3 del tamaño de las de single, sin escalarlo las
+ * esquinas de los polígonos de pocos lados (Cuadrado/Triángulo/Diamante) se redondean hasta parecer
+ * círculos. Se aplica solo a polígonos reales (`sides >= 3`); Círculo (1) y Cápsula (2) —cuya forma
+ * depende de su `cornerRadius`— quedan intactos. Valor calibrado visualmente (ajustable).
+ */
+private const val MP_CORNER_RADIUS_SCALE = 0.5f
+
+/**
+ * Agrandado uniforme de las piezas poligonales MP para **parear su tamaño visual con el círculo
+ * estándar**. En MP el círculo se dibuja a `pieceRadius` completo (a diferencia de single, que le
+ * aplica su `sizeFrac` 0.82), así que los polígonos —que sí usan su `sizeFrac`— quedan relativamente
+ * más chicos que en single. Multiplicar por `1/0.82` restaura la proporción polígono↔círculo de
+ * single. Se aplica a **toda** la pieza: el radio del dibujo y el `cornerRadius` (para no deformar).
+ */
+private const val MP_POLYGON_SIZE_BOOST = 1f / 0.82f
+
+/** Máximo tilt orgánico por pieza (±grados) — paridad con `TiltStateMap.MAX_TILT_DEG` de single. */
+private const val MP_MAX_TILT_DEG = 10f
+
+/**
+ * Tilt orgánico **determinista** por vértice, en ±[MP_MAX_TILT_DEG]. Da el aspecto "no perfectamente
+ * alineado" de single (que reasigna un tilt aleatorio al mover) sin estado: al desplazarse a otro
+ * vértice la pieza cambia de tilt e interpola durante el movimiento. Solo se aplica a polígonos (el
+ * círculo es invariante a la rotación).
+ *
+ * Se aplica una **mezcla de bits** (avalanche, estilo lowbias32) al `hashCode` antes de mapear a
+ * `[-MAX, +MAX]`: `Vertex` (enum `Zone` + `Int`) produce hashCodes chicos —sobre todo en wasm, donde
+ * el `hashCode` del enum es el ordinal— y tomar los 16 bits bajos directamente daba `u ≈ 0` para
+ * todos → todas las piezas al mismo extremo (mismo lado) y delta origen→destino ≈ 0 (rotación
+ * invisible al moverse). La mezcla reparte bien incluso con entradas pequeñas.
+ */
+private fun vertexTilt(vertex: Vertex): Float {
+    var h = vertex.hashCode()
+    h = h xor (h ushr 16)
+    h *= 0x21f0aaad
+    h = h xor (h ushr 15)
+    h *= 0x735a2d97
+    h = h xor (h ushr 15)
+    val u = (h and 0xFFFF) / 0xFFFF.toFloat() // [0,1] bien distribuido
+    return (u * 2f - 1f) * MP_MAX_TILT_DEG    // [-MAX, +MAX]
+}
+
+private fun mpScaledShape(shape: MorphShape): MorphShape =
+    if (shape.sides >= 3 && shape.cornerRadius > 0f) {
+        MorphShape(
+            sides = shape.sides,
+            cornerRadius = shape.cornerRadius * MP_CORNER_RADIUS_SCALE * MP_POLYGON_SIZE_BOOST,
+            rotationDeg = shape.rotationDeg,
+            edgeCurveStrength = shape.edgeCurveStrength,
+            edgeCurves = shape.edgeCurves,
+            sizeFrac = shape.sizeFrac,
+        )
+    } else {
+        shape
     }
 
 /**
@@ -209,6 +295,25 @@ fun Board25View(
             val pieceRadius = unit * 0.028f
             val edgeStroke = unit * 0.004f
             val lightOfDay = getLightOfDay(hourOfDay = 12f, baseRadius = pieceRadius)
+            // Tipo de pieza seleccionado (mismo global que single). Al leerlo en el DrawScope el Canvas
+            // se redibuja si cambia. Círculo → cob orgánico; polígono → drawMorphCob N-color.
+            val pieceType = PieceTypeManager.currentPieceType
+            val isPolygon = pieceType.shape.sides > 1
+            // Forma con cornerRadius ajustado a la escala de MP (evita que los polígonos se redondeen);
+            // se usa para pieza, selección y conversión.
+            val mpPieceType = if (isPolygon) pieceType.copy(shape = mpScaledShape(pieceType.shape)) else pieceType
+            // Radio del polígono, agrandado para parear su tamaño visual con el círculo estándar.
+            val polyRadius = pieceRadius * MP_POLYGON_SIZE_BOOST
+            // Los polígonos asimétricos (triángulo, pentágono) tienen el centroide desplazado del centro
+            // del bounding box → se dibujan "bajos". Offset para reubicar el dibujo de modo que el
+            // centroide (centro visual real de la pieza) caiga sobre el vértice del tablero.
+            val polyCentroidOffset = if (isPolygon) {
+                val rx = polyRadius * mpPieceType.shape.sizeFrac
+                val c = mpPieceType.shape.computeCentroid(polyRadius, polyRadius, rx, rx)
+                Offset(c.x - polyRadius, c.y - polyRadius)
+            } else {
+                Offset.Zero
+            }
             val moveP = moveProgress.value
             val slide = (moveP / SLIDE_FRACTION).coerceIn(0f, 1f)
             val conversion = ((moveP - SLIDE_FRACTION) / (1f - SLIDE_FRACTION)).coerceIn(0f, 1f)
@@ -314,6 +419,21 @@ fun Board25View(
                     } else {
                         screen.getValue(vertex)
                     }
+                    // Centro de dibujo del polígono: corregido para que el centroide caiga sobre el vértice.
+                    val drawC = center - polyCentroidOffset
+                    // Tilt orgánico (solo polígonos): estable por vértice; si la pieza se desliza a otro
+                    // vértice, interpola del tilt de origen al de destino (paridad con single).
+                    val tilt = if (isPolygon) {
+                        val sm = slidingMove
+                        if (vertex == movingTo && sm != null) {
+                            val from = vertexTilt(sm.from)
+                            from + (vertexTilt(vertex) - from) * slide
+                        } else {
+                            vertexTilt(vertex)
+                        }
+                    } else {
+                        0f
+                    }
                     val oldOwner = converted[vertex]
                     if (convertingActive && oldOwner != null && vertex != movingTo) {
                         // Conversión del dueño anterior al nuevo (progreso `conversion`), con el tipo de
@@ -321,68 +441,135 @@ fun Board25View(
                         val source = PlayerPalette.pieceColor(oldOwner)
                         val target = PlayerPalette.pieceColor(piece.owner)
                         val wave = PlayerPalette.fill(piece.owner)
-                        when (conversionTypes[vertex] ?: ConversionAnimationType.FROM_CENTER) {
-                            ConversionAnimationType.FROM_CENTER -> drawConversionFromCenter(
-                                position = center,
-                                radius = pieceRadius,
-                                conversionProgress = conversion,
-                                hourOfDay = 12f,
-                                lightOfDay = lightOfDay,
-                                waveColor = wave,
-                                sourceColors = source,
-                                targetColors = target,
-                                colors = boardColors,
-                            )
+                        val convType = conversionTypes[vertex] ?: ConversionAnimationType.FROM_CENTER
+                        if (isPolygon) rotate(degrees = tilt, pivot = drawC) {
+                            // Conversión poligonal N-color (núcleos compartidos con single).
+                            when (convType) {
+                                ConversionAnimationType.FROM_CENTER -> drawMorphConversionFromCenter(
+                                    position = drawC,
+                                    radius = polyRadius,
+                                    conversionProgress = conversion,
+                                    shape = mpPieceType.shape,
+                                    sourceShape = mpCobShape(mpPieceType, source),
+                                    targetShape = mpCobShape(mpPieceType, target),
+                                    waveColor = wave,
+                                    boardColors = boardColors,
+                                    hourOfDay = 12f,
+                                )
 
-                            ConversionAnimationType.FROM_BORDER -> drawConversionFromBorder(
-                                position = center,
-                                radius = pieceRadius,
-                                conversionProgress = conversion,
-                                waveColor = wave,
-                                hourOfDay = 12f,
-                                sourceColors = source,
-                                targetColors = target,
-                                colors = boardColors,
-                            )
+                                ConversionAnimationType.FROM_BORDER -> drawMorphConversionFromBorder(
+                                    position = drawC,
+                                    radius = polyRadius,
+                                    conversionProgress = conversion,
+                                    shape = mpPieceType.shape,
+                                    sourceShape = mpCobShape(mpPieceType, source),
+                                    targetShape = mpCobShape(mpPieceType, target),
+                                    waveColor = wave,
+                                    boardColors = boardColors,
+                                    hourOfDay = 12f,
+                                )
 
-                            ConversionAnimationType.FLIP -> drawCoinFlip(
-                                position = center,
-                                radius = pieceRadius,
-                                conversionProgress = conversion,
-                                hourOfDay = 12f,
-                                lightOfDay = lightOfDay,
-                                sourceColors = source,
-                                targetColors = target,
-                                flipSeed = vertex.hashCode(),
-                                colors = boardColors,
-                            )
+                                ConversionAnimationType.FLIP -> drawMorphConversionFlip(
+                                    position = drawC,
+                                    radius = polyRadius,
+                                    conversionProgress = conversion,
+                                    shape = mpPieceType.shape,
+                                    borderPattern = mpPieceType.borderPattern,
+                                    centerMotif = CenterMotif.None,
+                                    sourceColors = source.toShapeColors(),
+                                    targetColors = target.toShapeColors(),
+                                    flipSeed = vertex.hashCode(),
+                                    boardColors = boardColors,
+                                    hourOfDay = 12f,
+                                )
+                            }
+                        } else {
+                            when (convType) {
+                                ConversionAnimationType.FROM_CENTER -> drawConversionFromCenter(
+                                    position = center,
+                                    radius = pieceRadius,
+                                    conversionProgress = conversion,
+                                    hourOfDay = 12f,
+                                    lightOfDay = lightOfDay,
+                                    waveColor = wave,
+                                    sourceColors = source,
+                                    targetColors = target,
+                                    colors = boardColors,
+                                )
+
+                                ConversionAnimationType.FROM_BORDER -> drawConversionFromBorder(
+                                    position = center,
+                                    radius = pieceRadius,
+                                    conversionProgress = conversion,
+                                    waveColor = wave,
+                                    hourOfDay = 12f,
+                                    sourceColors = source,
+                                    targetColors = target,
+                                    colors = boardColors,
+                                )
+
+                                ConversionAnimationType.FLIP -> drawCoinFlip(
+                                    position = center,
+                                    radius = pieceRadius,
+                                    conversionProgress = conversion,
+                                    hourOfDay = 12f,
+                                    lightOfDay = lightOfDay,
+                                    sourceColors = source,
+                                    targetColors = target,
+                                    flipSeed = vertex.hashCode(),
+                                    colors = boardColors,
+                                )
+                            }
                         }
                     } else {
                         val pieceColor = PlayerPalette.pieceColor(piece.owner)
-                        val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
-                        drawOrganicCob(
-                            position = center,
-                            radius = pieceRadius,
-                            hourOfDay = 12f,
-                            lightOfDay = lightOfDay,
-                            pieceColors = pieceColor,
-                            colors = boardColors,
-                            organicColor = organicColor,
-                        )
+                        if (isPolygon) rotate(degrees = tilt, pivot = drawC) {
+                            drawMorphCob(
+                                drawC,
+                                polyRadius,
+                                mpCobShape(mpPieceType, pieceColor),
+                                CobColor.WHITE,
+                                boardColors,
+                                hourOfDay = 12f
+                            )
+                        } else {
+                            val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
+                            drawOrganicCob(
+                                position = center,
+                                radius = pieceRadius,
+                                hourOfDay = 12f,
+                                lightOfDay = lightOfDay,
+                                pieceColors = pieceColor,
+                                colors = boardColors,
+                                organicColor = organicColor,
+                            )
+                        }
                     }
                 }
 
-            // Resalte de selección — mismo anillo giratorio que Tarati.
+            // Resalte de selección — mismo anillo giratorio que Tarati (circular o poligonal según el tipo).
             selection?.let { vertex ->
                 val piece = state.pieces[vertex] ?: return@let
                 screen[vertex]?.let { center ->
-                    drawSelection(
-                        position = center,
-                        radius = pieceRadius,
-                        baseColor = PlayerPalette.fill(piece.owner),
-                        colors = boardColors,
-                        timeMs = if (animate) tick else 0L,
-                    )
+                    val selTime = if (animate) tick else 0L
+                    if (isPolygon) {
+                        drawPolygonSelection(
+                            position = center - polyCentroidOffset,
+                            radius = polyRadius,
+                            pieceType = mpPieceType,
+                            baseColor = PlayerPalette.fill(piece.owner),
+                            colors = boardColors,
+                            selectionTimeMs = selTime,
+                        )
+                    } else {
+                        drawSelection(
+                            position = center,
+                            radius = pieceRadius,
+                            baseColor = PlayerPalette.fill(piece.owner),
+                            colors = boardColors,
+                            timeMs = selTime,
+                        )
+                    }
                 }
             }
 

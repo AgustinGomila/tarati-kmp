@@ -488,7 +488,9 @@
     <string name="tournament_finished_notification">The tournament ended — see the final standings</string>
     <string name="tournament_cancelled_notification">The tournament was cancelled</string>
     <string name="cancel_tournament">Cancel tournament</string>
-    <string name="tournament_cancel_confirm">The tournament will be cancelled for all registered players. This action cannot be undone.</string>
+    <string name="tournament_cancel_confirm">The tournament will be cancelled for all registered players. This action
+        cannot be undone.
+    </string>
     <string name="validation_players_number">Enter numbers for player counts</string>
     <string name="validation_min_players_count">Minimum is 2 players</string>
     <string name="validation_max_players_count">Maximum is 128 players</string>
@@ -615,7 +617,9 @@
 
     <!-- Supporter (Stripe donation, C3) -->
     <string name="supporter_title">Support Tarati</string>
-    <string name="supporter_body">Tarati is free — no ads, no subscriptions. Supporting helps cover server costs and keeps the game open for everyone. Thank you ♥</string>
+    <string name="supporter_body">Tarati is free — no ads, no subscriptions. Supporting helps cover server costs and
+        keeps the game open for everyone. Thank you ♥
+    </string>
     <string name="supporter_once">One-time</string>
     <string name="supporter_monthly">Monthly</string>
     <string name="supporter_custom_amount">Other amount (USD)</string>

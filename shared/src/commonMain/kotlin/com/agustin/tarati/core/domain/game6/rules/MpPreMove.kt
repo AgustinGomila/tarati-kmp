@@ -7,6 +7,7 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.Seat
+import com.agustin.tarati.core.domain.game6.rules.MpPreMove.isReady
 
 /**
  * Máquina de estados **pura** del pre-movimiento del juego multijugador: mientras es el turno de otro
@@ -104,8 +105,8 @@ object MpPreMove {
         board: BoardGraph = Board25,
     ): Boolean =
         !state.isGameOver &&
-            state.currentSeat.color == humanColor &&
-            MpRules.isLegal(state, pending, board)
+                state.currentSeat.color == humanColor &&
+                MpRules.isLegal(state, pending, board)
 
     private fun targetsOf(
         state: MpGameState,

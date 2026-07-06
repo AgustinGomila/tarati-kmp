@@ -3,6 +3,7 @@ package com.agustin.tarati.features.settings
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.board.BoardOrientation
 import com.agustin.tarati.core.domain.game.time.TimeControlMode
+import com.agustin.tarati.features.settings.SettingsRepository.Companion.COMPANION_PANEL_DEFAULT_WIDTH
 import com.agustin.tarati.services.localization.AppLanguage
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypes

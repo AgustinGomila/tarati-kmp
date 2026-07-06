@@ -22,23 +22,37 @@ class SupporterUnlockTest {
         assertTrue(PieceProducts.HEXAGON in effective)
     }
 
+    // Nota: la lógica de supporter se prueba con `unlockAll = false` para no depender del valor de
+    // `isDebugBuild` en el entorno de test (que es debug → true).
+
     @Test
     fun `without supporter ownership is unchanged`() {
-        assertEquals(emptySet<String>(), effectiveOwnedProducts(emptySet()))
-        assertEquals(setOf(PieceProducts.SQUARE), effectiveOwnedProducts(setOf(PieceProducts.SQUARE)))
+        assertEquals(emptySet<String>(), effectiveOwnedProducts(emptySet(), unlockAll = false))
+        assertEquals(
+            setOf(PieceProducts.SQUARE),
+            effectiveOwnedProducts(setOf(PieceProducts.SQUARE), unlockAll = false),
+        )
     }
 
     @Test
     fun `specific ownership unlocks only that product`() {
-        val effective = effectiveOwnedProducts(setOf(PaletteProducts.GILDED))
+        val effective = effectiveOwnedProducts(setOf(PaletteProducts.GILDED), unlockAll = false)
 
         assertTrue(PaletteProducts.GILDED in effective)
         assertFalse(PieceProducts.HEXAGON in effective)
     }
 
     @Test
+    fun `debug build unlocks every premium product`() {
+        val effective = effectiveOwnedProducts(emptySet(), unlockAll = true)
+
+        assertTrue(ALL_PREMIUM_PRODUCT_IDS.all { it in effective })
+        assertTrue(lockedPaletteNames(emptySet(), unlockAll = true).isEmpty())
+    }
+
+    @Test
     fun `gilded is locked for a non-supporter without the purchase`() {
-        assertEquals(setOf(GildedPalette.name), lockedPaletteNames(emptySet()))
+        assertEquals(setOf(GildedPalette.name), lockedPaletteNames(emptySet(), unlockAll = false))
     }
 
     @Test

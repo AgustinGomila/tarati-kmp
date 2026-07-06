@@ -48,7 +48,6 @@ import com.agustin.tarati.core.data.database.dto.MatchDto
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNotation
-import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.back
@@ -59,6 +58,7 @@ import com.agustin.tarati.shared.generated.resources.move_n_of_n
 import com.agustin.tarati.shared.generated.resources.next
 import com.agustin.tarati.shared.generated.resources.observations
 import com.agustin.tarati.ui.components.TooltipIconButton
+import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource

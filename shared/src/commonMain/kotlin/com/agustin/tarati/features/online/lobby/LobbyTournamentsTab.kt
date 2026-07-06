@@ -63,9 +63,9 @@ import com.agustin.tarati.shared.generated.resources.allow_spectators
 import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.clear_filters
 import com.agustin.tarati.shared.generated.resources.create
+import com.agustin.tarati.shared.generated.resources.create_tournament
 import com.agustin.tarati.shared.generated.resources.lobby_count_tournaments_active
 import com.agustin.tarati.shared.generated.resources.lobby_count_tournaments_registering
-import com.agustin.tarati.shared.generated.resources.create_tournament
 import com.agustin.tarati.shared.generated.resources.max_players
 import com.agustin.tarati.shared.generated.resources.min_players
 import com.agustin.tarati.shared.generated.resources.no_tournaments_available

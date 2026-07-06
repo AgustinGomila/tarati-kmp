@@ -46,7 +46,6 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNotation
 import com.agustin.tarati.core.domain.game.time.TimeControl
-import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.UserInfo
 import com.agustin.tarati.features.settings.SettingsRepository
@@ -83,6 +82,7 @@ import com.agustin.tarati.shared.generated.resources.watch_game
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.carditem.GameCardItem
 import com.agustin.tarati.ui.components.game.CobColorIndicator
+import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.icon
 import com.agustin.tarati.ui.theme.timeControlIcon
