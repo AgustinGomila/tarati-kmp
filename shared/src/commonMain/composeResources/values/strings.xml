@@ -671,4 +671,5 @@
     <string name="game6_lobby_live_moves">%1$d moves</string>
     <string name="game6_lobby_spectating">Spectating</string>
     <string name="game6_lobby_stop_watching">Stop watching</string>
+    <string name="game6_edit_reset">Reset position</string>
 </resources>

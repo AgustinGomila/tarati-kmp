@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game6.ai.MpGreedyBot
 import com.agustin.tarati.core.domain.game6.board.Board25
+import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
@@ -150,6 +151,22 @@ class MpLocalGameViewModel(
     /** Asientos controlados por IA en la partida en curso (fijados al iniciarla con [newGame]). */
     private var activeBotSeats: Set<Int> = botSeatsOf(_config.value)
 
+    // ── Editor de posiciones (D14) ────────────────────────────────────────────────
+    //
+    // Modo edición análogo al `BoardEditor` de single: se colocan/quitan piezas por color sobre el
+    // tablero `25`. Mientras [isEditing] es `true`, [onVertexTap] rutea a [editPiece] y los bots no
+    // juegan. Se edita directamente sobre [_state] (buffer de trabajo) sin tocar [states]/[history]:
+    // **Cancelar** (re-toque del botón) restaura la posición del tip; **Iniciar** reconstruye el
+    // [MpMatch] desde la posición editada (historial/undo reseteados). Los colores editables son los
+    // de los asientos de la partida (según [config], 2–6).
+
+    private val _isEditing = MutableStateFlow(false)
+    val isEditing: StateFlow<Boolean> = _isEditing.asStateFlow()
+
+    /** Color con el que se colocan piezas en modo edición (cicla entre los colores de los asientos). */
+    private val _editColor = MutableStateFlow(PlayerColor.P1)
+    val editColor: StateFlow<PlayerColor> = _editColor.asStateFlow()
+
     /**
      * Cambia la cantidad de jugadores (2–6) y **recoloca las piezas en vivo**: al incorporar un
      * jugador aparecen sus 4 cobs en la base más distanciada posible (se re-arma el tablero desde
@@ -281,7 +298,7 @@ class MpLocalGameViewModel(
      */
     fun isBotTurn(): Boolean {
         val s = _state.value
-        return !s.isGameOver && s.currentSeatIndex in activeBotSeats && isAtTip()
+        return !_isEditing.value && !s.isGameOver && s.currentSeatIndex in activeBotSeats && isAtTip()
     }
 
     /** Aplica el movimiento elegido por el bot para el asiento en turno (si corresponde). */
@@ -309,6 +326,12 @@ class MpLocalGameViewModel(
      * turno humano, selecciona una pieza propia o mueve al destino legal. Ignora el resto.
      */
     fun onVertexTap(vertex: Vertex) {
+        // Modo edición: el tap coloca/quita/reemplaza una pieza (no juega ni selecciona).
+        if (_isEditing.value) {
+            editPiece(vertex)
+            return
+        }
+
         val s = _state.value
         if (s.isGameOver) return
 
@@ -377,6 +400,121 @@ class MpLocalGameViewModel(
         }
         clearPreMove()
         applyAndClear(pending)
+    }
+
+    // ── Acciones del editor de posiciones ─────────────────────────────────────────
+
+    /** Colores editables = los de los asientos de la partida (según [config], en orden de turno). */
+    private fun seatColors(): List<PlayerColor> = _state.value.seats.map { it.color }
+
+    /**
+     * Entra/sale del modo edición. Al entrar edita desde la posición actual (tip). Al salir por este
+     * mismo botón (**cancelar**) descarta las ediciones y restaura la posición visualizada — como
+     * [states]/[history] no se tocaron durante la edición, basta releer el snapshot del cursor.
+     */
+    fun toggleEditing() {
+        if (_isEditing.value) {
+            _isEditing.value = false
+            _state.value = states[cursor()]
+            clearSelection()
+        } else {
+            moveToCurrent()
+            _isEditing.value = true
+            _editColor.value = seatColors().firstOrNull() ?: PlayerColor.P1
+            clearSelection()
+            clearPreMove()
+        }
+    }
+
+    /** Cicla el color de edición entre los colores de los asientos. */
+    fun cycleEditColor() {
+        val colors = seatColors()
+        if (colors.isEmpty()) return
+        val idx = colors.indexOf(_editColor.value)
+        _editColor.value = colors[(idx + 1) % colors.size]
+    }
+
+    /** Cicla el asiento en turno (a quién le tocará mover al iniciar la partida editada). */
+    fun cycleEditTurn() {
+        val s = _state.value
+        val n = s.seats.size
+        if (n == 0) return
+        _state.value = s.copy(currentSeatIndex = (s.currentSeatIndex + 1) % n)
+    }
+
+    /**
+     * Coloca/quita/reemplaza la pieza en [vertex] con el [editColor] (ciclo colocar→quitar; sin
+     * promoción). El `hasLeftBase` se deriva de la base del dueño ([hasLeftBaseFor]).
+     */
+    private fun editPiece(vertex: Vertex) {
+        val s = _state.value
+        val color = _editColor.value
+        val current = s.pieces[vertex]
+        val pieces = s.pieces.toMutableMap()
+        when {
+            current == null -> pieces[vertex] = Piece(owner = color, hasLeftBase = hasLeftBaseFor(color, vertex))
+            current.owner == color -> pieces.remove(vertex)
+            else -> pieces[vertex] = Piece(owner = color, hasLeftBase = hasLeftBaseFor(color, vertex))
+        }
+        _state.value = s.copy(pieces = pieces.toMap())
+    }
+
+    /** Vacía el tablero (conserva asientos y turno). */
+    fun clearEditBoard() {
+        _state.value = _state.value.copy(pieces = emptyMap())
+    }
+
+    /** Repuebla la posición inicial estándar para los asientos actuales y pone el turno en el asiento 0. */
+    fun resetEditBoard() {
+        val s = _state.value
+        val pieces = mutableMapOf<Vertex, Piece>()
+        s.seats.forEach { seat ->
+            Board25.baseById(seat.baseId).startSquare.forEach { v ->
+                pieces[v] = Piece(owner = seat.color) // hasLeftBase = false (en su base)
+            }
+        }
+        _state.value = s.copy(pieces = pieces.toMap(), currentSeatIndex = 0)
+    }
+
+    /** `true` si la posición editada permite iniciar: al menos 2 colores con piezas (validación libre). */
+    fun editCanStart(): Boolean =
+        _state.value.pieces.values.map { it.owner }.toSet().size >= 2
+
+    /**
+     * Inicia una partida nueva desde la posición editada (historial/undo reseteados). Normaliza el
+     * `hasLeftBase` de cada pieza y, si el asiento en turno quedó sin piezas, avanza al primero (en
+     * orden de turno) que sí tenga. No-op si [editCanStart] es `false`.
+     */
+    fun startGameFromEdit() {
+        if (!editCanStart()) return
+        val s = _state.value
+        val colorsWithPieces = s.pieces.values.map { it.owner }.toSet()
+        val n = s.seats.size
+        val startIndex = (0 until n)
+            .map { (s.currentSeatIndex + it) % n }
+            .firstOrNull { s.seats[it].color in colorsWithPieces } ?: 0
+        val normalized = s.pieces.mapValues { (v, p) -> p.copy(hasLeftBase = hasLeftBaseFor(p.owner, v)) }
+        val edited = MpGameState(pieces = normalized, seats = s.seats, currentSeatIndex = startIndex)
+
+        match = MpMatch(edited, cut = cut)
+        states.clear()
+        states.add(edited)
+        _history.value = emptyList()
+        _moveIndex.value = -1
+        _lastMove.value = null
+        _converted.value = emptyMap()
+        _state.value = edited
+        _isEditing.value = false
+        activeBotSeats = botSeatsOf(_config.value)
+        clearSelection()
+        clearPreMove()
+        _botKick.value += 1
+    }
+
+    /** `hasLeftBase` derivado: `false` si [vertex] pertenece al cuadrado de la base del dueño [color]. */
+    private fun hasLeftBaseFor(color: PlayerColor, vertex: Vertex): Boolean {
+        val seat = _state.value.seats.firstOrNull { it.color == color } ?: return true
+        return vertex !in Board25.baseById(seat.baseId).startSquare
     }
 
     private fun applyAndClear(move: MpMove) {

@@ -424,9 +424,8 @@ fun Board25View(
                     // Tilt orgánico (solo polígonos): estable por vértice; si la pieza se desliza a otro
                     // vértice, interpola del tilt de origen al de destino (paridad con single).
                     val tilt = if (isPolygon) {
-                        val sm = slidingMove
-                        if (vertex == movingTo && sm != null) {
-                            val from = vertexTilt(sm.from)
+                        if (vertex == movingTo) {
+                            val from = vertexTilt(slidingMove.from)
                             from + (vertexTilt(vertex) - from) * slide
                         } else {
                             vertexTilt(vertex)
@@ -529,8 +528,7 @@ fun Board25View(
                                 polyRadius,
                                 mpCobShape(mpPieceType, pieceColor),
                                 CobColor.WHITE,
-                                boardColors,
-                                hourOfDay = 12f
+                                boardColors
                             )
                         } else {
                             val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
@@ -763,6 +761,20 @@ fun StaticBoard25Renderer(modifier: Modifier, pieces: Map<Vertex, Piece>) {
         val pieceRadius = unit * 0.03f
         val edgeStroke = unit * 0.004f
         val lightOfDay = getLightOfDay(hourOfDay = 12f, baseRadius = pieceRadius)
+        // Tipo de pieza seleccionado (mismo global que single/Board25View). Al leerlo en el DrawScope
+        // el Canvas se redibuja si cambia. Círculo → cob orgánico; polígono → drawMorphCob N-color,
+        // con el mismo ajuste de escala/centroide/tilt que Board25View para paridad de aspecto.
+        val pieceType = PieceTypeManager.currentPieceType
+        val isPolygon = pieceType.shape.sides > 1
+        val mpPieceType = if (isPolygon) pieceType.copy(shape = mpScaledShape(pieceType.shape)) else pieceType
+        val polyRadius = pieceRadius * MP_POLYGON_SIZE_BOOST
+        val polyCentroidOffset = if (isPolygon) {
+            val rx = polyRadius * mpPieceType.shape.sizeFrac
+            val c = mpPieceType.shape.computeCentroid(polyRadius, polyRadius, rx, rx)
+            Offset(c.x - polyRadius, c.y - polyRadius)
+        } else {
+            Offset.Zero
+        }
 
         drawBoard25Board(screen, boardColors, showRegions = true, showPerimeter = false, showEdges = true)
 
@@ -778,16 +790,29 @@ fun StaticBoard25Renderer(modifier: Modifier, pieces: Map<Vertex, Piece>) {
         pieces.forEach { (vertex, piece) ->
             val center = screen.getValue(vertex)
             val pieceColor = PlayerPalette.pieceColor(piece.owner)
-            val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
-            drawOrganicCob(
-                position = center,
-                radius = pieceRadius,
-                hourOfDay = 12f,
-                lightOfDay = lightOfDay,
-                pieceColors = pieceColor,
-                colors = boardColors,
-                organicColor = organicColor,
-            )
+            if (isPolygon) {
+                val drawC = center - polyCentroidOffset
+                rotate(degrees = vertexTilt(vertex), pivot = drawC) {
+                    drawMorphCob(
+                        drawC,
+                        polyRadius,
+                        mpCobShape(mpPieceType, pieceColor),
+                        CobColor.WHITE,
+                        boardColors,
+                    )
+                }
+            } else {
+                val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
+                drawOrganicCob(
+                    position = center,
+                    radius = pieceRadius,
+                    hourOfDay = 12f,
+                    lightOfDay = lightOfDay,
+                    pieceColors = pieceColor,
+                    colors = boardColors,
+                    organicColor = organicColor,
+                )
+            }
         }
     }
 }

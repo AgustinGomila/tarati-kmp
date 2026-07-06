@@ -109,6 +109,8 @@ fun MpGameScreen(
     val preMoveTargets by viewModel.preMoveTargets.collectAsState()
     val pendingPreMove by viewModel.pendingPreMove.collectAsState()
     val moveIndex by viewModel.moveIndex.collectAsState()
+    val isEditing by viewModel.isEditing.collectAsState()
+    val editColor by viewModel.editColor.collectAsState()
 
     // Cabeceo inercial del tablero al expandir el FAB / abrir el panel de historial (paridad con single).
     var isFabExpanded by remember { mutableStateOf(false) }
@@ -232,6 +234,8 @@ fun MpGameScreen(
                     MpControls(
                         onNewGame = onNewGame,
                         onRotate = viewModel::rotate,
+                        isEditing = isEditing,
+                        onToggleEdit = viewModel::toggleEditing,
                     )
                 },
                 playerConfig = {
@@ -296,20 +300,38 @@ fun MpGameScreen(
                         .padding(12.dp),
                 )
 
-                // FAB de undo/redo + lista de movimientos (D12), superpuesto al tablero en cualquier
-                // layout — igual que el BottomGameBar de single, que también convive con el sidebar.
-                // Sus cambios de estado alimentan el cabeceo del tablero (boardTilt).
-                MpBottomBar(
-                    moves = history,
-                    seats = state.seats,
-                    moveIndex = moveIndex,
-                    onUndo = viewModel::undo,
-                    onRedo = viewModel::redo,
-                    onMoveToCurrent = viewModel::moveToCurrent,
-                    onMoveToIndex = viewModel::moveToIndex,
-                    onFabExpandedChange = { isFabExpanded = it },
-                    onHistoryOpenChange = { isHistoryPanelOpen = it },
-                )
+                // Editor de posiciones (D14): overlay de controles sobre el tablero mientras se edita
+                // (los taps colocan/quitan piezas vía el ViewModel). Reemplaza el FAB de historial.
+                if (isEditing) {
+                    MpEditControls(
+                        state = state,
+                        editColor = editColor,
+                        canStart = state.pieces.values.mapTo(mutableSetOf()) { it.owner }.size >= 2,
+                        // Ancho (landscape/Expanded) → controles a los lados; portrait → arriba/abajo.
+                        isLandscape = maxWidth > maxHeight,
+                        onCycleColor = viewModel::cycleEditColor,
+                        onCycleTurn = viewModel::cycleEditTurn,
+                        onClear = viewModel::clearEditBoard,
+                        onReset = viewModel::resetEditBoard,
+                        onStart = viewModel::startGameFromEdit,
+                        onCancel = viewModel::toggleEditing,
+                    )
+                } else {
+                    // FAB de undo/redo + lista de movimientos (D12), superpuesto al tablero en cualquier
+                    // layout — igual que el BottomGameBar de single, que también convive con el sidebar.
+                    // Sus cambios de estado alimentan el cabeceo del tablero (boardTilt).
+                    MpBottomBar(
+                        moves = history,
+                        seats = state.seats,
+                        moveIndex = moveIndex,
+                        onUndo = viewModel::undo,
+                        onRedo = viewModel::redo,
+                        onMoveToCurrent = viewModel::moveToCurrent,
+                        onMoveToIndex = viewModel::moveToIndex,
+                        onFabExpandedChange = { isFabExpanded = it },
+                        onHistoryOpenChange = { isHistoryPanelOpen = it },
+                    )
+                }
             }
         },
     )

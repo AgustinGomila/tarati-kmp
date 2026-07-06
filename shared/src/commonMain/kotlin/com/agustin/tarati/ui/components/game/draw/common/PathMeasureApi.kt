@@ -1,6 +1,9 @@
 package com.agustin.tarati.ui.components.game.draw.common
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
 
 /**
  * Abstracción multiplataforma para medir y extraer segmentos de un Path.
@@ -51,13 +54,48 @@ interface PathMeasureApi {
 }
 
 /**
+ * Implementación **multiplataforma** sobre [androidx.compose.ui.graphics.PathMeasure] (respaldado por
+ * Skia en Desktop/Web/iOS y por `android.graphics.PathMeasure` en Android). Da precisión completa en
+ * **todas** las plataformas — antes solo Android tenía una implementación real (Desktop/Web devolvían
+ * `null` en [getSegment] → el segmento animado del anillo de selección poligonal caía al anillo
+ * estático, sin el pulso giratorio; iOS lanzaba `TODO()`).
+ */
+private class ComposePathMeasure(path: Path, closed: Boolean) : PathMeasureApi {
+    private val measure = PathMeasure().apply { setPath(path, closed) }
+
+    override val length: Float get() = measure.length
+
+    override fun getSegment(
+        startDistance: Float,
+        endDistance: Float,
+        startWithMoveTo: Boolean,
+    ): Path? {
+        val destination = Path()
+        val ok = measure.getSegment(startDistance, endDistance, destination, startWithMoveTo)
+        return if (ok) destination else null
+    }
+
+    override fun getPosTan(distance: Float): PosTan? {
+        val position = measure.getPosition(distance)
+        if (!position.isSpecified) return null
+        val tangent = measure.getTangent(distance)
+        val t = if (tangent.isSpecified) tangent else Offset(1f, 0f)
+        return PosTan(
+            position = floatArrayOf(position.x, position.y),
+            tangent = floatArrayOf(t.x, t.y),
+        )
+    }
+}
+
+/**
  * Crea una instancia de PathMeasureApi para medir el [path] dado.
  *
  * @param path Path a medir
  * @param closed Si el path debe tratarse como cerrado (conectar fin con inicio)
- * @return Instancia de PathMeasureApi específica de la plataforma
+ * @return Instancia de PathMeasureApi (misma implementación en todas las plataformas)
  */
-expect fun createPathMeasure(path: Path, closed: Boolean = false): PathMeasureApi
+fun createPathMeasure(path: Path, closed: Boolean = false): PathMeasureApi =
+    ComposePathMeasure(path, closed)
 
 /**
  * Resultado de [PathMeasureApi.getPosTan].

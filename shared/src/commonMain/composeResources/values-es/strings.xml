@@ -682,4 +682,5 @@
     <string name="game6_lobby_live_moves">%1$d jugadas</string>
     <string name="game6_lobby_spectating">Observando</string>
     <string name="game6_lobby_stop_watching">Dejar de observar</string>
+    <string name="game6_edit_reset">Reiniciar posición</string>
 </resources>

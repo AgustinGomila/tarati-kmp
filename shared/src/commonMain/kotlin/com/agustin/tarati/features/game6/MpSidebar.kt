@@ -128,6 +128,8 @@ fun MpSidebarHeader(
 fun MpControls(
     onNewGame: () -> Unit,
     onRotate: () -> Unit,
+    isEditing: Boolean,
+    onToggleEdit: () -> Unit,
 ) {
     GameModeSwitch(current = GameMode.MULTI)
     Row(
@@ -142,9 +144,31 @@ fun MpControls(
         ) {
             LocalizedText(Res.string.new_game, style = MaterialTheme.typography.bodyMedium)
         }
-        // El editor del tablero 25 aún no existe → deshabilitado. La rotación (perspectiva 60°) sí.
-        DisabledSquareIcon(TaratiIcons.SquareFoot, localizedString(Res.string.edit))
+        // Editor del tablero 25 (D14): toggle resaltado cuando está activo. Rotación (perspectiva 60°).
+        SquareToggleIcon(
+            icon = TaratiIcons.SquareFoot,
+            tooltip = localizedString(Res.string.edit),
+            active = isEditing,
+            onClick = onToggleEdit,
+        )
         RotateIconButton(localizedString(Res.string.rotate_board), onRotate)
+    }
+}
+
+/** Botón cuadrado de 46dp con estado activo/inactivo (resaltado en primary cuando [active]). */
+@Composable
+private fun SquareToggleIcon(icon: ImageVector, tooltip: String, active: Boolean, onClick: () -> Unit) {
+    val bg = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val tint = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    TooltipIconButton(
+        tooltip = tooltip,
+        onClick = onClick,
+        modifier = Modifier
+            .size(46.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(bg),
+    ) {
+        Icon(icon, contentDescription = tooltip, tint = tint)
     }
 }
 
@@ -626,21 +650,6 @@ private fun CircleIconButton(
         modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-    ) {
-        Icon(icon, contentDescription = tooltip, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun DisabledSquareIcon(icon: ImageVector, tooltip: String) {
-    TooltipIconButton(
-        tooltip = tooltip,
-        onClick = {},
-        enabled = false,
-        modifier = Modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Icon(icon, contentDescription = tooltip, tint = MaterialTheme.colorScheme.onSurfaceVariant)
