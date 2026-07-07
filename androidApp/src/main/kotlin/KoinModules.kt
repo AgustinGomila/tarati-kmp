@@ -23,6 +23,7 @@ import com.agustin.tarati.features.seasonal.SpecialEventManager
 import com.agustin.tarati.features.seasonal.SpecialEventRepository
 import com.agustin.tarati.features.settings.AndroidSettingsRepository
 import com.agustin.tarati.features.settings.SettingsRepository
+import com.agustin.tarati.network.taratiClientJson
 import com.agustin.tarati.services.achievements.AchievementSyncService
 import com.agustin.tarati.services.achievements.AchievementsManager
 import com.agustin.tarati.services.achievements.AchievementsRepository
@@ -51,7 +52,6 @@ import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.bind
@@ -175,11 +175,7 @@ val androidServiceModule: Module = module {
                 pingInterval = 30.toDuration(DurationUnit.SECONDS)
             }
             install(ContentNegotiation) {
-                json(Json {
-                    ignoreUnknownKeys = true
-                    encodeDefaults = true
-                    isLenient = true
-                })
+                json(taratiClientJson)
             }
         }
     }

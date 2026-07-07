@@ -8,6 +8,7 @@ import com.agustin.tarati.features.online.auth.AuthRepository
 import com.agustin.tarati.features.seasonal.ISpecialEventManager
 import com.agustin.tarati.features.seasonal.NoOpSpecialEventManager
 import com.agustin.tarati.features.settings.SettingsRepository
+import com.agustin.tarati.network.taratiClientJson
 import com.agustin.tarati.services.achievements.AchievementSyncService
 import com.agustin.tarati.services.achievements.IAchievementsManager
 import com.agustin.tarati.services.achievements.ServerAchievementsManager
@@ -16,19 +17,18 @@ import com.agustin.tarati.services.clipboard.IClipboardService
 import com.agustin.tarati.services.sound.ISoundService
 import com.agustin.tarati.services.url.IUrlLauncher
 import com.agustin.tarati.web.NoOpGameRepository
-import com.agustin.tarati.web.WebSoundService
 import com.agustin.tarati.web.WasmAuthRepository
 import com.agustin.tarati.web.WasmClipboardService
 import com.agustin.tarati.web.WasmSettingsRepository
 import com.agustin.tarati.web.WasmSettingsViewModel
 import com.agustin.tarati.web.WasmUrlLauncher
+import com.agustin.tarati.web.WebSoundService
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.json.json
-import kotlinx.serialization.json.Json
 import org.koin.core.module.Module
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.bind
@@ -43,7 +43,7 @@ val webServiceModule: Module = module {
                 pingInterval = 30.toDuration(DurationUnit.SECONDS)
             }
             install(ContentNegotiation) {
-                json(Json { ignoreUnknownKeys = true; encodeDefaults = true })
+                json(taratiClientJson)
             }
         }
     }

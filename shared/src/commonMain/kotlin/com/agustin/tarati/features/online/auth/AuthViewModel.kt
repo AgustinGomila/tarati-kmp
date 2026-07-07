@@ -5,8 +5,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.devServerUrl
+import com.agustin.tarati.network.models.ApiErrorBody
+import com.agustin.tarati.network.models.AuthResponseDto
+import com.agustin.tarati.network.models.ForgotPasswordRequest
+import com.agustin.tarati.network.models.GuestRequest
+import com.agustin.tarati.network.models.LoginRequest
+import com.agustin.tarati.network.models.LogoutRequest
 import com.agustin.tarati.network.models.OwnProfileDto
+import com.agustin.tarati.network.models.RefreshRequest
+import com.agustin.tarati.network.models.RegisterRequest
+import com.agustin.tarati.network.models.ResetPasswordRequest
+import com.agustin.tarati.network.models.TokenPairDto
 import com.agustin.tarati.network.models.localizedApiError
+import com.agustin.tarati.services.achievements.IAchievementsManager
+import com.agustin.tarati.services.billing.EntitlementsRepository
 import io.ktor.client.call.body
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -14,7 +26,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
+import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType.Application
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
@@ -22,6 +34,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlin.time.Clock
 
 /**
@@ -54,13 +68,16 @@ class AuthViewModel(
     private val authRepository: AuthRepository,
     private val httpClient: io.ktor.client.HttpClient,
     // Opcional (nullable) para no romper construcciones directas en tests; Koin inyecta el real.
-    private val entitlementsRepository: com.agustin.tarati.services.billing.EntitlementsRepository? = null,
+    private val entitlementsRepository: EntitlementsRepository? = null,
     // Reconcilia logros cross-platform al establecerse la sesión (Android: Play Games ↔ servidor;
     // Desktop/Web: pull desde el servidor). Nullable por la misma razón que entitlementsRepository.
-    private val achievementsManager: com.agustin.tarati.services.achievements.IAchievementsManager? = null,
+    private val achievementsManager: IAchievementsManager? = null,
 ) : ViewModel(), IAuthViewModel {
 
     private val logger = getLogger("AuthViewModel")
+
+    // Parser tolerante para el payload (claims) del JWT: ignora claims que no modelamos.
+    private val jwtJson = Json { ignoreUnknownKeys = true }
 
     private val _accessTokenDurationMs = 15 * 60 * 1000L   // 15 minutos
 
@@ -158,34 +175,15 @@ class AuthViewModel(
         return try {
             val response = httpClient.post("$devServerUrl/auth/login") {
                 contentType(Application.Json)
-                setBody("""{"usernameOrEmail":"$username","password":"$password"}""")
+                setBody(LoginRequest(usernameOrEmail = username, password = password))
             }
 
             if (response.status.value == 200) {
-                val body = response.bodyAsText()
-
-                val accessToken = Regex(""""accessToken"\s*:\s*"([^"]+)"""").find(body)
-                    ?.groupValues?.get(1)
-                    ?: return Result.failure(Exception("Server response missing accessToken"))
-
-                val refreshToken = Regex(""""refreshToken"\s*:\s*"([^"]+)"""").find(body)
-                    ?.groupValues?.get(1)
-
-                if (rememberMe) {
-                    authRepository.saveToken(accessToken)
-                    if (refreshToken != null) authRepository.saveRefreshToken(refreshToken)
-                } else {
-                    // Sin "Recordarme": tokens solo en memoria. La sesión dura hasta cerrar la app.
-                    authRepository.clearAll()
-                }
-
-                // refreshToken en memoria para renovar durante la sesión actual
-                if (refreshToken != null) _inMemoryRefreshToken = refreshToken
-
-                authenticateWithToken(accessToken).map { accessToken }
+                val tokens = response.body<AuthResponseDto>().tokens
+                persistTokens(tokens.accessToken, tokens.refreshToken, rememberMe)
+                authenticateWithToken(tokens.accessToken).map { tokens.accessToken }
             } else {
-                val code = parseServerError(response.bodyAsText())
-                val msg = if (code != null) localizedApiError(code) else "Login failed: HTTP ${response.status.value}"
+                val msg = errorMessage(response, fallback = "Login failed")
                 _authState.value = AuthState.Error(message = msg)
                 Result.failure(Exception(msg))
             }
@@ -217,44 +215,35 @@ class AuthViewModel(
         return try {
             val response = httpClient.post("$devServerUrl/auth/refresh") {
                 contentType(Application.Json)
-                setBody("""{"refreshToken":"$storedRefreshToken"}""")
+                setBody(RefreshRequest(refreshToken = storedRefreshToken))
             }
 
             when (response.status.value) {
                 200 -> {
-                    val body = response.bodyAsText()
+                    val tokens = response.body<TokenPairDto>()
 
-                    val newAccessToken = Regex(""""accessToken"\s*:\s*"([^"]+)"""").find(body)
-                        ?.groupValues?.get(1)
-                        ?: return Result.failure(Exception("Refresh response missing accessToken"))
-
-                    val newRefreshToken = Regex(""""refreshToken"\s*:\s*"([^"]+)"""").find(body)
-                        ?.groupValues?.get(1)
-
-                    // Guardar nuevos tokens en el mismo canal que los originales
-                    val isPersisted = authRepository.getRefreshToken() != null
-                    if (isPersisted) {
-                        authRepository.saveToken(newAccessToken)
-                        if (newRefreshToken != null) authRepository.saveRefreshToken(newRefreshToken)
-                    } else {
-                        // Sesión sin "Recordarme": mantener en memoria
-                        if (newRefreshToken != null) _inMemoryRefreshToken = newRefreshToken
-                    }
+                    // Guardar en el mismo canal que los tokens originales: en disco si la sesión
+                    // ya tenía refresh token persistido ("Recordarme"), solo en memoria si no.
+                    persistTokens(
+                        accessToken = tokens.accessToken,
+                        refreshToken = tokens.refreshToken,
+                        rememberMe = authRepository.getRefreshToken() != null,
+                    )
 
                     // Actualizar estado sin cambiar userInfo — solo expiry y token
                     val currentState = _authState.value
                     val userInfo = (currentState as? AuthState.Authenticated)?.userInfo
-                        ?: parseUserInfoFromToken(newAccessToken)
+                        ?: parseUserInfoFromToken(tokens.accessToken)
                     val newExpiry = Clock.System.now().toEpochMilliseconds() + _accessTokenDurationMs
 
-                    _accessToken = newAccessToken
+                    _accessToken = tokens.accessToken
                     _authState.value = AuthState.Authenticated(
                         userInfo = userInfo,
                         tokenExpiry = newExpiry
                     )
 
                     logger.debug("Token refreshed successfully, new expiry in 15 min")
-                    Result.success(newAccessToken)
+                    Result.success(tokens.accessToken)
 
                 }
 
@@ -305,39 +294,24 @@ class AuthViewModel(
         _authState.value = AuthState.Authenticating
 
         return try {
-            val bodyParts = buildList {
-                add(""""username":"$username"""")
-                add(""""email":"$email"""")
-                add(""""password":"$password"""")
-                if (!displayName.isNullOrBlank()) add(""""displayName":"$displayName"""")
-            }
             val response = httpClient.post("$devServerUrl/auth/register") {
                 contentType(Application.Json)
-                setBody("{${bodyParts.joinToString(",")}}")
+                setBody(
+                    RegisterRequest(
+                        username = username,
+                        email = email,
+                        password = password,
+                        displayName = displayName?.trim()?.takeIf { it.isNotBlank() },
+                    )
+                )
             }
 
             if (response.status.value in 200..201) {
-                val body = response.bodyAsText()
-                val accessToken = Regex(""""accessToken"\s*:\s*"([^"]+)"""").find(body)
-                    ?.groupValues?.get(1)
-                    ?: return Result.failure(Exception("Server response missing accessToken"))
-
-                val refreshToken = Regex(""""refreshToken"\s*:\s*"([^"]+)"""").find(body)
-                    ?.groupValues?.get(1)
-
-                if (rememberMe) {
-                    authRepository.saveToken(accessToken)
-                    if (refreshToken != null) authRepository.saveRefreshToken(refreshToken)
-                } else {
-                    authRepository.clearAll()
-                }
-                if (refreshToken != null) _inMemoryRefreshToken = refreshToken
-
-                authenticateWithToken(accessToken).map { accessToken }
+                val tokens = response.body<AuthResponseDto>().tokens
+                persistTokens(tokens.accessToken, tokens.refreshToken, rememberMe)
+                authenticateWithToken(tokens.accessToken).map { tokens.accessToken }
             } else {
-                val code = parseServerError(response.bodyAsText())
-                val msg =
-                    if (code != null) localizedApiError(code) else "Registration failed: HTTP ${response.status.value}"
+                val msg = errorMessage(response, fallback = "Registration failed")
                 _authState.value = AuthState.Error(message = msg)
                 Result.failure(Exception(msg))
             }
@@ -358,7 +332,7 @@ class AuthViewModel(
             try {
                 httpClient.post("$devServerUrl/auth/logout") {
                     contentType(Application.Json)
-                    setBody("""{"refreshToken":"$refreshToken"}""")
+                    setBody(LogoutRequest(refreshToken = refreshToken))
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -378,27 +352,18 @@ class AuthViewModel(
         _authState.value = AuthState.Authenticating
 
         return try {
-            val body = desiredUsername?.trim()?.takeIf { it.isNotBlank() }
-                ?.let { """{"desiredUsername":"$it"}""" }
-                ?: "{}"
             val response = httpClient.post("$devServerUrl/auth/guest") {
                 contentType(Application.Json)
-                setBody(body)
+                setBody(GuestRequest(desiredUsername = desiredUsername?.trim()?.takeIf { it.isNotBlank() }))
             }
 
             if (response.status.value == 200) {
-                val body = response.bodyAsText()
-                val accessToken = Regex(""""accessToken"\s*:\s*"([^"]+)"""").find(body)
-                    ?.groupValues?.get(1)
-                    ?: return Result.failure(Exception("Missing accessToken in guest response"))
-
                 // Guest sessions are not persisted — in-memory only for the current session.
+                val accessToken = response.body<TokenPairDto>().accessToken
                 _accessToken = accessToken
                 authenticateWithToken(accessToken).map { accessToken }
             } else {
-                val code = parseServerError(response.bodyAsText())
-                val msg =
-                    if (code != null) localizedApiError(code) else "Guest login failed: HTTP ${response.status.value}"
+                val msg = errorMessage(response, fallback = "Guest login failed")
                 _authState.value = AuthState.Error(message = msg)
                 Result.failure(Exception(msg))
             }
@@ -415,7 +380,7 @@ class AuthViewModel(
         return try {
             httpClient.post("$devServerUrl/auth/forgot-password") {
                 contentType(Application.Json)
-                setBody("""{"email":"${email.trim()}"}""")
+                setBody(ForgotPasswordRequest(email = email.trim()))
             }
             // Siempre éxito desde el punto de vista del cliente — el servidor nunca revela si el email existe
             Result.success(Unit)
@@ -431,14 +396,12 @@ class AuthViewModel(
         return try {
             val response = httpClient.post("$devServerUrl/auth/reset-password") {
                 contentType(Application.Json)
-                setBody("""{"token":"$token","newPassword":"$newPassword"}""")
+                setBody(ResetPasswordRequest(token = token, newPassword = newPassword))
             }
             if (response.status.value == 200) {
                 Result.success(Unit)
             } else {
-                val code = parseServerError(response.bodyAsText())
-                val msg = if (code != null) localizedApiError(code) else "Reset failed: HTTP ${response.status.value}"
-                Result.failure(Exception(msg))
+                Result.failure(Exception(errorMessage(response, fallback = "Reset failed")))
             }
         } catch (e: CancellationException) {
             throw e
@@ -542,6 +505,31 @@ class AuthViewModel(
     // ============ Private Helpers ============
 
     /**
+     * Guarda los tokens en el mismo canal según "Recordarme": persistidos en disco si
+     * [rememberMe], solo en memoria si no. En ambos casos deja el refresh token en memoria
+     * para renovar durante la sesión actual (el de disco tiene prioridad al leer).
+     */
+    private fun persistTokens(accessToken: String, refreshToken: String?, rememberMe: Boolean) {
+        if (rememberMe) {
+            authRepository.saveToken(accessToken)
+            if (refreshToken != null) authRepository.saveRefreshToken(refreshToken)
+        } else {
+            authRepository.clearAll()
+        }
+        if (refreshToken != null) _inMemoryRefreshToken = refreshToken
+    }
+
+    /**
+     * Deriva el mensaje de error de una respuesta fallida: localiza el `code` del cuerpo de
+     * error del servidor, o cae a `"$fallback: HTTP <status>"` si el cuerpo no trae código
+     * (o no es JSON). Prefiere `code` sobre `message`/`error`.
+     */
+    private suspend fun errorMessage(response: HttpResponse, fallback: String): String {
+        val code = runCatching { response.body<ApiErrorBody>() }.getOrNull()?.firstNonNull()
+        return if (code != null) localizedApiError(code) else "$fallback: HTTP ${response.status.value}"
+    }
+
+    /**
      * Intenta restaurar sesión guardada al iniciar.
      *
      * Si hay un refreshToken guardado, puede renovar silenciosamente.
@@ -605,30 +593,25 @@ class AuthViewModel(
         .replace("\r", "\\r")
         .replace("\t", "\\t")
 
-    private fun parseTokenExpiry(token: String): Long? = runCatching {
-        val parts = token.split(".")
-        if (parts.size < 2) return null
-        val payload = base64UrlDecode(parts[1])
-        Regex(""""exp"\s*:\s*(\d+)""").find(payload)?.groupValues?.get(1)
-            ?.toLong()?.let { it * 1000L }
-    }.getOrNull()
+    private fun parseTokenExpiry(token: String): Long? =
+        runCatching { decodeJwtPayload(token).exp?.let { it * 1000L } }.getOrNull()
 
     private fun parseUserInfoFromToken(token: String): UserInfo {
+        val payload = decodeJwtPayload(token)
+        val username = payload.username ?: payload.sub
+        return UserInfo(
+            userId = payload.sub,
+            username = username,
+            displayName = payload.displayName ?: username,
+            isGuest = payload.isGuest,
+        )
+    }
+
+    /** Decodifica el payload (claims) de un JWT. Lanza si el formato es inválido. */
+    private fun decodeJwtPayload(token: String): JwtPayload {
         val parts = token.split(".")
         require(parts.size >= 2) { "Invalid JWT format" }
-        val payload = base64UrlDecode(parts[1])
-
-        val userId = Regex(""""sub"\s*:\s*"([^"]+)"""").find(payload)?.groupValues?.get(1) ?: ""
-        val username = Regex(""""username"\s*:\s*"([^"]+)"""").find(payload)?.groupValues?.get(1) ?: userId
-        val displayName = Regex(""""displayName"\s*:\s*"([^"]+)"""").find(payload)?.groupValues?.get(1)
-        val isGuest = Regex(""""isGuest"\s*:\s*true""").containsMatchIn(payload)
-
-        return UserInfo(
-            userId = userId,
-            username = username,
-            displayName = displayName ?: username,
-            isGuest = isGuest,
-        )
+        return jwtJson.decodeFromString(base64UrlDecode(parts[1]))
     }
 
     /** Decodes a URL-safe Base64 string to UTF-8 text. Pure Kotlin, no platform dependencies. */
@@ -652,10 +635,14 @@ class AuthViewModel(
         }
         return bytes.toByteArray().decodeToString()
     }
-
-    // Prefiere el campo `code` (máquina-legible) sobre `message` o `error` (texto inglés).
-    private fun parseServerError(body: String): String? =
-        Regex(""""code"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
-            ?: Regex(""""message"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
-            ?: Regex(""""error"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
 }
+
+/** Claims del payload JWT que consume el cliente. El resto se ignora ([jwtJson]). */
+@Serializable
+private data class JwtPayload(
+    val sub: String = "",
+    val username: String? = null,
+    val displayName: String? = null,
+    val isGuest: Boolean = false,
+    val exp: Long? = null,
+)

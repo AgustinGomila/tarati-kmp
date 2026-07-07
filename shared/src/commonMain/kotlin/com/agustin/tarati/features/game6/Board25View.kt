@@ -58,6 +58,7 @@ import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
+import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
 import com.agustin.tarati.ui.components.game.draw.board.drawDynamicEdgeElectricHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcDynamicHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcImpactHighlight
@@ -192,6 +193,81 @@ private fun mpScaledShape(shape: MorphShape): MorphShape =
     }
 
 /**
+ * Parámetros de dibujo de las piezas MP derivados del [PieceTypeManager] activo y del [pieceRadius]
+ * del tablero. Lo comparten [Board25View] y [StaticBoard25Renderer] para que ambos renderers deriven
+ * la escala/centroide de los polígonos de una única fuente (evita drift entre gameplay y miniaturas).
+ *
+ * Debe llamarse **dentro del `DrawScope`**: al leer `PieceTypeManager.currentPieceType` el Canvas se
+ * redibuja si cambia el tipo de pieza.
+ */
+private class MpPieceLayout(
+    /** Tipo de pieza con el `cornerRadius` ya escalado a MP (identidad si es círculo). */
+    val pieceType: PieceType,
+    val isPolygon: Boolean,
+    /** Radio de dibujo de los polígonos (agrandado para parear el círculo estándar). */
+    val polyRadius: Float,
+    /** Corrección para que el centroide del polígono caiga sobre el vértice del tablero. */
+    val polyCentroidOffset: Offset,
+)
+
+private fun mpPieceLayout(pieceRadius: Float): MpPieceLayout {
+    val pieceType = PieceTypeManager.currentPieceType
+    val isPolygon = pieceType.shape.sides > 1
+    val mpPieceType = if (isPolygon) pieceType.copy(shape = mpScaledShape(pieceType.shape)) else pieceType
+    val polyRadius = pieceRadius * MP_POLYGON_SIZE_BOOST
+    // Los polígonos asimétricos (triángulo, pentágono) tienen el centroide desplazado del centro del
+    // bounding box → se dibujan "bajos". El offset reubica el dibujo para que el centroide (centro
+    // visual real) caiga sobre el vértice del tablero.
+    val polyCentroidOffset = if (isPolygon) {
+        val rx = polyRadius * mpPieceType.shape.sizeFrac
+        val c = mpPieceType.shape.computeCentroid(polyRadius, polyRadius, rx, rx)
+        Offset(c.x - polyRadius, c.y - polyRadius)
+    } else {
+        Offset.Zero
+    }
+    return MpPieceLayout(mpPieceType, isPolygon, polyRadius, polyCentroidOffset)
+}
+
+/**
+ * Dibuja una pieza MP **en reposo** (sin conversión) en [center]: cob orgánico de Tarati si es
+ * círculo, o `drawMorphCob` N-color con [tilt] si es polígono. Compartido por [Board25View] (con
+ * `tilt` interpolado durante el deslizamiento) y [StaticBoard25Renderer] (tilt estático por vértice).
+ */
+private fun DrawScope.drawMpRestingPiece(
+    center: Offset,
+    layout: MpPieceLayout,
+    pieceRadius: Float,
+    tilt: Float,
+    pieceColor: PieceColor,
+    lightOfDay: LightOfDay,
+    boardColors: BoardColors,
+) {
+    if (layout.isPolygon) {
+        val drawC = center - layout.polyCentroidOffset
+        rotate(degrees = tilt, pivot = drawC) {
+            drawMorphCob(
+                drawC,
+                layout.polyRadius,
+                mpCobShape(layout.pieceType, pieceColor),
+                CobColor.WHITE,
+                boardColors
+            )
+        }
+    } else {
+        val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
+        drawOrganicCob(
+            position = center,
+            radius = pieceRadius,
+            hourOfDay = 12f,
+            lightOfDay = lightOfDay,
+            pieceColors = pieceColor,
+            colors = boardColors,
+            organicColor = organicColor,
+        )
+    }
+}
+
+/**
  * Render del tablero `25` con las piezas de una partida multijugador. Reutiliza el **cob de
  * Tarati** (`drawOrganicCob`) y su **animación de desplazamiento** (interpolando la posición de la
  * pieza del último movimiento), el **resalte de selección** (`drawSelection`) y muestra los
@@ -295,25 +371,14 @@ fun Board25View(
             val pieceRadius = unit * 0.028f
             val edgeStroke = unit * 0.004f
             val lightOfDay = getLightOfDay(hourOfDay = 12f, baseRadius = pieceRadius)
-            // Tipo de pieza seleccionado (mismo global que single). Al leerlo en el DrawScope el Canvas
-            // se redibuja si cambia. Círculo → cob orgánico; polígono → drawMorphCob N-color.
-            val pieceType = PieceTypeManager.currentPieceType
-            val isPolygon = pieceType.shape.sides > 1
-            // Forma con cornerRadius ajustado a la escala de MP (evita que los polígonos se redondeen);
-            // se usa para pieza, selección y conversión.
-            val mpPieceType = if (isPolygon) pieceType.copy(shape = mpScaledShape(pieceType.shape)) else pieceType
-            // Radio del polígono, agrandado para parear su tamaño visual con el círculo estándar.
-            val polyRadius = pieceRadius * MP_POLYGON_SIZE_BOOST
-            // Los polígonos asimétricos (triángulo, pentágono) tienen el centroide desplazado del centro
-            // del bounding box → se dibujan "bajos". Offset para reubicar el dibujo de modo que el
-            // centroide (centro visual real de la pieza) caiga sobre el vértice del tablero.
-            val polyCentroidOffset = if (isPolygon) {
-                val rx = polyRadius * mpPieceType.shape.sizeFrac
-                val c = mpPieceType.shape.computeCentroid(polyRadius, polyRadius, rx, rx)
-                Offset(c.x - polyRadius, c.y - polyRadius)
-            } else {
-                Offset.Zero
-            }
+            // Parámetros de dibujo de piezas (tipo activo + escala/centroide de polígonos), compartidos
+            // con StaticBoard25Renderer. Al leer PieceTypeManager dentro del DrawScope el Canvas se
+            // redibuja si cambia el tipo. Círculo → cob orgánico; polígono → drawMorphCob N-color.
+            val layout = mpPieceLayout(pieceRadius)
+            val isPolygon = layout.isPolygon
+            val mpPieceType = layout.pieceType
+            val polyRadius = layout.polyRadius
+            val polyCentroidOffset = layout.polyCentroidOffset
             val moveP = moveProgress.value
             val slide = (moveP / SLIDE_FRACTION).coerceIn(0f, 1f)
             val conversion = ((moveP - SLIDE_FRACTION) / (1f - SLIDE_FRACTION)).coerceIn(0f, 1f)
@@ -521,27 +586,15 @@ fun Board25View(
                             }
                         }
                     } else {
-                        val pieceColor = PlayerPalette.pieceColor(piece.owner)
-                        if (isPolygon) rotate(degrees = tilt, pivot = drawC) {
-                            drawMorphCob(
-                                drawC,
-                                polyRadius,
-                                mpCobShape(mpPieceType, pieceColor),
-                                CobColor.WHITE,
-                                boardColors
-                            )
-                        } else {
-                            val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
-                            drawOrganicCob(
-                                position = center,
-                                radius = pieceRadius,
-                                hourOfDay = 12f,
-                                lightOfDay = lightOfDay,
-                                pieceColors = pieceColor,
-                                colors = boardColors,
-                                organicColor = organicColor,
-                            )
-                        }
+                        drawMpRestingPiece(
+                            center = center,
+                            layout = layout,
+                            pieceRadius = pieceRadius,
+                            tilt = tilt,
+                            pieceColor = PlayerPalette.pieceColor(piece.owner),
+                            lightOfDay = lightOfDay,
+                            boardColors = boardColors,
+                        )
                     }
                 }
 
@@ -761,20 +814,9 @@ fun StaticBoard25Renderer(modifier: Modifier, pieces: Map<Vertex, Piece>) {
         val pieceRadius = unit * 0.03f
         val edgeStroke = unit * 0.004f
         val lightOfDay = getLightOfDay(hourOfDay = 12f, baseRadius = pieceRadius)
-        // Tipo de pieza seleccionado (mismo global que single/Board25View). Al leerlo en el DrawScope
-        // el Canvas se redibuja si cambia. Círculo → cob orgánico; polígono → drawMorphCob N-color,
-        // con el mismo ajuste de escala/centroide/tilt que Board25View para paridad de aspecto.
-        val pieceType = PieceTypeManager.currentPieceType
-        val isPolygon = pieceType.shape.sides > 1
-        val mpPieceType = if (isPolygon) pieceType.copy(shape = mpScaledShape(pieceType.shape)) else pieceType
-        val polyRadius = pieceRadius * MP_POLYGON_SIZE_BOOST
-        val polyCentroidOffset = if (isPolygon) {
-            val rx = polyRadius * mpPieceType.shape.sizeFrac
-            val c = mpPieceType.shape.computeCentroid(polyRadius, polyRadius, rx, rx)
-            Offset(c.x - polyRadius, c.y - polyRadius)
-        } else {
-            Offset.Zero
-        }
+        // Parámetros de dibujo de piezas (tipo activo + escala/centroide), mismos que Board25View para
+        // paridad de aspecto. Leído en el DrawScope → redibuja si cambia el tipo de pieza.
+        val layout = mpPieceLayout(pieceRadius)
 
         drawBoard25Board(screen, boardColors, showRegions = true, showPerimeter = false, showEdges = true)
 
@@ -788,31 +830,15 @@ fun StaticBoard25Renderer(modifier: Modifier, pieces: Map<Vertex, Piece>) {
         }
 
         pieces.forEach { (vertex, piece) ->
-            val center = screen.getValue(vertex)
-            val pieceColor = PlayerPalette.pieceColor(piece.owner)
-            if (isPolygon) {
-                val drawC = center - polyCentroidOffset
-                rotate(degrees = vertexTilt(vertex), pivot = drawC) {
-                    drawMorphCob(
-                        drawC,
-                        polyRadius,
-                        mpCobShape(mpPieceType, pieceColor),
-                        CobColor.WHITE,
-                        boardColors,
-                    )
-                }
-            } else {
-                val organicColor = createOrganicColor(pieceColor, hourOfDay = 12f, colors = boardColors)
-                drawOrganicCob(
-                    position = center,
-                    radius = pieceRadius,
-                    hourOfDay = 12f,
-                    lightOfDay = lightOfDay,
-                    pieceColors = pieceColor,
-                    colors = boardColors,
-                    organicColor = organicColor,
-                )
-            }
+            drawMpRestingPiece(
+                center = screen.getValue(vertex),
+                layout = layout,
+                pieceRadius = pieceRadius,
+                tilt = if (layout.isPolygon) vertexTilt(vertex) else 0f,
+                pieceColor = PlayerPalette.pieceColor(piece.owner),
+                lightOfDay = lightOfDay,
+                boardColors = boardColors,
+            )
         }
     }
 }
