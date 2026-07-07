@@ -383,7 +383,15 @@ class OnlineGameClient(
 
             // Game lifecycle
             is ServerMessage.GameStarted -> {
-                _currentGame.value = _currentGame.value?.copy(
+                // Verificar que el GameStarted corresponde a la partida actual. Con múltiples
+                // desafíos/revanchas en vuelo pueden llegar GameStarted de otro gameId; sin este
+                // guard, el copy pisaría la partida en curso con el estado de otra.
+                val current = _currentGame.value
+                if (current == null || current.gameId != message.gameId) {
+                    logger.warn("Ignoring GameStarted for ${message.gameId} — current game is ${current?.gameId}")
+                    return
+                }
+                _currentGame.value = current.copy(
                     gameState = message.initialState,
                     lastMove = null,
                     status = OnlineGameStatus.InProgress,
@@ -406,9 +414,16 @@ class OnlineGameClient(
                     )
                     return
                 }
-                // Player's own game: no update after finished
-                if (_currentGame.value?.status is Finished) return
-                _currentGame.value = _currentGame.value?.copy(
+                // Player's own game: ignorar si no es la partida actual o ya terminó
+                val current = _currentGame.value ?: return
+                if (current.gameId != message.gameId) return
+                if (current.status is Finished) return
+                _currentGame.value = current.copy(
+                    // Un GameStateUpdate implica que la partida está viva: si el GameStarted se
+                    // perdió o llegó desfasado por orden de mensajes, promover Starting → InProgress
+                    // igualmente. De lo contrario el estado queda pegado en Starting y el gate de
+                    // IA local nunca se apaga.
+                    status = OnlineGameStatus.InProgress,
                     gameState = message.newState,
                     lastMove = message.lastMove,
                     whiteTimeMs = message.timeLeft.whiteMs,

@@ -68,6 +68,15 @@ class CompanionPanelController {
         if (destination == dest) close() else navigate(dest)
     }
 
+    /**
+     * Sustituye el destino actual **sin** apilar en el back-stack. Para swaps laterales entre
+     * destinos equivalentes (p. ej. intercambiar el lobby online single ↔ multi al cambiar de
+     * modo de juego), donde apilar el anterior no tendría sentido de navegación.
+     */
+    fun replace(dest: CompanionPanelDestination) {
+        destination = dest
+    }
+
     fun back() {
         destination = backStack.removeLastOrNull() ?: CompanionPanelDestination.None
     }

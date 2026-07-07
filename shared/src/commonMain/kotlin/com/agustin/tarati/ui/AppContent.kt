@@ -49,6 +49,7 @@ import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
 import com.agustin.tarati.features.game.IGameModel
+import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.MpLobbyScreen
@@ -204,6 +205,23 @@ fun AppContent(
                     LocalCompanionPanelController provides companion,
                     LocalGameModeController provides gameModeController,
                 ) {
+                    // Al cambiar de modo (single↔multi) con el panel lateral mostrando el lobby online
+                    // del otro modo, intercambiarlo por el lobby del modo nuevo — el board primario ya
+                    // cambia solo, y así el panel online queda en correspondencia. Solo aplica en Expanded
+                    // (el panel solo existe ahí) y solo sobre los dos lobbies de nivel superior; el resto
+                    // de destinos (Settings, Tienda, Leaderboard…) son compartidos y no se mueven.
+                    if (layout == ScreenLayout.Expanded) {
+                        LaunchedEffect(gameModeController.mode) {
+                            when (gameModeController.mode) {
+                                GameMode.SINGLE ->
+                                    if (companion.destination == MpLobby) companion.replace(Lobby)
+
+                                GameMode.MULTI ->
+                                    if (companion.destination == Lobby) companion.replace(MpLobby)
+                            }
+                        }
+                    }
+
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (layout == ScreenLayout.Expanded) {
                             Row(modifier = Modifier.fillMaxSize()) {

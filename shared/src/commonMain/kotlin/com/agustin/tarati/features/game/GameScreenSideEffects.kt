@@ -111,12 +111,19 @@ fun GameScreenSideEffects(
 
     // ── AI move result ────────────────────────────────────────────────────────
 
-    // rememberUpdatedState garantiza que el collector de larga vida vea siempre el
-    // gameManagerState más reciente, aunque LaunchedEffect(Unit) no se relance.
+    // rememberUpdatedState garantiza que los collectors de larga vida vean siempre el
+    // valor más reciente, aunque LaunchedEffect(Unit) no se relance.
     val latestGameManagerState by rememberUpdatedState(gameManagerState)
+    val latestIsOnlineGame by rememberUpdatedState(isOnlineGame)
+    val latestIsSpectating by rememberUpdatedState(isSpectating)
 
     LaunchedEffect(Unit) {
         aiViewModel.pendingAIMove.collect { move ->
+            // En partidas online / espectado la IA local nunca debe aplicar movimientos: el
+            // estado autoritativo es el del servidor. Sin este guard, una IA local con la
+            // configuración heredada de la última partida offline desincroniza el tablero y
+            // el servidor rechaza toda jugada posterior con InvalidMove.
+            if (latestIsOnlineGame || latestIsSpectating) return@collect
             if (latestGameManagerState.gameStatus == GameStatus.PLAYING) {
                 handleGameMove(events, latestGameManagerState, move, viewModel)
             }
@@ -180,8 +187,6 @@ fun GameScreenSideEffects(
 
     val latestScreenState by rememberUpdatedState(screenState)
     val latestIsEditing by rememberUpdatedState(isEditing)
-    val latestIsOnlineGame by rememberUpdatedState(isOnlineGame)
-    val latestIsSpectating by rememberUpdatedState(isSpectating)
 
     // gameStatus is read from the StateFlow (not Compose snapshot) to avoid a premature
     // return when NotifyGameOver fires synchronously before recomposition.

@@ -417,8 +417,12 @@ fun GameScreen(
             // Durante el tutorial ambos bandos son siempre humanos: se ignora la
             // configuración real para que AiThinkingDependencies.isAITurn nunca
             // sea true y el motor no dispare movimientos automáticos.
-            whiteIsAI = if (screenState.isTutorialActive || isOnlineGame || spectatingState != null) false else screenState.whiteIsAI,
-            blackIsAI = if (screenState.isTutorialActive || isOnlineGame || spectatingState != null) false else screenState.blackIsAI,
+            // currentOnlineGame != null (no isOnlineGame, que exige status==InProgress): apaga la
+            // IA local ante CUALQUIER partida online, incluida la ventana Starting. Con el predicado
+            // estrecho, si el estado quedaba en Starting la IA heredada de la última partida offline
+            // seguía jugando y desincronizaba el tablero.
+            whiteIsAI = if (screenState.isTutorialActive || currentOnlineGame != null || spectatingState != null) false else screenState.whiteIsAI,
+            blackIsAI = if (screenState.isTutorialActive || currentOnlineGame != null || spectatingState != null) false else screenState.blackIsAI,
             evalConfigWhite = screenState.evalConfigWhite,
             evalConfigBlack = screenState.evalConfigBlack,
             isEditing = isEditing,
