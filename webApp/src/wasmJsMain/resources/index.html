@@ -27,9 +27,71 @@
         canvas {
             display: block;
         }
+
+        /* Splash instantáneo: se pinta apenas parsea el HTML, mucho antes de que el
+           WASM descargue/compile. Lo oculta globalThis.__taratiReady() en la primera
+           composición de Compose, empalmando con el splash propio de la app. */
+        #tarati-splash {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: opacity 0.4s ease;
+        }
+
+        #tarati-splash.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #tarati-splash .ring {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #e0b050;
+            animation: tarati-spin 0.9s linear infinite;
+        }
+
+        #tarati-splash .word {
+            color: #e8e8f0;
+            font-size: 20px;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            opacity: 0.85;
+        }
+
+        @keyframes tarati-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
+<!-- Splash inmediato (HTML/CSS puro, sin requests extra) mientras carga el WASM. -->
+<div id="tarati-splash">
+    <div class="ring"></div>
+    <div class="word">Tarati</div>
+</div>
+<script>
+    // Lo llama el cliente Kotlin (signalAppReady) en la primera composición. Hace
+    // fade-out y elimina el nodo para no dejar overlays huérfanos sobre el canvas.
+    globalThis.__taratiReady = function () {
+        var el = document.getElementById('tarati-splash');
+        if (!el) return;
+        el.classList.add('hide');
+        setTimeout(function () {
+            if (el.parentNode) el.parentNode.removeChild(el);
+        }, 450);
+    };
+</script>
 <!-- Override manual de URL del servidor Ktor (escape hatch).
      En dev normal no hace falta: el webpack proxy en :3000 reenvía a Ktor en :8080.
      Descomentar solo para apuntar a un servidor distinto (ej. staging remoto).
@@ -39,15 +101,17 @@
     // Captura el prompt de instalación PWA antes de que el browser lo muestre.
     // __pwaInstall() lo dispara; __pwaCanInstall() indica si está disponible.
     var __pwaPrompt = null;
-    window.addEventListener('beforeinstallprompt', function(e) {
+    window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         __pwaPrompt = e;
     });
-    window.addEventListener('appinstalled', function() {
+    window.addEventListener('appinstalled', function () {
         __pwaPrompt = null;
     });
-    globalThis.__pwaCanInstall = function() { return __pwaPrompt != null; };
-    globalThis.__pwaInstall   = function() {
+    globalThis.__pwaCanInstall = function () {
+        return __pwaPrompt != null;
+    };
+    globalThis.__pwaInstall = function () {
         if (!__pwaPrompt) return;
         var p = __pwaPrompt;
         __pwaPrompt = null;

@@ -48,6 +48,10 @@ fun main() {
         KoinApplication(
             configuration = koinConfiguration(declaration = { modules(webModules) }),
         ) {
+            // Oculta el splash HTML apenas la primera composición commitea (ya hay
+            // primer frame), empalmando con el splash propio de la app sin parpadeo.
+            LaunchedEffect(Unit) { signalAppReady() }
+
             val settingsViewModel: ISettingsViewModel = koinViewModel<WasmSettingsViewModel>()
             val soundService: ISoundService = koinInject()
 
@@ -77,4 +81,13 @@ fun main() {
             }
         }
     }
+}
+
+/**
+ * Oculta el splash HTML inicial (definido en `index.html`) llamando al hook global
+ * `__taratiReady`. Se invoca desde la primera composición de Compose.
+ */
+@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+private fun signalAppReady() {
+    js("if (globalThis.__taratiReady) globalThis.__taratiReady()")
 }

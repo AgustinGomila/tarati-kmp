@@ -105,11 +105,9 @@ class AuthViewModel(
                 tokenExpiry = expiresAt
             )
 
-            // Cargar ownership cross-platform para la sesión recién establecida.
-            // Funnel común de login/guest/restore — no bloquea la autenticación.
-            viewModelScope.launch { entitlementsRepository?.refresh() }
-            // Reconciliar logros cross-platform para la sesión recién establecida.
-            viewModelScope.launch { achievementsManager?.syncFromServer() }
+            // Cargar ownership + reconciliar logros cross-platform para la sesión recién
+            // establecida. No bloquea la autenticación.
+            loadCrossPlatformState()
 
             logger.debug("Authenticated as ${userInfo.username}")
             Result.success(userInfo)
@@ -123,6 +121,20 @@ class AuthViewModel(
             )
             Result.failure(e)
         }
+    }
+
+    /**
+     * Carga el estado cross-platform de la sesión: ownership (entitlements) y logros.
+     *
+     * Se invoca en cada punto donde la sesión queda establecida —login/guest/register vía
+     * [authenticateWithToken] y la restauración al arrancar en [attemptRestoreSession]— para
+     * que los cosméticos de supporter y los logros queden disponibles apenas hay sesión, sin
+     * depender de que el usuario abra una pantalla concreta. Cada carga corre en su propio
+     * launch y no bloquea la autenticación.
+     */
+    private fun loadCrossPlatformState() {
+        viewModelScope.launch { entitlementsRepository?.refresh() }
+        viewModelScope.launch { achievementsManager?.syncFromServer() }
     }
 
     override fun saveToken(token: String) {
@@ -549,8 +561,8 @@ class AuthViewModel(
                 _accessToken = token
                 _authState.value = AuthState.Authenticated(userInfo = userInfo, tokenExpiry = expiresAt)
                 logger.debug("Session restored for ${userInfo.username}")
-                // Reconciliar logros cross-platform para la sesión restaurada.
-                viewModelScope.launch { achievementsManager?.syncFromServer() }
+                // Cargar ownership + reconciliar logros cross-platform para la sesión restaurada.
+                loadCrossPlatformState()
             } else {
                 // Token expirado — intentar renovar silenciosamente si hay refresh token
                 logger.debug("Stored token expired, attempting silent refresh")
@@ -566,6 +578,9 @@ class AuthViewModel(
                             logger.debug("Silent refresh failed — clearing session")
                             authRepository.clearAll()
                             _authState.value = AuthState.Unauthenticated
+                        } else {
+                            // Sesión restaurada vía silent refresh: cargar ownership + logros.
+                            loadCrossPlatformState()
                         }
                     } catch (e: CancellationException) {
                         throw e  // viewModelScope cancelado — no tratar como fallo de refresh

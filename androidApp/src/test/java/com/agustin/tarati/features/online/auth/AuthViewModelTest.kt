@@ -1,6 +1,8 @@
 package com.agustin.tarati.features.online.auth
 
+import com.agustin.tarati.services.billing.EntitlementsRepository
 import io.ktor.client.HttpClient
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -149,6 +151,21 @@ class AuthViewModelTest {
         assertTrue(newViewModel.authState.value is AuthState.Authenticated)
         assertEquals(token, newViewModel.accessToken)
         assertTrue(newViewModel.isAuthenticated)
+    }
+
+    @Test
+    fun `refreshes entitlements on session restore`(): TestResult = runTest {
+        // El ownership de supporter debe cargarse apenas se restaura la sesión al arrancar,
+        // sin que el usuario tenga que abrir la pantalla Supporter. Guarda la regresión de
+        // attemptRestoreSession, que antes solo sincronizaba logros.
+        val token = makeTestJwt(sub = "user-123", username = "test_player")
+        every { mockAuthRepository.getToken() } returns token
+        val mockEntitlements = mockk<EntitlementsRepository>(relaxed = true)
+
+        AuthViewModel(mockAuthRepository, mockHttpClient, mockEntitlements)
+        advanceUntilIdle()
+
+        coVerify { mockEntitlements.refresh() }
     }
 
     @Test
