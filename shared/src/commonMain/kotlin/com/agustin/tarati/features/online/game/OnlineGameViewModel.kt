@@ -147,13 +147,7 @@ class OnlineGameViewModel(
             logger.debug("Not searching, nothing to cancel")
             return
         }
-        try {
-            onlineClient.cancelMatchmaking()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("cancelMatchmaking failed: ${e.message}")
-        }
+        safely("cancelMatchmaking") { onlineClient.cancelMatchmaking() }
     }
 
     // ============ Gameplay API ============
@@ -164,13 +158,7 @@ class OnlineGameViewModel(
             return
         }
         logger.debug("makeOnlineMove: ${move.from} → ${move.to}")
-        try {
-            onlineClient.makeMove(move)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("makeOnlineMove failed: ${e.message}")
-        }
+        safely("makeOnlineMove") { onlineClient.makeMove(move) }
     }
 
     override suspend fun resign() {
@@ -180,13 +168,7 @@ class OnlineGameViewModel(
             return
         }
         logger.debug("resign: gameId=${game.gameId}")
-        try {
-            onlineClient.resign()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("resign failed: ${e.message}")
-        }
+        safely("resign") { onlineClient.resign() }
     }
 
     override suspend fun offerDraw() {
@@ -196,13 +178,7 @@ class OnlineGameViewModel(
             return
         }
         logger.debug("offerDraw: gameId=${game.gameId}")
-        try {
-            onlineClient.offerDraw()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("offerDraw failed: ${e.message}")
-        }
+        safely("offerDraw") { onlineClient.offerDraw() }
     }
 
     override suspend fun respondToDraw(accept: Boolean) {
@@ -212,48 +188,24 @@ class OnlineGameViewModel(
             return
         }
         logger.debug("respondToDraw: accept=$accept, gameId=${game.gameId}")
-        try {
-            onlineClient.respondToDraw(accept)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("respondToDraw failed: ${e.message}")
-        }
+        safely("respondToDraw") { onlineClient.respondToDraw(accept) }
     }
 
     // ============ Rematch API ============
 
     override suspend fun offerRematch(gameId: String) {
         logger.debug("offerRematch game=$gameId")
-        try {
-            onlineClient.offerRematch(gameId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("offerRematch failed: ${e.message}")
-        }
+        safely("offerRematch") { onlineClient.offerRematch(gameId) }
     }
 
     override suspend fun acceptRematch() {
         logger.debug("acceptRematch")
-        try {
-            onlineClient.acceptRematch()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("acceptRematch failed: ${e.message}")
-        }
+        safely("acceptRematch") { onlineClient.acceptRematch() }
     }
 
     override suspend fun declineRematch() {
         logger.debug("declineRematch")
-        try {
-            onlineClient.declineRematch()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("declineRematch failed: ${e.message}")
-        }
+        safely("declineRematch") { onlineClient.declineRematch() }
     }
 
     // ============ State Synchronization ============
@@ -288,13 +240,7 @@ class OnlineGameViewModel(
     override suspend fun stopSpectating() {
         val gameId = spectatingState.value?.gameId ?: return
         logger.debug("stopSpectating: $gameId")
-        try {
-            onlineClient.stopSpectating(gameId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("stopSpectating failed: ${e.message}")
-        }
+        safely("stopSpectating") { onlineClient.stopSpectating(gameId) }
     }
 
     override fun clearSpectatingAfterGameEnded() {
@@ -322,39 +268,35 @@ class OnlineGameViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Ejecuta [block] propagando la cancelación estructurada y logueando cualquier otra excepción
+     * como "$op failed". Patrón fire-and-forget de las acciones que delegan en [onlineClient].
+     */
+    private suspend fun safely(op: String, block: suspend () -> Unit) {
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            logger.error("$op failed: ${e.message}")
+        }
+    }
+
     // ============ Challenge API ============
 
     override suspend fun sendChallenge(targetUserId: String, timeControl: String, rated: Boolean) {
         logger.debug("sendChallenge: target=$targetUserId tc=$timeControl rated=$rated")
-        try {
-            onlineClient.sendChallenge(targetUserId, timeControl, rated)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("sendChallenge failed: ${e.message}")
-        }
+        safely("sendChallenge") { onlineClient.sendChallenge(targetUserId, timeControl, rated) }
     }
 
     override suspend fun respondToChallenge(challengeId: String, accept: Boolean) {
         logger.debug("respondToChallenge: id=$challengeId accept=$accept")
-        try {
-            onlineClient.respondToChallenge(challengeId, accept)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("respondToChallenge failed: ${e.message}")
-        }
+        safely("respondToChallenge") { onlineClient.respondToChallenge(challengeId, accept) }
     }
 
     override suspend fun cancelChallenge(challengeId: String) {
         logger.debug("cancelChallenge: id=$challengeId")
-        try {
-            onlineClient.cancelChallenge(challengeId)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            logger.error("cancelChallenge failed: ${e.message}")
-        }
+        safely("cancelChallenge") { onlineClient.cancelChallenge(challengeId) }
     }
 
     // ============ Cleanup ============

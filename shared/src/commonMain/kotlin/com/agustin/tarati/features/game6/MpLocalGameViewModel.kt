@@ -275,20 +275,28 @@ class MpLocalGameViewModel(
 
     /** Re-arma el estado desde la config actual (tablero fresco, sin selección ni historial). */
     private fun rebuild() {
-        val cfg = _config.value
-        activeBotSeats = botSeatsOf(cfg)
-        match = MpMatch(MpSetup.initialState(cfg.playerCount), cut = cut)
+        resetLineTo(MpSetup.initialState(_config.value.playerCount))
+    }
+
+    /**
+     * Reinicia la línea completa (runner + snapshots + historial + estado visual) tomando [base] como
+     * nueva posición inicial: descarta selección/pre-move, recalcula los asientos-bot y fuerza el kick
+     * de bots (la partida fresca arranca en el asiento 0; si el asiento en turno no cambió respecto de
+     * la anterior, el efecto de bots no se re-dispararía por sí solo). Punto común de [rebuild] y
+     * [startGameFromEdit].
+     */
+    private fun resetLineTo(base: MpGameState) {
+        match = MpMatch(base, cut = cut)
         states.clear()
-        states.add(match.state)
+        states.add(base)
         _history.value = emptyList()
         _moveIndex.value = -1
         _lastMove.value = null
         _converted.value = emptyMap()
-        _state.value = match.state
+        _state.value = base
+        activeBotSeats = botSeatsOf(_config.value)
         clearSelection()
         clearPreMove()
-        // La partida fresca arranca en el asiento 0; si la anterior también estaba ahí, currentSeatIndex
-        // no cambia y el efecto de bots no se re-dispararía → el kick lo fuerza.
         _botKick.value += 1
     }
 
@@ -496,19 +504,8 @@ class MpLocalGameViewModel(
         val normalized = s.pieces.mapValues { (v, p) -> p.copy(hasLeftBase = hasLeftBaseFor(p.owner, v)) }
         val edited = MpGameState(pieces = normalized, seats = s.seats, currentSeatIndex = startIndex)
 
-        match = MpMatch(edited, cut = cut)
-        states.clear()
-        states.add(edited)
-        _history.value = emptyList()
-        _moveIndex.value = -1
-        _lastMove.value = null
-        _converted.value = emptyMap()
-        _state.value = edited
         _isEditing.value = false
-        activeBotSeats = botSeatsOf(_config.value)
-        clearSelection()
-        clearPreMove()
-        _botKick.value += 1
+        resetLineTo(edited)
     }
 
     /** `hasLeftBase` derivado: `false` si [vertex] pertenece al cuadrado de la base del dueño [color]. */

@@ -329,26 +329,6 @@ class TaratiWebSocketClient(
         return _connectionState.value == ConnectionState.Connected
     }
 
-    // Helper functions para parsing de URL
-
-    private fun extractHost(url: String): String {
-        // Remover protocolo si existe
-        val withoutProtocol = url.removePrefix("ws://").removePrefix("wss://")
-        // Tomar todo antes de ':' o '/'
-        return withoutProtocol.substringBefore(':').substringBefore('/')
-    }
-
-    private fun extractPort(url: String): Int {
-        // Si hay puerto explícito, usarlo
-        if (url.contains(':')) {
-            val portString = url.substringAfter(':').substringBefore('/')
-            return portString.toIntOrNull() ?: 8080
-        }
-
-        // Puerto por defecto
-        return if (url.startsWith("wss://")) 443 else 8080
-    }
-
     private companion object {
         // Tiempo máximo de espera del handshake WebSocket inicial.
         val CONNECT_TIMEOUT = 5.seconds

@@ -226,3 +226,13 @@ interface IAuthViewModel {
      */
     suspend fun deleteAccount(): Result<Unit>
 }
+
+/**
+ * Devuelve el access token actual, renovándolo antes si está próximo a expirar
+ * ([isTokenExpiringSoon]). Punto único de obtención de token para los ViewModels que hacen
+ * peticiones REST autenticadas. `null` si no hay sesión.
+ */
+suspend fun IAuthViewModel.validToken(): String? {
+    if (isTokenExpiringSoon()) refreshToken()
+    return accessToken
+}

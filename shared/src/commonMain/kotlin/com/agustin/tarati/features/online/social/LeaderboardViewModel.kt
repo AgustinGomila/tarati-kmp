@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.auth.validToken
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -39,7 +40,7 @@ class LeaderboardViewModel(
     private fun loadLeaderboard(tc: String) {
         viewModelScope.launch {
             _leaderboardState.update { it.copy(isLoading = it.entries.isEmpty(), error = null) }
-            val token = getValidToken() ?: run {
+            val token = authViewModel.validToken() ?: run {
                 _leaderboardState.update { it.copy(isLoading = false) }
                 return@launch
             }
@@ -51,10 +52,5 @@ class LeaderboardViewModel(
                     _leaderboardState.update { it.copy(isLoading = false, error = e.message) }
                 }
         }
-    }
-
-    private suspend fun getValidToken(): String? {
-        if (authViewModel.isTokenExpiringSoon()) authViewModel.refreshToken()
-        return authViewModel.accessToken
     }
 }

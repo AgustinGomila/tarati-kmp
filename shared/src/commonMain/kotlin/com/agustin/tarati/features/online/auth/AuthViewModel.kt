@@ -418,12 +418,7 @@ class AuthViewModel(
                 header("Authorization", "Bearer $token")
             }
             if (response.status.value == 200) {
-                val dto = response.body<OwnProfileDto>()
-                _profileData.value = ProfileData(
-                    bio = dto.bio,
-                    isVisible = dto.isVisible,
-                    challengesEnabled = dto.acceptsChallenges,
-                )
+                _profileData.value = response.body<OwnProfileDto>().toProfileData()
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("fetchProfile HTTP ${response.status.value}"))
@@ -454,12 +449,7 @@ class AuthViewModel(
                 setBody("{${bodyParts.joinToString(",")}}")
             }
             if (response.status.value == 200) {
-                val dto = response.body<OwnProfileDto>()
-                _profileData.value = ProfileData(
-                    bio = dto.bio,
-                    isVisible = dto.isVisible,
-                    challengesEnabled = dto.acceptsChallenges,
-                )
+                _profileData.value = response.body<OwnProfileDto>().toProfileData()
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("updateProfile HTTP ${response.status.value}"))
@@ -518,6 +508,10 @@ class AuthViewModel(
         }
         if (refreshToken != null) _inMemoryRefreshToken = refreshToken
     }
+
+    /** Proyecta la respuesta de perfil del servidor al modelo editable local. */
+    private fun OwnProfileDto.toProfileData(): ProfileData =
+        ProfileData(bio = bio, isVisible = isVisible, challengesEnabled = acceptsChallenges)
 
     /**
      * Deriva el mensaje de error de una respuesta fallida: localiza el `code` del cuerpo de

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.core.data.database.dto.MatchDto
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.lobby.OnlineLobbyViewModel.Companion.LIVE_POLL_INTERVAL
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
@@ -179,21 +180,15 @@ class OnlineLobbyViewModel(
         viewModelScope.launch { fetchOpenSearches() }
     }
 
-    // Retorna el access token actual, refrescándolo si está próximo a expirar.
-    private suspend fun getValidToken(): String? {
-        if (authViewModel.isTokenExpiringSoon()) authViewModel.refreshToken()
-        return authViewModel.accessToken
-    }
-
     private suspend fun fetchOnlineUsers() {
-        val token = getValidToken() ?: return
+        val token = authViewModel.validToken() ?: return
         repository.getOnlineUsers(token).onSuccess { users ->
             _onlineUsers.value = users
         }
     }
 
     private suspend fun fetchLiveGames() {
-        val token = getValidToken() ?: run {
+        val token = authViewModel.validToken() ?: run {
             _liveGames.update { it.copy(isLoading = false) }
             return
         }
@@ -212,7 +207,7 @@ class OnlineLobbyViewModel(
     }
 
     private suspend fun fetchOpenSearches() {
-        val token = getValidToken() ?: return
+        val token = authViewModel.validToken() ?: return
         _openSearches.update { it.copy(isLoading = it.searches.isEmpty(), error = null) }
 
         repository.getOpenSearches(token)
@@ -266,7 +261,7 @@ class OnlineLobbyViewModel(
         if (_myStats.value != null) return
         val userId = authViewModel.currentUser?.userId ?: return
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             repository.getProfile(token, userId)
                 .onSuccess { profile -> _myStats.value = profile.stats }
                 .onFailure { e ->
@@ -314,7 +309,7 @@ class OnlineLobbyViewModel(
     // ── Game preview ──────────────────────────────────────────────────────────
 
     override suspend fun loadAndPreviewGame(gameId: String): MatchDto? {
-        val token = getValidToken() ?: return null
+        val token = authViewModel.validToken() ?: return null
         return repository.getGame(token = token, gameId = gameId)
             .getOrNull()
             ?.toMatchDto()
@@ -345,7 +340,7 @@ class OnlineLobbyViewModel(
         load: suspend (token: String, page: Int, limit: Int) -> Result<PagedResponse<GameHistoryDto>>,
     ) {
         viewModelScope.launch {
-            val token = getValidToken() ?: run {
+            val token = authViewModel.validToken() ?: run {
                 logger.debug("loadPagedContent: no token, skipping")
                 return@launch
             }
@@ -380,7 +375,7 @@ class OnlineLobbyViewModel(
         val state = stateFlow.value
         if (state.isLoadingMore || !state.hasMore) return
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             val nextPage = state.currentPage + 1
             stateFlow.update { it.copy(isLoadingMore = true) }
             load(token, nextPage, PAGE_SIZE)

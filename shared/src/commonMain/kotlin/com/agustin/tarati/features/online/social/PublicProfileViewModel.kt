@@ -4,6 +4,7 @@ package com.agustin.tarati.features.online.social
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
 import com.agustin.tarati.features.online.lobby.GameHistoryUiState
 import com.agustin.tarati.features.online.lobby.HistoryFilters
@@ -46,7 +47,7 @@ class PublicProfileViewModel(
     private fun loadProfile() {
         viewModelScope.launch {
             _profileState.update { it.copy(isLoading = true, error = null) }
-            val token = getValidToken() ?: run {
+            val token = authViewModel.validToken() ?: run {
                 _profileState.update { it.copy(isLoading = false) }
                 return@launch
             }
@@ -62,7 +63,7 @@ class PublicProfileViewModel(
 
     private fun loadHistory() {
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             _historyState.update {
                 it.copy(isLoading = true, error = null, currentPage = 0, games = emptyList())
             }
@@ -92,7 +93,7 @@ class PublicProfileViewModel(
         val state = _historyState.value
         if (state.isLoadingMore || !state.hasMore) return
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             val nextPage = state.currentPage + 1
             _historyState.update { it.copy(isLoadingMore = true) }
             repository.getUserGames(
@@ -142,7 +143,7 @@ class PublicProfileViewModel(
 
     private fun loadFollowStatus() {
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             _followStatusState.update { it.copy(isLoading = true) }
             repository.getFollowStatus(token = token, userId = userId)
                 .onSuccess { dto ->
@@ -161,7 +162,7 @@ class PublicProfileViewModel(
 
     override fun toggleFollow() {
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             val wasFollowing = _followStatusState.value.isFollowing
             // Optimistic update
             _followStatusState.update {
@@ -188,7 +189,7 @@ class PublicProfileViewModel(
 
     private fun loadAchievements() {
         viewModelScope.launch {
-            val token = getValidToken() ?: return@launch
+            val token = authViewModel.validToken() ?: return@launch
             repository.getUserAchievements(token = token, userId = userId)
                 .onSuccess { list -> _achievements.value = list }
         }
@@ -198,10 +199,5 @@ class PublicProfileViewModel(
         viewModelScope.launch {
             onlineGameViewModel.sendChallenge(userId, timeControl, rated)
         }
-    }
-
-    private suspend fun getValidToken(): String? {
-        if (authViewModel.isTokenExpiringSoon()) authViewModel.refreshToken()
-        return authViewModel.accessToken
     }
 }

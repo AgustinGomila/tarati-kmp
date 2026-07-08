@@ -214,8 +214,7 @@ class OnlineGameClient(
      * @throws IllegalStateException si no hay partida activa
      */
     suspend fun makeMove(move: Move) {
-        val gameId = _currentGame.value?.gameId
-            ?: throw IllegalStateException("No active game")
+        val gameId = requireGameId()
 
         logger.info("Making move in game $gameId")
         wsClient.send(ClientMessage.MakeMove(gameId, move))
@@ -227,8 +226,7 @@ class OnlineGameClient(
      * @throws IllegalStateException si no hay partida activa
      */
     suspend fun resign() {
-        val gameId = _currentGame.value?.gameId
-            ?: throw IllegalStateException("No active game")
+        val gameId = requireGameId()
 
         logger.info("Resigning game $gameId")
         wsClient.send(ClientMessage.Resign(gameId))
@@ -240,8 +238,7 @@ class OnlineGameClient(
      * @throws IllegalStateException si no hay partida activa
      */
     suspend fun offerDraw() {
-        val gameId = _currentGame.value?.gameId
-            ?: throw IllegalStateException("No active game")
+        val gameId = requireGameId()
 
         logger.info("Offering draw in game $gameId")
         wsClient.send(ClientMessage.OfferDraw(gameId))
@@ -255,8 +252,7 @@ class OnlineGameClient(
      * @throws IllegalStateException si no hay partida activa
      */
     suspend fun respondToDraw(accept: Boolean) {
-        val gameId = _currentGame.value?.gameId
-            ?: throw IllegalStateException("No active game")
+        val gameId = requireGameId()
 
         logger.info("Responding to draw: accept=$accept")
         wsClient.send(ClientMessage.RespondToDraw(gameId, accept))
@@ -332,6 +328,22 @@ class OnlineGameClient(
             _spectatingState.value = null
         }
         wsClient.send(ClientMessage.LeaveSpectating(gameId))
+    }
+
+    // ============ Helpers ============
+
+    /** gameId de la partida actual, o lanza [IllegalStateException] si no hay ninguna activa. */
+    private fun requireGameId(): String =
+        _currentGame.value?.gameId ?: throw IllegalStateException("No active game")
+
+    /** Propaga [spectatorCount] al [currentGame] y/o [spectatingState] cuyo gameId sea [gameId]. */
+    private fun updateSpectatorCount(gameId: String, spectatorCount: Int) {
+        if (_currentGame.value?.gameId == gameId) {
+            _currentGame.value = _currentGame.value?.copy(spectatorCount = spectatorCount)
+        }
+        if (_spectatingState.value?.gameId == gameId) {
+            _spectatingState.value = _spectatingState.value?.copy(spectatorCount = spectatorCount)
+        }
     }
 
     // ============ Message Handling ============
@@ -556,22 +568,12 @@ class OnlineGameClient(
             }
 
             is ServerMessage.SpectatorJoined -> {
-                if (_currentGame.value?.gameId == message.gameId) {
-                    _currentGame.value = _currentGame.value?.copy(spectatorCount = message.spectatorCount)
-                }
-                if (_spectatingState.value?.gameId == message.gameId) {
-                    _spectatingState.value = _spectatingState.value?.copy(spectatorCount = message.spectatorCount)
-                }
+                updateSpectatorCount(message.gameId, message.spectatorCount)
                 logger.info("Spectator joined game ${message.gameId} (total: ${message.spectatorCount})")
             }
 
             is ServerMessage.SpectatorLeft -> {
-                if (_currentGame.value?.gameId == message.gameId) {
-                    _currentGame.value = _currentGame.value?.copy(spectatorCount = message.spectatorCount)
-                }
-                if (_spectatingState.value?.gameId == message.gameId) {
-                    _spectatingState.value = _spectatingState.value?.copy(spectatorCount = message.spectatorCount)
-                }
+                updateSpectatorCount(message.gameId, message.spectatorCount)
                 logger.info("Spectator left game ${message.gameId} (total: ${message.spectatorCount})")
             }
 

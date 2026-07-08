@@ -6,6 +6,7 @@ import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.network.models.MatchmakingState
 import com.agustin.tarati.network.models.OnlineGame
+import com.agustin.tarati.network.models.TournamentStandingDto
 import com.agustin.tarati.network.protocol.PlayerInfo
 import com.agustin.tarati.network.protocol.TimeControlInfo
 import com.agustin.tarati.network.protocol.TimeRemaining
@@ -377,13 +378,13 @@ sealed class TournamentEvent {
     /** Los standings del torneo se actualizaron tras finalizar una partida. */
     data class StandingsUpdated(
         val tournamentId: String,
-        val standings: List<com.agustin.tarati.network.models.TournamentStandingDto>,
+        val standings: List<TournamentStandingDto>,
     ) : TournamentEvent()
 
     /** El torneo ha finalizado. Incluye la clasificación final. */
     data class Finished(
         val tournamentId: String,
-        val finalStandings: List<com.agustin.tarati.network.models.TournamentStandingDto>,
+        val finalStandings: List<TournamentStandingDto>,
     ) : TournamentEvent()
 
     /** El torneo fue cancelado por su creador. */

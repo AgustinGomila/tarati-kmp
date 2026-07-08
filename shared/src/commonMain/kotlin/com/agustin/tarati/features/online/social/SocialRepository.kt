@@ -11,9 +11,9 @@ import com.agustin.tarati.network.models.ServerAchievementDto
 import com.agustin.tarati.network.models.UserSummaryDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 
@@ -32,7 +32,7 @@ class SocialRepository(
 
     suspend fun getUserProfile(token: String, userId: String): Result<PublicProfileDto> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -46,7 +46,7 @@ class SocialRepository(
         rated: Boolean? = null,
     ): Result<PagedResponse<GameHistoryDto>> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId/games") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("page", page)
             parameter("limit", limit)
             if (timeControl != null) parameter("timeControl", timeControl)
@@ -61,26 +61,26 @@ class SocialRepository(
         limit: Int = 100,
     ): Result<List<LeaderboardEntryDto>> = runCatching {
         httpClient.get("$baseUrl/api/leaderboard/$timeControl") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("limit", limit)
         }.body()
     }
 
     suspend fun getFollowStatus(token: String, userId: String): Result<FollowStatusDto> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId/follow-status") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
     suspend fun followUser(token: String, userId: String): Result<Unit> = runCatching {
         httpClient.post("$baseUrl/api/users/$userId/follow") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 
     suspend fun unfollowUser(token: String, userId: String): Result<Unit> = runCatching {
         httpClient.delete("$baseUrl/api/users/$userId/follow") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 
@@ -88,7 +88,7 @@ class SocialRepository(
         token: String, userId: String, page: Int = 0, limit: Int = 20,
     ): Result<PagedResponse<UserSummaryDto>> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId/followers") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("page", page)
             parameter("limit", limit)
         }.body()
@@ -98,7 +98,7 @@ class SocialRepository(
         token: String, userId: String, page: Int = 0, limit: Int = 20,
     ): Result<PagedResponse<UserSummaryDto>> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId/following") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("page", page)
             parameter("limit", limit)
         }.body()
@@ -108,7 +108,7 @@ class SocialRepository(
         token: String, userId: String,
     ): Result<List<ServerAchievementDto>> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId/achievements") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 }

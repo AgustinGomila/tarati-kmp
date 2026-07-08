@@ -6,9 +6,9 @@ import com.agustin.tarati.network.models.TournamentDetailDto
 import com.agustin.tarati.network.models.TournamentSummaryDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -34,7 +34,7 @@ class TournamentRepository(private val httpClient: HttpClient) {
         offset: Int = 0,
     ): Result<List<TournamentSummaryDto>> = runCatching {
         httpClient.get("$baseUrl/api/tournaments") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             if (status != null) parameter("status", status)
             if (type != null) parameter("type", type)
             if (limit != null) parameter("limit", limit)
@@ -44,7 +44,7 @@ class TournamentRepository(private val httpClient: HttpClient) {
 
     suspend fun getTournament(token: String, id: String): Result<TournamentDetailDto> = runCatching {
         httpClient.get("$baseUrl/api/tournaments/$id") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -53,7 +53,7 @@ class TournamentRepository(private val httpClient: HttpClient) {
         request: CreateTournamentRequest,
     ): Result<TournamentSummaryDto> = runCatching {
         httpClient.post("$baseUrl/api/tournaments") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             contentType(Application.Json)
             setBody(json.encodeToString(request))
         }.body()
@@ -61,25 +61,25 @@ class TournamentRepository(private val httpClient: HttpClient) {
 
     suspend fun register(token: String, id: String): Result<Unit> = runCatching {
         httpClient.post("$baseUrl/api/tournaments/$id/register") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 
     suspend fun unregister(token: String, id: String): Result<Unit> = runCatching {
         httpClient.delete("$baseUrl/api/tournaments/$id/register") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 
     suspend fun start(token: String, id: String): Result<Unit> = runCatching {
         httpClient.post("$baseUrl/api/tournaments/$id/start") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 
     suspend fun cancel(token: String, id: String): Result<Unit> = runCatching {
         httpClient.post("$baseUrl/api/tournaments/$id/cancel") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }
     }
 }

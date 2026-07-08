@@ -13,8 +13,8 @@ import com.agustin.tarati.network.models.PagedResponse
 import com.agustin.tarati.network.models.PublicProfileDto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
-import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 
 /**
@@ -38,7 +38,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getLiveGames(token: String): Result<List<LiveGameDto>> = runCatching {
         httpClient.get("$baseUrl/api/live-games") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -61,7 +61,7 @@ class OnlineLobbyRepository(
         rated: Boolean? = null,
     ): Result<PagedResponse<GameHistoryDto>> = runCatching {
         httpClient.get("$baseUrl/api/games") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("page", page)
             parameter("limit", limit)
             if (timeControl != null) parameter("timeControl", timeControl)
@@ -84,7 +84,7 @@ class OnlineLobbyRepository(
         limit: Int = 20,
     ): Result<PagedResponse<GameHistoryDto>> = runCatching {
         httpClient.get("$baseUrl/api/feed") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
             parameter("page", page)
             parameter("limit", limit)
         }.body()
@@ -99,7 +99,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getGame(token: String, gameId: String): Result<Game> = runCatching {
         httpClient.get("$baseUrl/api/games/$gameId") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -111,7 +111,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getOpenSearches(token: String): Result<List<OpenSearchDto>> = runCatching {
         httpClient.get("$baseUrl/api/lobby/open-searches") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -123,7 +123,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getOnlineUsers(token: String): Result<List<OnlineUserDto>> = runCatching {
         httpClient.get("$baseUrl/api/lobby/online-users") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -136,7 +136,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getProfile(token: String, userId: String): Result<PublicProfileDto> = runCatching {
         httpClient.get("$baseUrl/api/users/$userId") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -147,7 +147,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getMpTables(token: String): Result<List<MpTableDto>> = runCatching {
         httpClient.get("$baseUrl/api/mp/tables") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 
@@ -158,7 +158,7 @@ class OnlineLobbyRepository(
      */
     suspend fun getMpLiveGames(token: String): Result<List<MpLiveGameDto>> = runCatching {
         httpClient.get("$baseUrl/api/mp/games") {
-            header("Authorization", "Bearer $token")
+            bearerAuth(token)
         }.body()
     }
 }

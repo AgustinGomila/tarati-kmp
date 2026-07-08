@@ -150,47 +150,50 @@ class MpOnlineClient(
     // ── Envío (acciones de lobby / partida) ──────────────────────────────────────
 
     suspend fun createTable(playerCount: Int): Unit =
-        sendMessage(ClientMessage.Mp(MpClientMessage.CreateTable(playerCount)))
+        sendMp(MpClientMessage.CreateTable(playerCount))
 
     suspend fun joinTable(tableId: String): Unit =
-        sendMessage(ClientMessage.Mp(MpClientMessage.JoinTable(tableId)))
+        sendMp(MpClientMessage.JoinTable(tableId))
 
     suspend fun leaveTable() {
         val id = _currentTable.value?.id ?: return
-        sendMessage(ClientMessage.Mp(MpClientMessage.LeaveTable(id)))
+        sendMp(MpClientMessage.LeaveTable(id))
         _currentTable.value = null
     }
 
     suspend fun addBot(seatIndex: Int) {
         val id = _currentTable.value?.id ?: return
-        sendMessage(ClientMessage.Mp(MpClientMessage.AddBot(id, seatIndex)))
+        sendMp(MpClientMessage.AddBot(id, seatIndex))
     }
 
     suspend fun removeBot(seatIndex: Int) {
         val id = _currentTable.value?.id ?: return
-        sendMessage(ClientMessage.Mp(MpClientMessage.RemoveBot(id, seatIndex)))
+        sendMp(MpClientMessage.RemoveBot(id, seatIndex))
     }
 
     suspend fun startTable() {
         val id = _currentTable.value?.id ?: return
-        sendMessage(ClientMessage.Mp(MpClientMessage.StartTable(id)))
+        sendMp(MpClientMessage.StartTable(id))
     }
 
     suspend fun makeMove(from: String, to: String) {
         val gameId = _currentGame.value?.gameId ?: return
-        sendMessage(ClientMessage.Mp(MpClientMessage.MakeMove(gameId, from, to)))
+        sendMp(MpClientMessage.MakeMove(gameId, from, to))
     }
 
     /** Empieza a **observar** una partida en curso (espectador): el servidor manda el estado. */
     suspend fun spectateGame(gameId: String): Unit =
-        sendMessage(ClientMessage.Mp(MpClientMessage.SpectateGame(gameId)))
+        sendMp(MpClientMessage.SpectateGame(gameId))
 
     /** Deja de observar la partida actual (si era espectador) y vuelve al lobby. */
     suspend fun leaveSpectating() {
         val game = _currentGame.value ?: return
-        if (game.spectating) sendMessage(ClientMessage.Mp(MpClientMessage.LeaveSpectating(game.gameId)))
+        if (game.spectating) sendMp(MpClientMessage.LeaveSpectating(game.gameId))
         _currentGame.value = null
     }
+
+    /** Envuelve [msg] en [ClientMessage.Mp] y lo envía por el WebSocket compartido. */
+    private suspend fun sendMp(msg: MpClientMessage): Unit = sendMessage(ClientMessage.Mp(msg))
 
     /** Olvida la partida terminada (al salir de la pantalla de resultado). */
     fun clearGame() {
