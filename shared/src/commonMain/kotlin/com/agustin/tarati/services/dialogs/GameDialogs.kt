@@ -2,6 +2,7 @@ package com.agustin.tarati.services.dialogs
 
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -68,6 +69,7 @@ import com.agustin.tarati.shared.generated.resources.tarati_is_a_strategic_board
 import com.agustin.tarati.shared.generated.resources.white
 import com.agustin.tarati.shared.generated.resources.wins_by_resignation
 import com.agustin.tarati.shared.generated.resources.yes
+import com.agustin.tarati.ui.components.DistinctLogo
 import com.agustin.tarati.ui.theme.TaratiIcons
 
 
@@ -160,6 +162,11 @@ fun AboutContent(onShowTutorial: () -> Unit = {}) {
 
         // Tutorial Button
         AboutTutorial(onShowTutorial)
+
+        // Marca de distinción (Laws of Form) — antesala de los créditos
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            DistinctLogo(size = 56.dp, color = MaterialTheme.colorScheme.primary)
+        }
 
         // Credits Section
         AboutCredits()
