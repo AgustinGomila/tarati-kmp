@@ -124,8 +124,7 @@ fun LeaderboardScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = localizedString(Res.string.error)
-                                .replace($$"%1$s", state.error.orEmpty()),
+                            text = localizedString(Res.string.error, state.error.orEmpty()),
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodyMedium,
                         )

@@ -88,7 +88,6 @@ import com.agustin.tarati.ui.theme.icon
 import com.agustin.tarati.ui.theme.timeControlIcon
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import kotlin.time.Clock
 
 // ── Tab: Lobby (En Vivo + Búsquedas) ──────────────────────────────────────────
 
@@ -164,13 +163,11 @@ internal fun LobbyTab(
             stats = listOf(
                 StatChip(
                     icon = TaratiIcons.Public,
-                    text = localizedString(Res.string.lobby_count_live_games)
-                        .replace($$"%1$s", "${gamesState.games.size}"),
+                    text = localizedString(Res.string.lobby_count_live_games, gamesState.games.size),
                 ),
                 StatChip(
                     icon = TaratiIcons.Search,
-                    text = localizedString(Res.string.lobby_count_searching)
-                        .replace($$"%1$s", "$searchingCount"),
+                    text = localizedString(Res.string.lobby_count_searching, searchingCount),
                 ),
             ),
         )
@@ -438,11 +435,7 @@ private fun LiveGameTurnRow(
  */
 @Composable
 private fun OpenSearchCard(search: OpenSearchDto, onJoin: (() -> Unit)?) {
-    val waitingSecs = (Clock.System.now().toEpochMilliseconds() - search.waitingSinceMs) / 1000
-    val waitingFmt = when {
-        waitingSecs < 60 -> "${waitingSecs}s"
-        else -> "${waitingSecs / 60}m ${waitingSecs % 60}s"
-    }
+    val waitingFmt = formatWaiting(search.waitingSinceMs)
 
     Card(
         modifier = Modifier
@@ -481,7 +474,7 @@ private fun OpenSearchCard(search: OpenSearchDto, onJoin: (() -> Unit)?) {
                     color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
                 )
                 Text(
-                    text = localizedString(Res.string.lobby_waiting_time).replace($$"%1$s", waitingFmt),
+                    text = localizedString(Res.string.lobby_waiting_time, waitingFmt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.6f),
                 )
@@ -519,11 +512,7 @@ private fun OwnSearchCard(
     currentUser: UserInfo?,
     onCancel: () -> Unit,
 ) {
-    val waitingSecs = (Clock.System.now().toEpochMilliseconds() - ticket.joinedAt) / 1000
-    val waitingFmt = when {
-        waitingSecs < 60 -> "${waitingSecs}s"
-        else -> "${waitingSecs / 60}m ${waitingSecs % 60}s"
-    }
+    val waitingFmt = formatWaiting(ticket.joinedAt)
 
     val tcDisplay = remember(ticket.timeControl) {
         runCatching {
@@ -569,7 +558,7 @@ private fun OwnSearchCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                 )
                 Text(
-                    text = localizedString(Res.string.lobby_waiting_time).replace($$"%1$s", waitingFmt),
+                    text = localizedString(Res.string.lobby_waiting_time, waitingFmt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
                 )

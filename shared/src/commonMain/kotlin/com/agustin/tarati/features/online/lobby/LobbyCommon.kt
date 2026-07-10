@@ -25,7 +25,18 @@ import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.auth_guest_banner_title
 import com.agustin.tarati.shared.generated.resources.auth_guest_description
 import com.agustin.tarati.shared.generated.resources.auth_sign_in
+import com.agustin.tarati.shared.generated.resources.draw
+import com.agustin.tarati.shared.generated.resources.loss
+import com.agustin.tarati.shared.generated.resources.win
 import com.agustin.tarati.ui.theme.TaratiIcons
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.Padding
+import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -48,6 +59,50 @@ internal fun formatMs(ms: Long): String {
     val min = totalSec / 60
     val sec = totalSec % 60
     return "$min:${sec.toString().padStart(2, '0')}"
+}
+
+/** Tiempo de espera transcurrido desde [sinceMs] (epoch-ms) como "Xs" o "Xm Ys". */
+internal fun formatWaiting(sinceMs: Long): String {
+    val secs = (Clock.System.now().toEpochMilliseconds() - sinceMs) / 1000
+    return if (secs < 60) "${secs}s" else "${secs / 60}m ${secs % 60}s"
+}
+
+private val gameDateFormat = LocalDate.Format {
+    day(Padding.ZERO)
+    char('/')
+    monthNumber()
+    char('/')
+    year()
+}
+
+/** Fecha local "dd/MM/yyyy" a partir de un timestamp epoch-ms. */
+internal fun formatGameDate(epochMs: Long): String =
+    Instant.fromEpochMilliseconds(epochMs)
+        .toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+        .format(gameDateFormat)
+
+/** Verde de "victoria / cambio de rating positivo", consistente en todas las pestañas. */
+internal val PositiveGreen = Color(0xFF4CAF50)
+
+/** Texto localizado y color para un resultado de partida ("win" / "loss" / "draw"). */
+@Composable
+internal fun gameResultDisplay(result: String): Pair<String, Color> = when (result) {
+    "win" -> localizedString(Res.string.win) to PositiveGreen
+    "loss" -> localizedString(Res.string.loss) to MaterialTheme.colorScheme.error
+    else -> localizedString(Res.string.draw) to MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/** Texto ("+N" / "N") y color para un cambio de rating. */
+@Composable
+internal fun ratingChangeDisplay(change: Int): Pair<String, Color> {
+    val text = if (change > 0) "+$change" else "$change"
+    val color = when {
+        change > 0 -> PositiveGreen
+        change < 0 -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    return text to color
 }
 
 // ── Estadísticas de pestaña ─────────────────────────────────────────────────────

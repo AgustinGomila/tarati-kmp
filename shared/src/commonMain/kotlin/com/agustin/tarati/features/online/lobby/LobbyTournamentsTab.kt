@@ -194,13 +194,14 @@ internal fun TournamentsTab(
                         stats = listOf(
                             StatChip(
                                 icon = TaratiIcons.EmojiEvents,
-                                text = localizedString(Res.string.lobby_count_tournaments_active)
-                                    .replace($$"%1$s", "${state.active.size}"),
+                                text = localizedString(Res.string.lobby_count_tournaments_active, state.active.size),
                             ),
                             StatChip(
                                 icon = TaratiIcons.Group,
-                                text = localizedString(Res.string.lobby_count_tournaments_registering)
-                                    .replace($$"%1$s", "${state.registering.size}"),
+                                text = localizedString(
+                                    Res.string.lobby_count_tournaments_registering,
+                                    state.registering.size,
+                                ),
                             ),
                         ),
                     )
@@ -463,9 +464,11 @@ private fun TournamentCard(
                 }
                 Text("·", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    localizedString(Res.string.tournament_players_of)
-                        .replace($$"%1$d", "${tournament.participantCount}")
-                        .replace($$"%2$d", "${tournament.maxPlayers}"),
+                    localizedString(
+                        Res.string.tournament_players_of,
+                        tournament.participantCount,
+                        tournament.maxPlayers,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

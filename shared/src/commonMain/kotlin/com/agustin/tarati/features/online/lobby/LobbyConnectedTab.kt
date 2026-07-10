@@ -113,13 +113,14 @@ internal fun ConnectedUsersTab(
             stats = listOf(
                 StatChip(
                     icon = TaratiIcons.Group,
-                    text = localizedString(Res.string.lobby_count_online)
-                        .replace($$"%1$s", "${users.size}"),
+                    text = localizedString(Res.string.lobby_count_online, users.size),
                 ),
                 StatChip(
                     icon = TaratiIcons.PlayArrow,
-                    text = localizedString(Res.string.lobby_count_playing)
-                        .replace($$"%1$s", "${users.count { it.status == OnlineUserStatus.PLAYING }}"),
+                    text = localizedString(
+                        Res.string.lobby_count_playing,
+                        users.count { it.status == OnlineUserStatus.PLAYING },
+                    ),
                 ),
             ),
         )
@@ -301,7 +302,7 @@ private fun ConnectedUserChallengeDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                localizedString(Res.string.social_challenge_dialog_title).replace($$"%1$s", targetName),
+                localizedString(Res.string.social_challenge_dialog_title, targetName),
                 style = MaterialTheme.typography.titleMedium,
             )
         },

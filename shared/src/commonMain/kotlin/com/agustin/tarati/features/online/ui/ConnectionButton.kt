@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,7 +36,6 @@ import com.agustin.tarati.network.models.MatchmakingTicket
 import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
-import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.cancel_search
 import com.agustin.tarati.shared.generated.resources.confirm_disconnect
 import com.agustin.tarati.shared.generated.resources.connect
@@ -53,6 +49,7 @@ import com.agustin.tarati.shared.generated.resources.offline
 import com.agustin.tarati.shared.generated.resources.rated
 import com.agustin.tarati.shared.generated.resources.reconnecting
 import com.agustin.tarati.shared.generated.resources.retry
+import com.agustin.tarati.ui.components.ConfirmDialog
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.theme.TaratiIcons
 
@@ -312,38 +309,13 @@ fun ConnectionButton(
     var showDisconnectDialog by remember { mutableStateOf(false) }
 
     if (showDisconnectDialog) {
-        AlertDialog(
-            onDismissRequest = { showDisconnectDialog = false },
-            title = {
-                LocalizedText(
-                    Res.string.disconnect,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            },
-            text = {
-                LocalizedText(
-                    Res.string.confirm_disconnect,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDisconnectDialog = false
-                        onDisconnect()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    LocalizedText(Res.string.disconnect)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDisconnectDialog = false }) {
-                    LocalizedText(Res.string.cancel)
-                }
-            },
+        ConfirmDialog(
+            title = Res.string.disconnect,
+            body = Res.string.confirm_disconnect,
+            confirmLabel = Res.string.disconnect,
+            destructive = true,
+            onConfirm = onDisconnect,
+            onDismiss = { showDisconnectDialog = false },
         )
     }
 

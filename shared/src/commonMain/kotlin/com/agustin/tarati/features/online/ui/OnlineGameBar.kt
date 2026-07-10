@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -48,7 +47,6 @@ import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.accept
-import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.casual_info_card
 import com.agustin.tarati.shared.generated.resources.confirm_offer_draw
 import com.agustin.tarati.shared.generated.resources.confirm_resign
@@ -67,6 +65,7 @@ import com.agustin.tarati.shared.generated.resources.spectator_count
 import com.agustin.tarati.shared.generated.resources.time_control
 import com.agustin.tarati.shared.generated.resources.tournament_round_progress
 import com.agustin.tarati.shared.generated.resources.your_color
+import com.agustin.tarati.ui.components.ConfirmDialog
 import com.agustin.tarati.ui.components.game.CobColorIndicator
 import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.coroutines.delay
@@ -78,7 +77,7 @@ import kotlin.time.Duration.Companion.seconds
  *
  * ## Acciones con confirmación
  *
- * Tanto "Resign" como "Offer Draw" abren un [AlertDialog] de confirmación antes
+ * Tanto "Resign" como "Offer Draw" abren un [ConfirmDialog] de confirmación antes
  * de ejecutar la acción. Los diálogos siguen el mismo estilo que [MatchmakingModal]
  * para consistencia visual. La barra nunca envía comandos directamente sin
  * confirmación del jugador.
@@ -123,71 +122,23 @@ fun OnlineGameBar(
     // ── Diálogos de confirmación ──────────────────────────────────────────────
 
     if (showResignDialog) {
-        AlertDialog(
-            onDismissRequest = { showResignDialog = false },
-            title = {
-                LocalizedText(
-                    Res.string.resign,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            },
-            text = {
-                LocalizedText(
-                    Res.string.confirm_resign,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showResignDialog = false
-                        onResign()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                    ),
-                ) {
-                    LocalizedText(Res.string.resign)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResignDialog = false }) {
-                    LocalizedText(Res.string.cancel)
-                }
-            },
+        ConfirmDialog(
+            title = Res.string.resign,
+            body = Res.string.confirm_resign,
+            confirmLabel = Res.string.resign,
+            destructive = true,
+            onConfirm = onResign,
+            onDismiss = { showResignDialog = false },
         )
     }
 
     if (showOfferDrawDialog) {
-        AlertDialog(
-            onDismissRequest = { showOfferDrawDialog = false },
-            title = {
-                LocalizedText(
-                    Res.string.offer_draw,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-            },
-            text = {
-                LocalizedText(
-                    Res.string.confirm_offer_draw,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showOfferDrawDialog = false
-                        onOfferDraw()
-                    },
-                ) {
-                    LocalizedText(Res.string.offer_draw)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOfferDrawDialog = false }) {
-                    LocalizedText(Res.string.cancel)
-                }
-            },
+        ConfirmDialog(
+            title = Res.string.offer_draw,
+            body = Res.string.confirm_offer_draw,
+            confirmLabel = Res.string.offer_draw,
+            onConfirm = onOfferDraw,
+            onDismiss = { showOfferDrawDialog = false },
         )
     }
 
@@ -287,9 +238,11 @@ fun OnlineGameBar(
                             val roundSuffix = if (game.tournamentRound != null && game.tournamentRound > 0 &&
                                 game.tournamentTotalRounds != null && game.tournamentTotalRounds > 0
                             ) {
-                                " · " + localizedString(Res.string.tournament_round_progress)
-                                    .replace($$"%1$d", "${game.tournamentRound}")
-                                    .replace($$"%2$d", "${game.tournamentTotalRounds}")
+                                " · " + localizedString(
+                                    Res.string.tournament_round_progress,
+                                    game.tournamentRound,
+                                    game.tournamentTotalRounds,
+                                )
                             } else ""
                             Text(
                                 text = "${game.tournamentName}$roundSuffix",
@@ -306,8 +259,7 @@ fun OnlineGameBar(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = localizedString(Res.string.your_color)
-                                    .replace($$"%1$s", game.yourColor.capitalize()),
+                                text = localizedString(Res.string.your_color, game.yourColor.capitalize()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -463,8 +415,7 @@ private fun SpectatorGameBar(s: SpectatingState) {
                 }
                 if (s.spectatorCount > 0) {
                     Text(
-                        text = localizedString(Res.string.spectator_count)
-                            .replace($$"%1$d", s.spectatorCount.toString()),
+                        text = localizedString(Res.string.spectator_count, s.spectatorCount),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     )
@@ -632,8 +583,7 @@ private fun OpponentDisconnectedBanner(
             tint = warningColor,
         )
         Text(
-            text = localizedString(Res.string.opponent_disconnected)
-                .replace($$"%1$s", "${secondsLeft}s"),
+            text = localizedString(Res.string.opponent_disconnected, "${secondsLeft}s"),
             style = MaterialTheme.typography.bodySmall,
             color = warningColor,
             fontWeight = FontWeight.Medium,

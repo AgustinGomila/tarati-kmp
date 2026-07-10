@@ -162,7 +162,7 @@ fun MatchmakingModal(
                         LocalizedText(Res.string.resign, style = MaterialTheme.typography.bodyMedium)
                     } else {
                         Text(
-                            localizedString(Res.string.your_color).replace($$"%1$s", currentOnlineGame.yourColor),
+                            localizedString(Res.string.your_color, currentOnlineGame.yourColor),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

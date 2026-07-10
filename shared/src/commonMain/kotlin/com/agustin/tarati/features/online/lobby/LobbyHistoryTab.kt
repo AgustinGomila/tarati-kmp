@@ -25,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
@@ -53,13 +52,6 @@ import com.agustin.tarati.shared.generated.resources.win
 import com.agustin.tarati.ui.components.carditem.GameCardItem
 import com.agustin.tarati.ui.components.game.CobColorIndicator
 import com.agustin.tarati.ui.theme.TaratiIcons
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.Padding
-import kotlinx.datetime.format.char
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Instant
 
 @Composable
 internal fun GameHistoryTab(
@@ -104,8 +96,7 @@ internal fun GameHistoryTab(
                 state.isLoading -> CenteredLoader()
 
                 state.error != null -> CenteredMessage(
-                    text = localizedString(Res.string.error)
-                        .replace($$"%1$s", state.error.orEmpty()),
+                    text = localizedString(Res.string.error, state.error.orEmpty()),
                     color = MaterialTheme.colorScheme.error,
                 )
 
@@ -159,7 +150,7 @@ private fun HistoryStatsRow(stats: ProfileStatsDto, timeControlFilter: String?) 
         stats = listOf(
             StatChip(
                 icon = TaratiIcons.Leaderboard,
-                text = localizedString(Res.string.profile_games_played).replace($$"%1$s", "${s.games}"),
+                text = localizedString(Res.string.profile_games_played, s.games),
             ),
             StatChip(
                 icon = TaratiIcons.EmojiEvents,
@@ -224,41 +215,9 @@ private fun HistoryFilterRow(
 @Composable
 private fun HistoryGameCard(game: GameHistoryDto, onClick: (() -> Unit)? = null) {
     val myColor = cobColorByDescription(game.myColor) ?: CobColor.WHITE
-    val (resultText, resultColor) = when (game.result) {
-        "win" -> localizedString(Res.string.win) to Color(0xFF4CAF50)
-        "loss" -> localizedString(Res.string.loss) to MaterialTheme.colorScheme.error
-        else -> localizedString(Res.string.draw) to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    val ratingChangeFmt = when {
-        game.ratingChange > 0 -> "+${game.ratingChange}"
-        else -> "${game.ratingChange}"
-    }
-
-    val ratingChangeColor = when {
-        game.ratingChange > 0 -> Color(0xFF4CAF50)
-        game.ratingChange < 0 -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    val dateFmt = remember(game.endedAtMs) {
-        // 1. Obtener el LocalDate en la zona horaria del sistema
-        val localDate = Instant.fromEpochMilliseconds(game.endedAtMs)
-            .toLocalDateTime(TimeZone.currentSystemDefault())
-            .date
-
-        // 2. Aplicar un formato personalizado con el DSL
-        val customFormat = LocalDate.Format {
-            this@Format.day(padding = Padding.ZERO)
-            char('/')
-            monthNumber()
-            char('/')
-            year()
-        }
-
-        // 3. Obtener la fecha formateada como String
-        localDate.format(customFormat)
-    }
+    val (resultText, _) = gameResultDisplay(game.result)
+    val (ratingChangeFmt, ratingChangeColor) = ratingChangeDisplay(game.ratingChange)
+    val dateFmt = remember(game.endedAtMs) { formatGameDate(game.endedAtMs) }
 
     GameCardItem(
         title = "vs ${game.opponentUsername} (${game.opponentRating})",

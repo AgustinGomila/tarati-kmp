@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
@@ -60,13 +59,6 @@ import com.agustin.tarati.shared.generated.resources.win
 import com.agustin.tarati.ui.components.carditem.GameCardItem
 import com.agustin.tarati.ui.components.game.CobColorIndicator
 import com.agustin.tarati.ui.theme.TaratiIcons
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.Padding
-import kotlinx.datetime.format.char
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Instant
 
 // ── Tab: Feed de seguidos ──────────────────────────────────────────────────────
 
@@ -116,7 +108,7 @@ internal fun FeedTab(
                 state.isLoading -> CenteredLoader()
 
                 state.error != null -> CenteredMessage(
-                    text = localizedString(Res.string.error).replace($$"%1$s", state.error.orEmpty()),
+                    text = localizedString(Res.string.error, state.error.orEmpty()),
                     color = MaterialTheme.colorScheme.error,
                 )
 
@@ -244,34 +236,14 @@ private fun FeedFilterBar(
 
 @Composable
 private fun FeedGameCard(game: GameHistoryDto, onClick: (() -> Unit)? = null) {
-    val (resultText, resultColor) = when (game.result) {
-        "win" -> localizedString(Res.string.win) to Color(0xFF4CAF50)
-        "loss" -> localizedString(Res.string.loss) to MaterialTheme.colorScheme.error
-        else -> localizedString(Res.string.draw) to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val ratingChangeFmt = if (game.ratingChange > 0) "+${game.ratingChange}" else "${game.ratingChange}"
-    val ratingChangeColor = when {
-        game.ratingChange > 0 -> Color(0xFF4CAF50)
-        game.ratingChange < 0 -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val dateFmt = remember(game.endedAtMs) {
-        val localDate = Instant.fromEpochMilliseconds(game.endedAtMs)
-            .toLocalDateTime(TimeZone.currentSystemDefault())
-            .date
-        localDate.format(LocalDate.Format {
-            day(Padding.ZERO)
-            char('/')
-            monthNumber()
-            char('/')
-            year()
-        })
-    }
+    val (resultText, _) = gameResultDisplay(game.result)
+    val (ratingChangeFmt, ratingChangeColor) = ratingChangeDisplay(game.ratingChange)
+    val dateFmt = remember(game.endedAtMs) { formatGameDate(game.endedAtMs) }
     val feedColor = cobColorByDescription(game.myColor) ?: CobColor.WHITE
     val playerLabel = game.playerUsername ?: "?"
 
     GameCardItem(
-        title = localizedString(Res.string.social_feed_player_context).replace($$"%1$s", playerLabel) +
+        title = localizedString(Res.string.social_feed_player_context, playerLabel) +
                 " vs ${game.opponentUsername} (${game.opponentRating})",
         subtitle = "${game.timeControl.toDisplayString()} · ${
             if (game.rated) localizedString(Res.string.rated_info_card)

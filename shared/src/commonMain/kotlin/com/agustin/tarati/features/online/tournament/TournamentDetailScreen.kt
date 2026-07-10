@@ -385,9 +385,11 @@ private fun TournamentHeader(tournament: TournamentDetailDto) {
             )
             Text(
                 "${tournamentTypeLabel(tournament.type)} · ${
-                    localizedString(Res.string.tournament_players_of)
-                        .replace($$"%1$d", "${tournament.standings.size}")
-                        .replace($$"%2$d", "${tournament.maxPlayers}")
+                    localizedString(
+                        Res.string.tournament_players_of,
+                        tournament.standings.size,
+                        tournament.maxPlayers,
+                    )
                 }",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -399,9 +401,11 @@ private fun TournamentHeader(tournament: TournamentDetailDto) {
 
             tournament.status == TournamentStatus.ACTIVE ->
                 Text(
-                    localizedString(Res.string.tournament_round_progress)
-                        .replace($$"%1$d", "${tournament.currentRound}")
-                        .replace($$"%2$d", "${tournament.totalRounds}"),
+                    localizedString(
+                        Res.string.tournament_round_progress,
+                        tournament.currentRound,
+                        tournament.totalRounds,
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                 )
@@ -414,7 +418,7 @@ private fun TournamentHeader(tournament: TournamentDetailDto) {
                 )
         }
         Text(
-            localizedString(Res.string.tournament_created_by).replace($$"%1$s", tournament.creatorUsername),
+            localizedString(Res.string.tournament_created_by, tournament.creatorUsername),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -612,7 +616,7 @@ private fun ArenaCountdown(endsAtMs: Long?) {
         } else {
             "${remaining.inWholeMinutes}m ${remaining.inWholeSeconds % 60}s"
         }
-        localizedString(Res.string.tournament_arena_ends_in).replace($$"%1$s", formatted)
+        localizedString(Res.string.tournament_arena_ends_in, formatted)
     }
 
     Text(
@@ -640,7 +644,7 @@ private fun RoundSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                localizedString(Res.string.tournament_round_n).replace($$"%1$d", "${round.roundNumber}"),
+                localizedString(Res.string.tournament_round_n, round.roundNumber),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -988,7 +992,7 @@ private fun eliminationRoundTitle(roundNumber: Int, totalRounds: Int): String {
         else -> {
             // Jugadores que entran a la ronda = 2^(roundsFromEnd + 1)
             val size = 1 shl (roundsFromEnd + 1)
-            localizedString(Res.string.tournament_round_of).replace($$"%1$d", "$size")
+            localizedString(Res.string.tournament_round_of, size)
         }
     }
 }

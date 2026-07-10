@@ -52,6 +52,9 @@ import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.achievements.ProfileAchievementsSection
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.lobby.GameHistoryUiState
+import com.agustin.tarati.features.online.lobby.formatGameDate
+import com.agustin.tarati.features.online.lobby.gameResultDisplay
+import com.agustin.tarati.features.online.lobby.ratingChangeDisplay
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.ProfileRatingsDto
 import com.agustin.tarati.network.models.ProfileStatsDto
@@ -149,8 +152,7 @@ fun PublicProfileScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = localizedString(Res.string.error)
-                            .replace($$"%1$s", profileState.error.orEmpty()),
+                        text = localizedString(Res.string.error, profileState.error.orEmpty()),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -270,8 +272,7 @@ private fun ProfileContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = localizedString(Res.string.error)
-                            .replace($$"%1$s", historyState.error),
+                        text = localizedString(Res.string.error, historyState.error),
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -377,7 +378,7 @@ private fun ProfileHeader(
         }
         val joinDate = remember(profile.createdAt) { formatJoinDate(profile.createdAt) }
         Text(
-            text = localizedString(Res.string.profile_member_since).replace($$"%1$s", joinDate),
+            text = localizedString(Res.string.profile_member_since, joinDate),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -498,13 +499,12 @@ private fun RatingCard(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = localizedString(Res.string.profile_peak_rating).replace($$"%1$s", "$peak"),
+                text = localizedString(Res.string.profile_peak_rating, peak),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = localizedString(Res.string.profile_games_played)
-                    .replace($$"%1$s", "${stats.games}"),
+                text = localizedString(Res.string.profile_games_played, stats.games),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -569,25 +569,9 @@ private fun ProfileHistoryFilters(
 
 @Composable
 private fun ProfileHistoryCard(game: GameHistoryDto, onClick: (() -> Unit)? = null) {
-    val (resultText, resultColor) = when (game.result) {
-        "win" -> localizedString(Res.string.win) to Color(0xFF4CAF50)
-        "loss" -> localizedString(Res.string.loss) to MaterialTheme.colorScheme.error
-        else -> localizedString(Res.string.draw) to MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val ratingChangeFmt = if (game.ratingChange > 0) "+${game.ratingChange}" else "${game.ratingChange}"
-    val ratingChangeColor = when {
-        game.ratingChange > 0 -> Color(0xFF4CAF50)
-        game.ratingChange < 0 -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    val dateFmt = remember(game.endedAtMs) {
-        val localDate = Instant.fromEpochMilliseconds(game.endedAtMs)
-            .toLocalDateTime(TimeZone.currentSystemDefault())
-            .date
-        localDate.format(LocalDate.Format {
-            day(padding = Padding.ZERO); char('/'); monthNumber(); char('/'); year()
-        })
-    }
+    val (resultText, _) = gameResultDisplay(game.result)
+    val (ratingChangeFmt, ratingChangeColor) = ratingChangeDisplay(game.ratingChange)
+    val dateFmt = remember(game.endedAtMs) { formatGameDate(game.endedAtMs) }
     val myColor = cobColorByDescription(game.myColor) ?: CobColor.WHITE
 
     GameCardItem(
@@ -705,7 +689,7 @@ private fun ChallengeDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                localizedString(Res.string.social_challenge_dialog_title).replace($$"%1$s", targetName),
+                localizedString(Res.string.social_challenge_dialog_title, targetName),
                 style = MaterialTheme.typography.titleMedium,
             )
         },
