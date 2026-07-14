@@ -1,5 +1,6 @@
 package com.agustin.tarati.features.game6
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game6.ai.MpGreedyBot
@@ -43,7 +44,11 @@ sealed interface MpUiEvent {
 /**
  * Configuración editable de la próxima partida: cantidad de jugadores y tipo (Humano/IA) por
  * asiento. Los asientos 0 y 1 siempre están habilitados; 2–5 se habilitan subiendo [playerCount].
+ *
+ * `@Immutable`: `seatIsAI` nunca se muta in-place (siempre `.copy`), así que Compose puede tratarla
+ * como estable pese a ser una `List` — habilita saltar recomposiciones en `MpPlayerConfig`.
  */
+@Immutable
 data class MpConfig(
     val playerCount: Int,
     val seatIsAI: List<Boolean>,

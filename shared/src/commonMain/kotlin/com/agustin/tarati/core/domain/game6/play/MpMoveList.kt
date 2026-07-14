@@ -1,10 +1,13 @@
 package com.agustin.tarati.core.domain.game6.play
 
+import androidx.compose.runtime.Immutable
+
 /**
  * Una celda de la lista de movimientos columnar (§D7 del plan). La lista se dibuja con una
  * **columna por jugador** (en orden de asiento), de modo que el jugador lo da la columna y el
  * token va sin prefijo.
  */
+@Immutable
 sealed interface MpMoveCell {
     /**
      * El jugador movió en esta ronda: se muestra `from-to` ([MpMove.name]). [ply] es el índice
@@ -20,6 +23,7 @@ sealed interface MpMoveCell {
 }
 
 /** Una fila de la lista = una **ronda** (una vuelta por los asientos); una celda por columna. */
+@Immutable
 data class MpMoveRow(
     val number: Int,
     val cells: List<MpMoveCell>,
