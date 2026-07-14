@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialState
@@ -79,8 +80,9 @@ private fun Bubble(
         ),
         bubbleEvents = object : TutorialBubbleEvents {
             override fun onNext() {
-                // En un paso interactivo sin resolver, muestra primero la solución (no-op si ya se resolvió).
-                if (isWaitingForMove) viewModel.skipInteractive()
+                // Paso interactivo sin resolver: aplica el movimiento esperado y el auto-avance lo
+                // muestra antes de pasar al siguiente paso (sin avanzar acá).
+                if (isWaitingForMove && viewModel.skipInteractive()) return
                 viewModel.next()
                 if (viewModel.isCompleted()) onFinish()
             }
@@ -124,6 +126,10 @@ internal fun MpTutorialBoard(
     val converted by viewModel.converted.collectAsState()
     val lastMove by viewModel.lastMove.collectAsState()
 
+    // Vértices que el paso resalta (la pieza y sus destinos): se etiquetan aunque las etiquetas estén
+    // apagadas en Settings, para que el usuario ubique el vértice del que habla el paso.
+    val forcedLabels = remember(selection, legalTargets) { legalTargets + listOfNotNull(selection) }
+
     Box(modifier = modifier.fillMaxSize()) {
         display?.let { state ->
             Board25Pane(
@@ -137,6 +143,7 @@ internal fun MpTutorialBoard(
                 converted = converted,
                 boardVisual = boardVisual,
                 onVertexTap = viewModel::onVertexTap,
+                forcedLabelVertices = forcedLabels,
                 modifier = Modifier.fillMaxSize().padding(12.dp),
             )
         }

@@ -154,7 +154,6 @@ fun MpGameScreen(
     // asiento en IA), no solo al cambiar currentSeatIndex → los bots arrancan solos. Al volver el
     // turno humano, ejecuta el pre-movimiento pendiente (si hay), revalidado en el VM.
     LaunchedEffect(state.currentSeatIndex, state.isGameOver, botKick, isTutorialActive) {
-        // Durante el tutorial la partida local no progresa (evita sonidos/jugadas de fondo).
         if (isTutorialActive) return@LaunchedEffect
         if (viewModel.isBotTurn()) {
             delay(550.milliseconds)
@@ -254,8 +253,6 @@ fun MpGameScreen(
                     MpSidebarHeader(
                         onSettings = onNavigateToSettings,
                         onAchievements = onNavigateToAchievements,
-                        // En compacto el sidebar vive en el drawer: al lanzar el tutorial hay que
-                        // cerrarlo para que la burbuja/tablero queden visibles (en Expanded es no-op).
                         onHowToPlay = {
                             scope.launch { drawerState.close() }
                             mpTutorialViewModel.start()
@@ -296,9 +293,6 @@ fun MpGameScreen(
                             bus.alert { dismiss ->
                                 AboutDialog(
                                     onDismiss = dismiss,
-                                    // En modo Multi el botón "Ver tutorial" lanza el tutorial multijugador.
-                                    // En compacto el footer vive en el drawer → cerrarlo para que la
-                                    // burbuja/tablero queden visibles (en Expanded es no-op).
                                     onShowTutorial = {
                                         dismiss()
                                         scope.launch { drawerState.close() }

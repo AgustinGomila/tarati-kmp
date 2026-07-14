@@ -497,7 +497,8 @@ fun MainContent(
                         if (isTutorialActive) {
                             TutorialOverlay(
                                 boardSize = boardSize,
-                                boardOrientation = editBoardOrientation,
+                                boardOrientation = boardOrientation,
+                                labelsVisible = boardVisualState.labelsVisibles,
                                 tutorialEvents = TutorialEvents(
                                     onPreStepTutorial = events::preStepTutorial,
                                     onSkipTutorial = events::endTutorial,

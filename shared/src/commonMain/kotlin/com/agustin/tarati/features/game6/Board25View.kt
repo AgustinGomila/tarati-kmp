@@ -312,6 +312,9 @@ fun Board25View(
     preMoveFrom: Vertex? = null,
     preMoveTargets: Set<Vertex> = emptySet(),
     pendingPreMove: MpMove? = null,
+    // Vértices cuya etiqueta se muestra **aunque** [showLabels] esté apagado (p. ej. el tutorial
+    // resalta el nombre del vértice que explica). Ignorado si [showLabels] ya está activo.
+    forcedLabelVertices: Set<Vertex> = emptySet(),
 ) {
     val boardColors = getBoardColors()
     val edgeColor = boardColors.boardEdgeColor.copy(alpha = 0.8f)
@@ -647,11 +650,17 @@ fun Board25View(
             val screenPositions = Board25Geometry.fit(canvasSize)
 
             // Etiquetas de vértice (Settings). Overlay de Text — funciona en todas las plataformas,
-            // incl. web, donde el texto en Canvas (Skiko WASM) no está disponible.
-            if (showLabels) {
-                val labelSize = minOf(canvasSize.width, canvasSize.height) * 0.022f
+            // incl. web, donde el texto en Canvas (Skiko WASM) no está disponible. Con las etiquetas
+            // apagadas, se muestran igual las de [forcedLabelVertices] (las que resalta el tutorial).
+            val labelSize = minOf(canvasSize.width, canvasSize.height) * 0.022f
+            val labeled = when {
+                showLabels -> screenPositions
+                forcedLabelVertices.isNotEmpty() -> screenPositions.filterKeys { it in forcedLabelVertices }
+                else -> emptyMap()
+            }
+            if (labeled.isNotEmpty()) {
                 VertexLabels(
-                    positions = screenPositions,
+                    positions = labeled,
                     textSizePx = labelSize,
                     color = labelColor,
                 )

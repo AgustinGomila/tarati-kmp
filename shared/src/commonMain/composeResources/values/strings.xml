@@ -258,7 +258,7 @@
     <string name="special_event_palette_ember">Ember</string>
     <string name="special_event_palette_unlocked_title">New palette unlocked!</string>
     <string name="special_event_palette_unlocked_desc">The %1$s palette is now available.</string>
-    <string name="special_event_palette_available_in_settings">Always selectable in Settings → Theme.</string>
+    <string name="special_event_palette_available_in_settings">Always selectable in Settings -> Theme.</string>
     <string name="special_event_celebrate_button">Awesome!</string>
     <string name="game_over_timeout">Game over! %1$s wins on time</string>
     <string name="gameplay">Gameplay</string>
@@ -681,7 +681,7 @@
     </string>
     <string name="mp_tutorial_base_exit_title">Leaving Your Base</string>
     <string name="mp_tutorial_base_exit_description">Your 4 pieces start in their base square. A piece still in its
-        base can only leave through its two radial exits toward the field (D→C) — never along the outer D ring. Move
+        base can only leave through its two radial exits toward the field (D->C) — never along the outer D ring. Move
         the highlighted piece out.
     </string>
     <string name="mp_tutorial_any_direction_title">Move in Any Direction</string>

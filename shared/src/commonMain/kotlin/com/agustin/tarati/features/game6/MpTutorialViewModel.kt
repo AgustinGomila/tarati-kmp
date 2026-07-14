@@ -134,11 +134,12 @@ class MpTutorialViewModel(
         manager.currentStep()?.let { bindStep(it) }
     }
 
-    override fun skipInteractive() {
-        val step = (manager.state.value as? MpTutorialState.WaitingForMove)?.step ?: return
-        if (!solved) {
-            step.expectedMoves.firstOrNull()?.let { applyAccepted(step, it) }
-        }
+    override fun skipInteractive(): Boolean {
+        val step = (manager.state.value as? MpTutorialState.WaitingForMove)?.step ?: return false
+        if (solved) return false
+        val move = step.expectedMoves.firstOrNull() ?: return false
+        applyAccepted(step, move)
+        return true
     }
 
     override fun close() {

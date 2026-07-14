@@ -43,6 +43,7 @@ import com.agustin.tarati.shared.generated.resources.supporter_play_cta
 import com.agustin.tarati.shared.generated.resources.supporter_thanks
 import com.agustin.tarati.shared.generated.resources.supporter_title
 import com.agustin.tarati.shared.generated.resources.supporter_unavailable_platform
+import com.agustin.tarati.ui.components.HeartText
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.theme.TaratiIcons
@@ -113,7 +114,7 @@ private fun SupporterContent(
                     modifier = Modifier.size(48.dp),
                 )
                 Spacer(Modifier.height(12.dp))
-                Text(
+                HeartText(
                     text = localizedString(Res.string.supporter_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -121,7 +122,7 @@ private fun SupporterContent(
 
                 if (state.isSupporter) {
                     Spacer(Modifier.height(16.dp))
-                    Text(
+                    HeartText(
                         text = localizedString(Res.string.supporter_thanks),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,

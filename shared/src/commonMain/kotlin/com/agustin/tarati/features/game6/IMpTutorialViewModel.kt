@@ -51,8 +51,12 @@ interface IMpTutorialViewModel {
     /** Repite el paso actual (reinicia su posición y cues). */
     fun repeatCurrent()
 
-    /** Muestra la solución del paso interactivo actual (usado al pulsar "Siguiente" sin resolverlo). */
-    fun skipInteractive()
+    /**
+     * Aplica el movimiento esperado del paso interactivo actual (usado al pulsar "Siguiente" sin
+     * resolverlo). Devuelve `true` si aplicó el movimiento (el auto-avance mostrará el resultado y
+     * pasará al siguiente paso); `false` si no había nada que aplicar (paso ya resuelto o no interactivo).
+     */
+    fun skipInteractive(): Boolean
 
     /** Cierra el recorrido sin marcarlo como completado. */
     fun close()

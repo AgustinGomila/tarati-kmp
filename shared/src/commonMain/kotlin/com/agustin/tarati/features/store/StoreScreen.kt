@@ -19,7 +19,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -45,6 +44,7 @@ import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.store_title
 import com.agustin.tarati.shared.generated.resources.store_unlock_all_cta
 import com.agustin.tarati.shared.generated.resources.supporter_thanks
+import com.agustin.tarati.ui.components.HeartText
 import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
@@ -132,7 +132,7 @@ private fun StoreContent(
 
                 // ── Banner supporter ──────────────────────────────────────────────
                 if (isSupporter) {
-                    Text(
+                    HeartText(
                         text = localizedString(Res.string.supporter_thanks),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
@@ -161,7 +161,7 @@ private fun StoreContent(
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(28.dp),
                             )
-                            Text(
+                            HeartText(
                                 text = localizedString(Res.string.store_unlock_all_cta),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,

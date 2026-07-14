@@ -74,7 +74,6 @@ import com.agustin.tarati.shared.generated.resources.board_position_copied_to_cl
 import com.agustin.tarati.shared.generated.resources.copy_position
 import com.agustin.tarati.shared.generated.resources.edit
 import com.agustin.tarati.shared.generated.resources.game6_how_to_play
-import com.agustin.tarati.shared.generated.resources.game6_multiplayer
 import com.agustin.tarati.shared.generated.resources.game6_player_n
 import com.agustin.tarati.shared.generated.resources.game6_players
 import com.agustin.tarati.shared.generated.resources.game6_turn
@@ -89,6 +88,7 @@ import com.agustin.tarati.shared.generated.resources.rotate_board
 import com.agustin.tarati.shared.generated.resources.save_game
 import com.agustin.tarati.shared.generated.resources.saved_games
 import com.agustin.tarati.shared.generated.resources.settings
+import com.agustin.tarati.shared.generated.resources.tarati
 import com.agustin.tarati.shared.generated.resources.undo
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.theme.TaratiIcons
@@ -104,7 +104,6 @@ import kotlin.math.sin
 fun MpSidebarHeader(
     onSettings: () -> Unit,
     onAchievements: () -> Unit,
-    // Nulo en el juego online (no aplica el tutorial de reglas) → no se muestra el botón.
     onHowToPlay: (() -> Unit)? = null,
 ) {
     Row(
@@ -113,10 +112,11 @@ fun MpSidebarHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = localizedString(Res.string.game6_multiplayer),
+            text = localizedString(Res.string.tarati),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             if (onHowToPlay != null) {

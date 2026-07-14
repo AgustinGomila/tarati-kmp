@@ -267,7 +267,7 @@
     <string name="special_event_palette_ember">Ember</string>
     <string name="special_event_palette_unlocked_title">¡Nueva paleta desbloqueada!</string>
     <string name="special_event_palette_unlocked_desc">La paleta %1$s ya está disponible.</string>
-    <string name="special_event_palette_available_in_settings">Siempre se puede seleccionar en Configuración → Tema.
+    <string name="special_event_palette_available_in_settings">Siempre se puede seleccionar en Configuración -> Tema.
     </string>
     <string name="special_event_celebrate_button">¡Genial!</string>
     <string name="game_over_timeout">¡Juego terminado! %1$s gana por tiempo</string>
@@ -629,7 +629,7 @@
     <!-- Supporter (donación Stripe, C3) -->
     <string name="supporter_title">Apoyar Tarati</string>
     <string name="supporter_body">Tarati es gratis — sin anuncios, sin suscripciones. Tu aporte ayuda a cubrir los
-        costos del servidor y mantiene el juego abierto para todos. ¡Gracias ♥
+        costos del servidor y mantiene el juego abierto para todos. ¡Gracias! ♥
     </string>
     <string name="supporter_once">Único</string>
     <string name="supporter_monthly">Mensual</string>
@@ -692,7 +692,7 @@
     </string>
     <string name="mp_tutorial_base_exit_title">Salir de la base</string>
     <string name="mp_tutorial_base_exit_description">Tus 4 piezas arrancan en el cuadrado de su base. Una pieza que
-        sigue en su base solo puede salir por sus dos radiales hacia el campo (D→C), nunca por el anillo D exterior.
+        sigue en su base solo puede salir por sus dos radiales hacia el campo (D->C), nunca por el anillo D exterior.
         Sacá la pieza resaltada.
     </string>
     <string name="mp_tutorial_any_direction_title">Movete en cualquier dirección</string>
