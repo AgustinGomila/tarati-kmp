@@ -36,6 +36,7 @@ interface ISettingsViewModel {
     fun setSoundEnabled(enabled: Boolean)
     fun setSoundVolume(volume: Float)
     fun markTutorialSeen()
+    fun markMpTutorialSeen()
     fun setPieceType(pieceTypeId: String)
 
     /**
@@ -74,6 +75,9 @@ interface ISettingsViewModel {
     val lockedPalettes: StateFlow<LockedPalettes>
 
     val hasTutorialBeenSeen: StateFlow<Boolean>
+
+    /** `true` once the multiplayer (game6) tutorial has been auto-shown at least once. */
+    val hasMpTutorialBeenSeen: StateFlow<Boolean>
     val settingsState: StateFlow<SettingsState>
 
     /**

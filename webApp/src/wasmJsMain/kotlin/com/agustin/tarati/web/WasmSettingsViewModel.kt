@@ -41,6 +41,9 @@ class WasmSettingsViewModel(
     private val _hasTutorialBeenSeen = MutableStateFlow(false)
     override val hasTutorialBeenSeen: StateFlow<Boolean> = _hasTutorialBeenSeen
 
+    private val _hasMpTutorialBeenSeen = MutableStateFlow(false)
+    override val hasMpTutorialBeenSeen: StateFlow<Boolean> = _hasMpTutorialBeenSeen
+
     // Ownership cross-platform leído del servidor (Web no tiene billing local), expandido con la
     // regla supporter (C4): el entitlement `supporter` desbloquea todo el contenido premium
     // (paletas + piezas). Sin la expansión, las piezas premium quedaban bloqueadas pese al supporter.
@@ -137,6 +140,7 @@ class WasmSettingsViewModel(
         }
         viewModelScope.launch { repository.pieceTypeId.collect { PieceTypeManager.setPieceType(PieceTypes.findById(it)) } }
         viewModelScope.launch { repository.tutorialSeen.collect { _hasTutorialBeenSeen.value = it } }
+        viewModelScope.launch { repository.mpTutorialSeen.collect { _hasMpTutorialBeenSeen.value = it } }
     }
 
     override fun toggleDarkTheme(enabled: Boolean) {
@@ -205,6 +209,10 @@ class WasmSettingsViewModel(
 
     override fun markTutorialSeen() {
         viewModelScope.launch { repository.setTutorialSeen(true) }
+    }
+
+    override fun markMpTutorialSeen() {
+        viewModelScope.launch { repository.setMpTutorialSeen(true) }
     }
 
     override fun setPieceType(pieceTypeId: String) {

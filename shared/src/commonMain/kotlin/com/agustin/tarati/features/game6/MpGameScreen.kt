@@ -6,18 +6,22 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.core.domain.game6.tutorial.isActive
 import com.agustin.tarati.features.online.auth.AuthState
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.settings.ISettingsViewModel
@@ -34,7 +38,9 @@ import com.agustin.tarati.ui.components.bottombar.rememberBoardTilt
 import com.agustin.tarati.ui.components.sidebar.SidebarShell
 import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -65,6 +71,7 @@ fun MpGameScreen(
     bus: UIMessageBus = koinInject(),
     mpLobbyViewModel: MpLobbyViewModel = koinInject(),
     authViewModel: IAuthViewModel = koinInject(),
+    mpTutorialViewModel: IMpTutorialViewModel = koinViewModel<MpTutorialViewModel>(),
 ) {
     // Partida MP **online** en curso → el tablero online ocupa el panel primario (igual que el juego
     // online de 2 jugadores muestra su tablero acá, con el lobby en el panel lateral). El juego local
@@ -118,6 +125,22 @@ fun MpGameScreen(
     val boardTilt = rememberBoardTilt(isFabExpanded, isHistoryPanelOpen)
     val density = LocalDensity.current
 
+    // Tutorial multijugador (D5): mientras está activo, el tablero se alimenta desde su ViewModel
+    // (posición scripteada + burbujas) y la partida local queda intacta detrás. Auto-arranca la
+    // primera vez que se entra en modo Multi (flag propio en Settings, espejo del tutorial single).
+    val tutorialState by mpTutorialViewModel.tutorialState.collectAsState()
+    val isTutorialActive = tutorialState.isActive
+    val hasMpTutorialBeenSeen by settingsViewModel.hasMpTutorialBeenSeen.collectAsState()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(hasMpTutorialBeenSeen) {
+        if (!hasMpTutorialBeenSeen) {
+            settingsViewModel.markMpTutorialSeen()
+            mpTutorialViewModel.start()
+        }
+    }
+
     // Hay una partida "en curso" (con jugadas y sin terminar) → "Nueva partida" pide confirmación.
     val hasGameInProgress = history.isNotEmpty() && !state.isGameOver
 
@@ -130,7 +153,9 @@ fun MpGameScreen(
     // re-evalúa también con [botKick] (nueva partida sobre el mismo asiento inicial, o convertir un
     // asiento en IA), no solo al cambiar currentSeatIndex → los bots arrancan solos. Al volver el
     // turno humano, ejecuta el pre-movimiento pendiente (si hay), revalidado en el VM.
-    LaunchedEffect(state.currentSeatIndex, state.isGameOver, botKick) {
+    LaunchedEffect(state.currentSeatIndex, state.isGameOver, botKick, isTutorialActive) {
+        // Durante el tutorial la partida local no progresa (evita sonidos/jugadas de fondo).
+        if (isTutorialActive) return@LaunchedEffect
         if (viewModel.isBotTurn()) {
             delay(550.milliseconds)
             viewModel.playBotMove()
@@ -208,6 +233,7 @@ fun MpGameScreen(
 
     MpGameScaffold(
         modifier = modifier,
+        drawerState = drawerState,
         // Búsqueda de partidas online en la barra superior (solo compacto, donde el sidebar está en el
         // drawer) — análogo a la búsqueda del single. Lleva al lobby de mesas MP (creación/observación);
         // si no hay sesión, el MpLobbyScreen abre el login sheet compartido.
@@ -228,6 +254,12 @@ fun MpGameScreen(
                     MpSidebarHeader(
                         onSettings = onNavigateToSettings,
                         onAchievements = onNavigateToAchievements,
+                        // En compacto el sidebar vive en el drawer: al lanzar el tutorial hay que
+                        // cerrarlo para que la burbuja/tablero queden visibles (en Expanded es no-op).
+                        onHowToPlay = {
+                            scope.launch { drawerState.close() }
+                            mpTutorialViewModel.start()
+                        },
                     )
                 },
                 controls = {
@@ -260,13 +292,38 @@ fun MpGameScreen(
                 },
                 footer = {
                     MpAboutFooter(
-                        onAbout = { bus.alert { dismiss -> AboutDialog(onDismiss = dismiss) } },
+                        onAbout = {
+                            bus.alert { dismiss ->
+                                AboutDialog(
+                                    onDismiss = dismiss,
+                                    // En modo Multi el botón "Ver tutorial" lanza el tutorial multijugador.
+                                    // En compacto el footer vive en el drawer → cerrarlo para que la
+                                    // burbuja/tablero queden visibles (en Expanded es no-op).
+                                    onShowTutorial = {
+                                        dismiss()
+                                        scope.launch { drawerState.close() }
+                                        mpTutorialViewModel.start()
+                                    },
+                                )
+                            }
+                        },
                     )
                 },
             )
         },
         board = { boardModifier ->
             BoxWithConstraints(modifier = boardModifier) {
+                // Tutorial activo: el tablero del recorrido reemplaza al de la partida local (que
+                // queda intacta detrás). Cerrar el tutorial (fin o X) la restaura.
+                if (isTutorialActive) {
+                    MpTutorialBoard(
+                        viewModel = mpTutorialViewModel,
+                        boardVisual = boardVisual,
+                        onClose = {},
+                        onFinish = { mpTutorialViewModel.reset() },
+                    )
+                    return@BoxWithConstraints
+                }
                 val isLandscape = maxWidth > maxHeight
                 // En área ancha, al abrir el panel de historial el tablero se corre a la izquierda para
                 // dejarle lugar a la lista (paridad con single: boardEndPadding). El mismo criterio de

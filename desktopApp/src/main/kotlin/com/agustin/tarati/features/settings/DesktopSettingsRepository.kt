@@ -2,10 +2,10 @@ package com.agustin.tarati.features.settings
 
 
 import com.agustin.tarati.core.domain.ai.services.Difficulty
-import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.core.domain.game.board.BoardOrientation
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.core.domain.game.time.TimeControlMode
+import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.services.localization.AppLanguage
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypes
@@ -117,6 +117,9 @@ class DesktopSettingsRepository : SettingsRepository {
     private val _tutorialSeen = MutableStateFlow(prefs.getBoolean(KEY_TUTORIAL_SEEN, false))
     override val tutorialSeen: StateFlow<Boolean> = _tutorialSeen.asStateFlow()
 
+    private val _mpTutorialSeen = MutableStateFlow(prefs.getBoolean(KEY_MP_TUTORIAL_SEEN, false))
+    override val mpTutorialSeen: StateFlow<Boolean> = _mpTutorialSeen.asStateFlow()
+
     private val _seasonalAutoAppliedDate = MutableStateFlow(prefs.get(KEY_SEASONAL_DATE, ""))
     override val seasonalAutoAppliedDate: StateFlow<String> = _seasonalAutoAppliedDate.asStateFlow()
 
@@ -169,6 +172,12 @@ class DesktopSettingsRepository : SettingsRepository {
     override suspend fun setTutorialSeen(seen: Boolean) {
         _tutorialSeen.value = seen
         prefs.putBoolean(KEY_TUTORIAL_SEEN, seen)
+        flush()
+    }
+
+    override suspend fun setMpTutorialSeen(seen: Boolean) {
+        _mpTutorialSeen.value = seen
+        prefs.putBoolean(KEY_MP_TUTORIAL_SEEN, seen)
         flush()
     }
 
@@ -390,6 +399,7 @@ class DesktopSettingsRepository : SettingsRepository {
         private const val KEY_SOUND_ENABLED = "sound_enabled"
         private const val KEY_SOUND_VOLUME = "sound_volume"
         private const val KEY_TUTORIAL_SEEN = "tutorial_seen"
+        private const val KEY_MP_TUTORIAL_SEEN = "mp_tutorial_seen"
         private const val KEY_SEASONAL_DATE = "seasonal_date"
         private const val KEY_PRE_SEASONAL_PALETTE = "pre_seasonal_palette"
         private const val KEY_PIECE_TYPE_ID = "piece_type_id"

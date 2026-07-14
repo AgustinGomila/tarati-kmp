@@ -3,6 +3,7 @@ package com.agustin.tarati.di
 import com.agustin.tarati.core.domain.ai.api.IAIEngine
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.features.detail.GameDetailsViewModel
+import com.agustin.tarati.features.game6.MpTutorialViewModel
 import com.agustin.tarati.features.library.GamesLibraryViewModel
 import com.agustin.tarati.features.online.onlineModule
 import com.agustin.tarati.services.ai.AIViewModel
@@ -66,6 +67,10 @@ val sharedViewModelModule: Module = module {
     viewModel { (animatorCoordinator: AnimationCoordinator) ->
         TutorialViewModel(animatorCoordinator, get())
     }
+
+    // Tutorial del juego multijugador (game6): recorrido propio sobre el tablero 25, reusa el
+    // ISoundService de la plataforma (mismo `get()` que el TutorialViewModel de single).
+    viewModel { MpTutorialViewModel(get()) }
 }
 
 /**

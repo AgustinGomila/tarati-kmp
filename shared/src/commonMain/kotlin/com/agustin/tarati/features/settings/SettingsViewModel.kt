@@ -43,6 +43,9 @@ open class SettingsViewModel(
     private val _hasTutorialBeenSeen = MutableStateFlow(false)
     override val hasTutorialBeenSeen: StateFlow<Boolean> = _hasTutorialBeenSeen
 
+    private val _hasMpTutorialBeenSeen = MutableStateFlow(false)
+    override val hasMpTutorialBeenSeen: StateFlow<Boolean> = _hasMpTutorialBeenSeen
+
     // Ownership cross-platform leído del servidor, expandido con la regla supporter
     // (supporter desbloquea todo lo premium). Override en AndroidSettingsViewModel para
     // mergear además con las compras locales de Google Play Billing.
@@ -189,6 +192,11 @@ open class SettingsViewModel(
                 _hasTutorialBeenSeen.value = seen
             }
         }
+        viewModelScope.launch {
+            repository.mpTutorialSeen.collect { seen ->
+                _hasMpTutorialBeenSeen.value = seen
+            }
+        }
     }
 
     // ── Setters ───────────────────────────────────────────────────────────────
@@ -259,6 +267,10 @@ open class SettingsViewModel(
 
     override fun markTutorialSeen() {
         viewModelScope.launch { repository.setTutorialSeen(true) }
+    }
+
+    override fun markMpTutorialSeen() {
+        viewModelScope.launch { repository.setMpTutorialSeen(true) }
     }
 
     /**

@@ -73,6 +73,7 @@ import com.agustin.tarati.shared.generated.resources.achievements
 import com.agustin.tarati.shared.generated.resources.board_position_copied_to_clipboard
 import com.agustin.tarati.shared.generated.resources.copy_position
 import com.agustin.tarati.shared.generated.resources.edit
+import com.agustin.tarati.shared.generated.resources.game6_how_to_play
 import com.agustin.tarati.shared.generated.resources.game6_multiplayer
 import com.agustin.tarati.shared.generated.resources.game6_player_n
 import com.agustin.tarati.shared.generated.resources.game6_players
@@ -103,6 +104,8 @@ import kotlin.math.sin
 fun MpSidebarHeader(
     onSettings: () -> Unit,
     onAchievements: () -> Unit,
+    // Nulo en el juego online (no aplica el tutorial de reglas) → no se muestra el botón.
+    onHowToPlay: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -116,6 +119,9 @@ fun MpSidebarHeader(
             color = MaterialTheme.colorScheme.primary,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (onHowToPlay != null) {
+                CircleIconButton(TaratiIcons.MenuBook, localizedString(Res.string.game6_how_to_play), onHowToPlay)
+            }
             CircleIconButton(TaratiIcons.EmojiEvents, localizedString(Res.string.achievements), onAchievements)
             CircleIconButton(TaratiIcons.Settings, localizedString(Res.string.settings), onSettings)
         }

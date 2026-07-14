@@ -672,4 +672,36 @@
     <string name="game6_lobby_spectating">Spectating</string>
     <string name="game6_lobby_stop_watching">Stop watching</string>
     <string name="game6_edit_reset">Reset position</string>
+
+    <!-- Multiplayer tutorial (game6) — only the differences vs. the two-player game -->
+    <string name="game6_how_to_play">How to play</string>
+    <string name="mp_tutorial_intro_title">Multiplayer: The Big Board</string>
+    <string name="mp_tutorial_intro_description">This is Tarati Six, played on the larger 25 board with 6 home bases
+        — up to 6 players, each a different color. This tour covers only what changes from the two-player game.
+    </string>
+    <string name="mp_tutorial_base_exit_title">Leaving Your Base</string>
+    <string name="mp_tutorial_base_exit_description">Your 4 pieces start in their base square. A piece still in its
+        base can only leave through its two radial exits toward the field (D→C) — never along the outer D ring. Move
+        the highlighted piece out.
+    </string>
+    <string name="mp_tutorial_any_direction_title">Move in Any Direction</string>
+    <string name="mp_tutorial_any_direction_description">Once out of its base, a piece moves one step to any adjacent
+        empty vertex — forward, sideways or back. There is no forced advance like the Cob in Tarati.
+    </string>
+    <string name="mp_tutorial_single_piece_title">One Kind of Piece</string>
+    <string name="mp_tutorial_single_piece_description">Every piece is the same cube. There is no promotion, no Roks
+        and no dead pieces — reaching an enemy base changes nothing.
+    </string>
+    <string name="mp_tutorial_conversion_title">Capture by Conversion</string>
+    <string name="mp_tutorial_conversion_description">Land next to enemy pieces and they flip to your color — from any
+        player. The pre-adjacency rule still holds: a piece you were already next to is safe. Make the capture.
+    </string>
+    <string name="mp_tutorial_withdrawal_title">Withdrawal</string>
+    <string name="mp_tutorial_withdrawal_description">A player with no legal move, or whose pieces are all captured,
+        withdraws: their remaining pieces leave the board. There is no promotion to save a trapped piece.
+    </string>
+    <string name="mp_tutorial_end_title">Winning the Game</string>
+    <string name="mp_tutorial_end_description">Play continues until only 2 players remain; the one with more pieces
+        on the board wins. A tie is a shared victory — there are no draws. Long stalls are also settled by piece count.
+    </string>
 </resources>

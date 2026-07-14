@@ -99,6 +99,7 @@ class SettingsViewModelTest {
         coEvery { mockSettingsRepository.soundEnabled } returns MutableStateFlow(true)
         coEvery { mockSettingsRepository.soundVolume } returns MutableStateFlow(0.8f)
         coEvery { mockSettingsRepository.tutorialSeen } returns MutableStateFlow(false)
+        coEvery { mockSettingsRepository.mpTutorialSeen } returns MutableStateFlow(false)
         coEvery { mockSettingsRepository.seasonalAutoAppliedDate } returns MutableStateFlow("")
         coEvery { mockSettingsRepository.preSeasonalPalette } returns MutableStateFlow("")
         coEvery { mockSettingsRepository.pieceTypeId } returns MutableStateFlow(PieceTypes.default.id)

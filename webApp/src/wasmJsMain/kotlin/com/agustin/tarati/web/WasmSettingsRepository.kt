@@ -122,6 +122,9 @@ class WasmSettingsRepository : SettingsRepository {
     private val _tutorialSeen = MutableStateFlow(bool(K_TUTORIAL, false))
     override val tutorialSeen: StateFlow<Boolean> = _tutorialSeen.asStateFlow()
 
+    private val _mpTutorialSeen = MutableStateFlow(bool(K_MP_TUTORIAL, false))
+    override val mpTutorialSeen: StateFlow<Boolean> = _mpTutorialSeen.asStateFlow()
+
     private val _seasonalDate = MutableStateFlow(str(K_SEASONAL_DATE, "") ?: "")
     override val seasonalAutoAppliedDate: StateFlow<String> = _seasonalDate.asStateFlow()
 
@@ -171,6 +174,10 @@ class WasmSettingsRepository : SettingsRepository {
 
     override suspend fun setTutorialSeen(seen: Boolean) {
         _tutorialSeen.value = seen; set(K_TUTORIAL, seen)
+    }
+
+    override suspend fun setMpTutorialSeen(seen: Boolean) {
+        _mpTutorialSeen.value = seen; set(K_MP_TUTORIAL, seen)
     }
 
     override suspend fun setDarkTheme(enabled: Boolean) {
@@ -319,6 +326,7 @@ class WasmSettingsRepository : SettingsRepository {
         private const val K_SOUND_ENABLED = "w_sound_enabled"
         private const val K_SOUND_VOLUME = "w_sound_volume"
         private const val K_TUTORIAL = "w_tutorial"
+        private const val K_MP_TUTORIAL = "w_mp_tutorial"
         private const val K_SEASONAL_DATE = "w_seasonal_date"
         private const val K_PRE_SEASONAL = "w_pre_seasonal"
         private const val K_PIECE_TYPE = "w_piece_type"

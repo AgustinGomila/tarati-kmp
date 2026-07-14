@@ -88,6 +88,9 @@ class AndroidSettingsRepository(
     override val tutorialSeen: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[TUTORIAL_SEEN_KEY] ?: false }
 
+    override val mpTutorialSeen: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[MP_TUTORIAL_SEEN_KEY] ?: false }
+
     override val seasonalAutoAppliedDate: Flow<String> =
         dataStore.data.map { prefs -> prefs[SEASONAL_AUTO_APPLIED_DATE_KEY] ?: "" }
 
@@ -203,6 +206,10 @@ class AndroidSettingsRepository(
         dataStore.edit { it[TUTORIAL_SEEN_KEY] = seen }
     }
 
+    override suspend fun setMpTutorialSeen(seen: Boolean) {
+        dataStore.edit { it[MP_TUTORIAL_SEEN_KEY] = seen }
+    }
+
     override suspend fun setSeasonalAutoAppliedDate(date: String) {
         dataStore.edit { it[SEASONAL_AUTO_APPLIED_DATE_KEY] = date }
     }
@@ -279,6 +286,7 @@ class AndroidSettingsRepository(
         val SOUND_ENABLED_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("sound_enabled")
         val SOUND_VOLUME_KEY: Preferences.Key<Float> = floatPreferencesKey("sound_volume")
         val TUTORIAL_SEEN_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("tutorial_seen")
+        val MP_TUTORIAL_SEEN_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("mp_tutorial_seen")
         val SEASONAL_AUTO_APPLIED_DATE_KEY: Preferences.Key<String> = stringPreferencesKey("seasonal_auto_applied_date")
         val PRE_SEASONAL_PALETTE_KEY: Preferences.Key<String> = stringPreferencesKey("pre_seasonal_palette")
         val PIECE_TYPE_ID_KEY: Preferences.Key<String> = stringPreferencesKey("piece_type_id")

@@ -53,6 +53,9 @@ interface SettingsRepository {
     val soundVolume: Flow<Float>
     val tutorialSeen: Flow<Boolean>
 
+    /** `true` once the multiplayer (game6) tutorial has been auto-shown at least once. */
+    val mpTutorialSeen: Flow<Boolean>
+
     /** "MM-dd" of the last day a seasonal theme was auto-applied. Empty string if never. */
     val seasonalAutoAppliedDate: Flow<String>
 
@@ -140,6 +143,7 @@ interface SettingsRepository {
     // ── Setters ────────────────────────────────────────────────────────────────
 
     suspend fun setTutorialSeen(seen: Boolean)
+    suspend fun setMpTutorialSeen(seen: Boolean)
     suspend fun setDarkTheme(enabled: Boolean)
 
     /**

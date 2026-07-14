@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalNavigationDrawer
@@ -42,12 +43,14 @@ import com.agustin.tarati.ui.layout.ScreenLayout
 fun MpGameScaffold(
     modifier: Modifier = Modifier,
     title: String = localizedString(Res.string.game6_multiplayer),
+    // Hoisteable para que la pantalla pueda cerrar el drawer (p. ej. al lanzar el tutorial desde el
+    // sidebar en compacto). En Expanded no hay drawer y este estado queda sin usar.
+    drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
     topBarActions: @Composable RowScope.() -> Unit = {},
     sidebar: @Composable () -> Unit,
     board: @Composable (Modifier) -> Unit,
 ) {
     val screenLayout = LocalScreenLayout.current
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
 
     MultiplayerBackground(modifier = modifier.fillMaxSize()) {
         if (screenLayout == ScreenLayout.Expanded) {

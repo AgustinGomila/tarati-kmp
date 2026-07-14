@@ -77,7 +77,8 @@ import com.agustin.tarati.ui.theme.TaratiIcons
 @Composable
 fun AboutDialog(
     onDismiss: () -> Unit = {},
-    onShowTutorial: () -> Unit = {},
+    // Nulo → no se muestra el botón "Ver tutorial" (p. ej. en la partida online, donde no aplica).
+    onShowTutorial: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState()
 
@@ -142,7 +143,7 @@ private fun AboutHeader() {
 }
 
 @Composable
-fun AboutContent(onShowTutorial: () -> Unit = {}) {
+fun AboutContent(onShowTutorial: (() -> Unit)? = null) {
     Column(
         modifier =
             Modifier
@@ -160,8 +161,10 @@ fun AboutContent(onShowTutorial: () -> Unit = {}) {
         // Game Rules Section
         AboutGameRules()
 
-        // Tutorial Button
-        AboutTutorial(onShowTutorial)
+        // Tutorial Button — solo si hay una acción de tutorial para el modo actual.
+        if (onShowTutorial != null) {
+            AboutTutorial(onShowTutorial)
+        }
 
         // Marca de distinción (Laws of Form) — antesala de los créditos
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {

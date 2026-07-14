@@ -683,4 +683,38 @@
     <string name="game6_lobby_spectating">Observando</string>
     <string name="game6_lobby_stop_watching">Dejar de observar</string>
     <string name="game6_edit_reset">Reiniciar posición</string>
+
+    <!-- Tutorial multijugador (game6) — solo las diferencias respecto del juego de dos -->
+    <string name="game6_how_to_play">Cómo jugar</string>
+    <string name="mp_tutorial_intro_title">Multijugador: el tablero grande</string>
+    <string name="mp_tutorial_intro_description">Es Tarati Six, sobre el tablero 25 con 6 bases — hasta 6 jugadores,
+        cada uno de un color. Este recorrido cubre solo lo que cambia respecto del juego de dos.
+    </string>
+    <string name="mp_tutorial_base_exit_title">Salir de la base</string>
+    <string name="mp_tutorial_base_exit_description">Tus 4 piezas arrancan en el cuadrado de su base. Una pieza que
+        sigue en su base solo puede salir por sus dos radiales hacia el campo (D→C), nunca por el anillo D exterior.
+        Sacá la pieza resaltada.
+    </string>
+    <string name="mp_tutorial_any_direction_title">Movete en cualquier dirección</string>
+    <string name="mp_tutorial_any_direction_description">Una vez fuera de su base, una pieza avanza un paso a cualquier
+        vértice adyacente vacío: adelante, al costado o atrás. No hay avance forzado como el Cob de Tarati.
+    </string>
+    <string name="mp_tutorial_single_piece_title">Un solo tipo de pieza</string>
+    <string name="mp_tutorial_single_piece_description">Todas las piezas son el mismo cubo. No hay promoción, ni Roks,
+        ni piezas muertas: llegar a una base enemiga no cambia nada.
+    </string>
+    <string name="mp_tutorial_conversion_title">Captura por conversión</string>
+    <string name="mp_tutorial_conversion_description">Caé junto a piezas enemigas y se voltean a tu color, de cualquier
+        jugador. La regla de pre-adyacencia sigue vigente: una pieza a la que ya eras adyacente está a salvo. Hacé la
+        captura.
+    </string>
+    <string name="mp_tutorial_withdrawal_title">Retiro</string>
+    <string name="mp_tutorial_withdrawal_description">Un jugador sin movimientos legales, o al que le capturaron todas
+        las piezas, se retira: sus piezas restantes salen del tablero. No hay promoción para salvar una pieza atrapada.
+    </string>
+    <string name="mp_tutorial_end_title">Ganar la partida</string>
+    <string name="mp_tutorial_end_description">Se juega hasta que quedan 2 jugadores; gana el que tenga más piezas en
+        el tablero. Un empate es victoria compartida: no hay tablas. Los estancamientos largos también se resuelven por
+        cantidad de piezas.
+    </string>
 </resources>
