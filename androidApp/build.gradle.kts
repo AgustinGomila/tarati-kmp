@@ -18,6 +18,18 @@ fun getVersionProperties(): Properties {
 
 val versionProps = getVersionProperties()
 
+// Credenciales de firma: env var (CI) → keystore/signing.properties (local, gitignoreado) → "".
+val signingProps = Properties().apply {
+    val file = rootProject.file("keystore/signing.properties")
+    if (file.exists()) file.reader().use { load(it) }
+}
+
+fun signingCredential(key: String): String =
+    (System.getenv(key) ?: signingProps.getProperty(key) ?: "")
+        .trim()
+        .removeSurrounding("\"")
+        .removeSurrounding("'")
+
 android {
     namespace = "com.agustin.tarati"
     compileSdk =
@@ -51,9 +63,9 @@ android {
             val keystoreFile = rootProject.file("keystore/keystore.jks")
             if (keystoreFile.exists()) {
                 storeFile = keystoreFile
-                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                storePassword = signingCredential("KEYSTORE_PASSWORD")
+                keyAlias = signingCredential("KEY_ALIAS")
+                keyPassword = signingCredential("KEY_PASSWORD")
             }
         }
     }
