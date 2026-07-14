@@ -4,6 +4,7 @@ import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.UserInfo
 import com.agustin.tarati.network.client.TaratiWebSocketClient
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -166,6 +167,31 @@ class ConnectionViewModelReconnectTest {
 
         val state = viewModel.connectionState.value
         assertTrue(state is ConnectionState.Offline, "Expected Offline after all retries but got $state")
+    }
+
+    @Test
+    fun `connect and reconnect use a freshly refreshed token, never the stale cached one`(): TestResult = runTest {
+        // El access token está por expirar → validToken() lo renueva a "fresh-token".
+        every { mockAuth.isTokenExpiringSoon(any()) } returns true
+        coEvery { mockAuth.refreshToken() } returns Result.success("fresh-token")
+        every { mockAuth.accessToken } returns "fresh-token"
+
+        coEvery { mockWsClient.connect(any()) } answers {
+            wsConnectionState.value = TaratiWebSocketClient.ConnectionState.Connected
+        }
+        // El caller pasa un token expirado; el ViewModel debe ignorarlo y usar el renovado.
+        viewModel.connectToServer("localhost:8080", "stale-token")
+        runCurrent()
+        assertTrue(viewModel.connectionState.value is ConnectionState.Online)
+
+        // Caída inesperada → auto-reconnect.
+        wsConnectionState.value = TaratiWebSocketClient.ConnectionState.Disconnected
+        runCurrent()
+        advanceTimeBy((delay1 + 1).milliseconds)
+        runCurrent()
+
+        coVerify(atLeast = 1) { mockWsClient.connect("fresh-token") }
+        coVerify(exactly = 0) { mockWsClient.connect("stale-token") }
     }
 
     @Test
