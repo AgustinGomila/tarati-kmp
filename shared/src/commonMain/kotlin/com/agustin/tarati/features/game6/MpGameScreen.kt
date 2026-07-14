@@ -267,13 +267,23 @@ fun MpGameScreen(
         },
         board = { boardModifier ->
             BoxWithConstraints(modifier = boardModifier) {
+                val isLandscape = maxWidth > maxHeight
                 // En área ancha, al abrir el panel de historial el tablero se corre a la izquierda para
                 // dejarle lugar a la lista (paridad con single: boardEndPadding). El mismo criterio de
                 // "ancho" (maxWidth > maxHeight) que usa MpBottomBar para acotar el panel a 320dp.
                 val boardEndPadding by animateDpAsState(
-                    targetValue = if (maxWidth > maxHeight && isHistoryPanelOpen) 320.dp else 0.dp,
+                    targetValue = if (isLandscape && isHistoryPanelOpen) 320.dp else 0.dp,
                     animationSpec = tween(durationMillis = 300),
                     label = "mp_board_shift",
+                )
+                // En portrait el panel de historial se ancla abajo (MpBottomBar) y taparía la mitad
+                // inferior del tablero. Se le agrega padding inferior para empujarlo hacia arriba
+                // (consume el margen vertical sobrante primero, casi sin achicarlo) y dejar visibles
+                // el tablero y la lista a la vez.
+                val boardBottomPadding by animateDpAsState(
+                    targetValue = if (!isLandscape && isHistoryPanelOpen) 240.dp else 0.dp,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "mp_board_lift",
                 )
                 Board25Pane(
                     state = state,
@@ -290,7 +300,7 @@ fun MpGameScreen(
                     pendingPreMove = pendingPreMove,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(end = boardEndPadding)
+                        .padding(end = boardEndPadding, bottom = boardBottomPadding)
                         .graphicsLayer {
                             rotationX = boardTilt.rotationX
                             rotationY = boardTilt.rotationY

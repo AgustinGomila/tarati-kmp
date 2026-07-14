@@ -687,7 +687,15 @@ private fun BaseIndicators(
             val eMid = (e0 + e1) / 2f
             val dir = eMid - center
             val len = hypot(dir.x, dir.y)
-            val anchor = if (len == 0f) eMid else {
+            // `anchor` es el punto (afuera de la base) donde apoya el **borde interior** de la cápsula;
+            // `outward` es la dirección hacia el exterior por la que ésta se desplaza para no invadir
+            // los vértices (ver [SeatIndicator]).
+            val anchor: Offset
+            val outward: Offset
+            if (len == 0f) {
+                anchor = eMid
+                outward = Offset.Zero
+            } else {
                 val r = dir / len          // radial unitario (centro → base)
                 val layer = len / 4f        // la punta E está a 4 capas del centro
                 // Colocación en el margen más holgado según la orientación de la base:
@@ -697,7 +705,8 @@ private fun BaseIndicators(
                     r.y < 0f -> Offset(0f, -1f) to layer
                     else -> Offset(0f, 1f) to layer
                 }
-                eMid + push * dist
+                anchor = eMid + push * dist
+                outward = push
             }
             SeatIndicator(
                 color = seat.color,
@@ -706,6 +715,7 @@ private fun BaseIndicators(
                 retired = seat.status == SeatStatus.RETIRED,
                 isCurrent = index == state.currentSeatIndex && !state.isGameOver,
                 anchor = anchor,
+                outward = outward,
             )
         }
     }
@@ -719,6 +729,7 @@ private fun SeatIndicator(
     retired: Boolean,
     isCurrent: Boolean,
     anchor: Offset,
+    outward: Offset,
 ) {
     val fill = PlayerPalette.fill(color)
     val borderCol = PlayerPalette.border(color)
@@ -727,9 +738,15 @@ private fun SeatIndicator(
     Row(
         modifier = Modifier
             .absoluteOffset {
+                // Se apoya el **borde interior** de la cápsula sobre `anchor` (en lugar de centrarla),
+                // corriéndola media dimensión en la dirección `outward`. Así la cápsula queda entera
+                // afuera de la base y no se superpone con los vértices del tablero, sin depender de su
+                // ancho dinámico (texto del contador).
+                val halfW = boxSize.width / 2f
+                val halfH = boxSize.height / 2f
                 IntOffset(
-                    (anchor.x - boxSize.width / 2f).roundToInt(),
-                    (anchor.y - boxSize.height / 2f).roundToInt(),
+                    (anchor.x - halfW + outward.x * halfW).roundToInt(),
+                    (anchor.y - halfH + outward.y * halfH).roundToInt(),
                 )
             }
             .onSizeChanged { boxSize = it }

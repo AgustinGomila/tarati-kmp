@@ -515,9 +515,13 @@ internal fun MpMoveGrid(
         },
     )
 
-    Column(modifier = modifier.verticalScroll(vScroll).padding(8.dp)) {
+    // El header (discos de color por columna) queda **fijo** arriba: solo las filas de jugadas
+    // scrollean, así la referencia de qué columna es cada jugador nunca se pierde de vista.
+    Column(modifier = modifier.padding(8.dp)) {
         MpMoveGridHeader(colors)
-        rows.forEach { MpMoveGridRow(it, cellStyle, currentPly, onCellClick) }
+        Column(modifier = Modifier.weight(1f).verticalScroll(vScroll)) {
+            rows.forEach { MpMoveGridRow(it, cellStyle, currentPly, onCellClick) }
+        }
     }
 }
 
