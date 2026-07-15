@@ -3,9 +3,7 @@ import java.util.*
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
 }
 
@@ -98,12 +96,6 @@ android {
         targetCompatibility = JavaVersion.toVersion(libs.versions.jvmCompatibility.get())
     }
 
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_21)
-        }
-    }
-
     buildFeatures {
         buildConfig = true
         compose = true
@@ -130,72 +122,13 @@ android {
         }
     }
 
-    applicationVariants.all {
-        sourceSets {
-            getByName(name) {
-                kotlin.srcDir("build/generated/ksp/$name/kotlin")
-            }
-        }
+}
 
-        if (buildType.name == "release") {
-            val variant = this
-            val mergeTask =
-                tasks.findByName(
-                    "merge${
-                        variant.name.replaceFirstChar {
-                            if (it.isLowerCase()) {
-                                it.titlecase(
-                                    Locale.getDefault(),
-                                )
-                            } else {
-                                it.toString()
-                            }
-                        }
-                    }NativeLibs",
-                )
-            val symbolsTask =
-                tasks.register(
-                    "zip${
-                        variant.name.replaceFirstChar {
-                            if (it.isLowerCase()) {
-                                it.titlecase(
-                                    Locale.getDefault(),
-                                )
-                            } else {
-                                it.toString()
-                            }
-                        }
-                    }NativeSymbols",
-                    Zip::class,
-                ) {
-                    from(
-                        mergeTask
-                            ?.outputs
-                            ?.files
-                            ?.files
-                            ?.firstOrNull()
-                            ?.path + "/lib",
-                    )
-                    archiveFileName.set("symbols.zip")
-                    destinationDirectory.set(file("${getLayout().buildDirectory.get()}/outputs/native-debug-symbols"))
-                    include("**/*.so")
-                }
-
-            tasks
-                .findByName(
-                    "package${
-                        variant.name.replaceFirstChar {
-                            if (it.isLowerCase()) {
-                                it.titlecase(
-                                    Locale.getDefault(),
-                                )
-                            } else {
-                                it.toString()
-                            }
-                        }
-                    }",
-                )?.finalizedBy(symbolsTask)
-        }
+// Con built-in Kotlin (AGP 9) la extensión kotlin{} la registra el propio AGP;
+// jvmTarget explícito (default = android.compileOptions.targetCompatibility).
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 

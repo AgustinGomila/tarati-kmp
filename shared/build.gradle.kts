@@ -6,7 +6,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
@@ -42,7 +42,20 @@ val generateAppVersion by tasks.registering {
 }
 
 kotlin {
-    androidTarget {
+    android {
+        namespace = "com.agustin.tarati.shared"
+        compileSdk =
+            libs.versions.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.minSdk
+                .get()
+                .toInt()
+        // Requerido para que los composeResources (.cvr) se empaqueten como assets en el
+        // APK/AAB con el plugin Android KMP library (CMP-9547); sin esto la app crashea
+        // en runtime con MissingResourceException.
+        experimentalProperties["android.experimental.kmp.enableAndroidResources"] = true
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_21)
         }
@@ -156,38 +169,10 @@ kotlin {
     }
 }
 
-android {
-    namespace = "com.agustin.tarati.shared"
-    compileSdk =
-        libs.versions.compileSdk
-            .get()
-            .toInt()
-    ndkVersion = libs.versions.ndk.get()
-
-    defaultConfig {
-        minSdk = libs.versions.minSdk
-            .get()
-            .toInt()
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.toVersion(libs.versions.jvmCompatibility.get())
-        targetCompatibility = JavaVersion.toVersion(libs.versions.jvmCompatibility.get())
-    }
-
-    buildFeatures {
-        // Genera com.agustin.tarati.shared.BuildConfig (DEBUG) para el actual de `isDebugBuild`.
-        buildConfig = true
-    }
-
-    compose.resources {
-        publicResClass = true
-        packageOfResClass = "com.agustin.tarati.shared.generated.resources"
-        generateResClass = always
-    }
-
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "com.agustin.tarati.shared.generated.resources"
+    generateResClass = always
 }
 
 // Room Configuration

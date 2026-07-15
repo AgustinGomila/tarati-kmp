@@ -1,6 +1,6 @@
 [versions]
 # Android Core
-agp = "8.13.2"
+agp = "9.0.1"
 compileSdk = "36"
 jvmCompatibility = "21"
 ktorServerTest = "2.3.13"
@@ -29,7 +29,7 @@ datastore = "1.2.1"
 lifecycle-runtime-ktx = "2.10.0"
 
 # Room Multiplatform
-ksp = "2.2.21-2.0.5"
+ksp = "2.3.10"
 room = "2.8.4"
 sqlite = "2.6.2"
 
@@ -201,14 +201,12 @@ google-auth-oauth2 = { module = "com.google.auth:google-auth-library-oauth2-http
 [plugins]
 # Android
 android-application = { id = "com.android.application", version.ref = "agp" }
-android-library = { id = "com.android.library", version.ref = "agp" }
+androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 
 # Kotlin
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
-kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
 # Tools

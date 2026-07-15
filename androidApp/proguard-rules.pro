@@ -12,10 +12,16 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Reempaqueta todas las clases ofuscadas en el paquete raíz — reduce la tabla de
+# strings del DEX (nombres de paquete) y satisface el check "Reempaquetar clases"
+# de Play Console. Las clases mantenidas por -keep (Room *_Impl, Billing, Play
+# Games, etc.) conservan su nombre y quedan fuera del reempaquetado.
+-repackageclasses
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Preserva números de línea para que los stack traces de producción sean
+# retraceables con el mapping.txt (Play Console / crash reports).
+-keepattributes SourceFile,LineNumberTable
+
+# Oculta el nombre del archivo fuente original manteniendo el atributo presente
+# (requerido para que los números de línea sobrevivan).
+-renamesourcefileattribute SourceFile

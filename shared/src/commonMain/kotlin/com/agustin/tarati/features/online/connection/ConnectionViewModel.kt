@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.network.client.TaratiWebSocketClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -67,11 +68,13 @@ class ConnectionViewModel(
     ): Result<OnlineUserInfo> {
         logger.debug("connectToServer: $serverUrl")
         lastServerUrl = serverUrl
-        lastAuthToken = authToken
+        // Token fresco (renovado si está por expirar); el pasado queda como fallback (p. ej. guest).
+        val token = authViewModel.validToken() ?: authToken
+        lastAuthToken = token
         _connectionState.value = ConnectionState.Connecting
 
         return try {
-            wsClient.connect(authToken)
+            wsClient.connect(token)
 
             val userInfo = resolveUserInfo()
             lastUserInfo = userInfo
@@ -194,7 +197,10 @@ class ConnectionViewModel(
                 if (_connectionState.value !is ConnectionState.Reconnecting) return@launch
                 try {
                     lastUserInfo = userInfo
-                    wsClient.connect(lastAuthToken)
+                    // Token fresco en cada reintento (renovado si está por expirar).
+                    val token = authViewModel.validToken() ?: lastAuthToken
+                    lastAuthToken = token
+                    wsClient.connect(token)
                     // Éxito: syncWebSocketState(Connected) habrá seteado Online ya
                     logger.debug("Auto-reconnect attempt ${index + 1} succeeded")
                     return@launch
