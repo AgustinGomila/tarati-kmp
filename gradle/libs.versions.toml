@@ -3,12 +3,11 @@
 agp = "9.0.1"
 compileSdk = "36"
 jvmCompatibility = "21"
-ktorServerTest = "2.3.13"
 minSdk = "26"
 ndk = "29.0.14206865"
 
 # Kotlin
-kotlin = "2.4.0"
+kotlin = "2.4.10"
 kotlinxAtomicfu = "0.33.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
@@ -16,73 +15,66 @@ kotlinxSerialization = "1.11.0"
 
 # Compose
 activity-compose = "1.13.0"
-compose-bom = "2026.06.00"
+compose-bom = "2026.06.01"
 compose-material-icons = "1.7.8"
-compose-multiplatform = "1.10.3"
-lifecycle-view-model = "2.10.0"
+compose-multiplatform = "1.11.1"
 navigation-compose = "2.9.8"
 navigation-compose-multiplatform = "2.9.2"
 
 # AndroidX
+# core-ktx 1.19+ y lifecycle 2.11+ requieren compileSdk 37 + AGP 9.1 (gateado por soporte IDEA)
 core-ktx = "1.18.0"
 datastore = "1.2.1"
-lifecycle-runtime-ktx = "2.10.0"
+lifecycle = "2.10.0"
 
 # Room Multiplatform
 ksp = "2.3.10"
 room = "2.8.4"
-sqlite = "2.6.2"
+sqlite = "2.7.0"
 
 # DI
 koin = "4.2.2"
 
 # Testing
 androidTestRunner = "1.7.0"
+composeUiTest = "1.11.4"
 junit = "4.13.2"
-junitJupiter = "6.1.0"
+junit5 = "6.1.2"
 junitKtx = "1.3.0"
-junitVintageEngine = "6.1.0"
 h2 = "2.4.240"
 mockitoCore = "5.23.0"
 mockitoKotlin = "6.3.0"
 mockk = "1.14.11"
-uiGraphics = "1.11.3"
-koinTest = "4.2.2"
 
 # Google Services
-billing = "8.3.0"
+billing = "9.1.0"
 integrity = "1.6.0"
 playServicesGamesV2 = "21.0.0"
 
 # Ktor
-ktor = "3.5.0"
+ktor = "3.5.1"
 
 # Quality
 detekt = "1.23.8"
 
 # Server
-exposedCore = "1.3.0"
-exposedDao = "1.3.0"
-exposedJdbc = "1.3.0"
-exposedKotlinDatetime = "1.3.0"
-exposedMigrationJdbc = "1.3.0"
+exposed = "1.3.1"
 hikaricp = "7.1.0"
-javaJwt = "4.5.2"
+javaJwt = "4.6.0"
 jbcrypt = "0.4"
 kreds = "0.9.1"
-logback = "1.5.34"
+logback = "1.5.38"
 mp3spi = "1.9.5.4"
-postgresql = "42.7.11"
-resend = "3.1.0"
+postgresql = "42.7.13"
+resend = "4.13.0"
 slf4j = "1.7.36"
-micrometer = "1.13.6"
-sentry = "7.14.0"
-googleAuth = "1.48.0"
+micrometer = "1.17.0"
+sentry = "8.48.0"
+googleAuth = "1.49.0"
 
 # Utils
 material3 = "1.9.0"
 uuid = "0.8.4"
-okhttp = "3.5.0"
 
 [libraries]
 # ── Kotlin Multiplatform ──────────────────────────────────────────────────────
@@ -101,11 +93,11 @@ ktor-server-auto-head-response-jvm = { module = "io.ktor:ktor-server-auto-head-r
 ktor-server-cors-jvm = { module = "io.ktor:ktor-server-cors-jvm", version.ref = "ktor" }
 ktor-server-netty-jvm = { module = "io.ktor:ktor-server-netty-jvm", version.ref = "ktor" }
 ktor-server-status-pages-jvm = { module = "io.ktor:ktor-server-status-pages-jvm", version.ref = "ktor" }
-ktor-server-tests-jvm = { module = "io.ktor:ktor-server-tests-jvm", version.ref = "ktorServerTest" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 ktor-server-websockets-jvm = { module = "io.ktor:ktor-server-websockets-jvm", version.ref = "ktor" }
 ktor-serialization-kotlinx-json-jvm = { module = "io.ktor:ktor-serialization-kotlinx-json-jvm", version.ref = "ktor" }
 uuid = { module = "com.benasher44:uuid", version.ref = "uuid" }
-ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "okhttp" }
+ktor-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
 
 # ── Compose Multiplatform — shared/KMP (con versión explícita) ────────────────
 androidx-compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose-multiplatform" }
@@ -125,8 +117,8 @@ compose-material-icons-extended = { module = "androidx.compose.material:material
 
 # ── AndroidX ──────────────────────────────────────────────────────────────────
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
-androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle-runtime-ktx" }
-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-view-model" }
+androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation-compose" }
 
 # ── Room Multiplatform ────────────────────────────────────────────────────────
@@ -146,16 +138,16 @@ koin-compose = { module = "io.insert-koin:koin-androidx-compose", version.ref = 
 koin-compose-multiplatform = { module = "io.insert-koin:koin-compose", version.ref = "koin" }
 koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
-koin-test = { module = "io.insert-koin:koin-test", version.ref = "koinTest" }
+koin-test = { module = "io.insert-koin:koin-test", version.ref = "koin" }
 
 # ── Testing ───────────────────────────────────────────────────────────────────
-android-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "uiGraphics" }
+android-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4-android", version.ref = "composeUiTest" }
 androidx-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junitKtx" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidTestRunner" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junitJupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitVintageEngine" }
-junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junitVintageEngine" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit5" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit5" }
+junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit5" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
@@ -179,11 +171,11 @@ ktor-server-websockets = { module = "io.ktor:ktor-server-websockets", version.re
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 
 # ── Server ────────────────────────────────────────────────────────────────────
-exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposedCore" }
-exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposedKotlinDatetime" }
-exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposedJdbc" }
-exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposedDao" }
-exposed-migration-jdbc = { module = "org.jetbrains.exposed:exposed-migration-jdbc", version.ref = "exposedMigrationJdbc" }
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-kotlin-datetime = { module = "org.jetbrains.exposed:exposed-kotlin-datetime", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+exposed-migration-jdbc = { module = "org.jetbrains.exposed:exposed-migration-jdbc", version.ref = "exposed" }
 hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
 java-jwt = { module = "com.auth0:java-jwt", version.ref = "javaJwt" }
 jbcrypt = { module = "org.mindrot:jbcrypt", version.ref = "jbcrypt" }

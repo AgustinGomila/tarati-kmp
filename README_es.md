@@ -4,8 +4,8 @@
 
 <img src="screenshots/logo.png" alt="Logo" style="display: block; margin: 0 auto;">
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.0-purple.svg)](https://kotlinlang.org)
-[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.10.3-blue.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-purple.svg)](https://kotlinlang.org)
+[![Compose Multiplatform](https://img.shields.io/badge/Compose%20Multiplatform-1.11.1-blue.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
 [![Room](https://img.shields.io/badge/Room-2.8.4-red.svg)](https://developer.android.com/jetpack/androidx/releases/room)
 [![Android](https://img.shields.io/badge/Android-8.0%2B-green.svg)](https://www.android.com)
 [![Desktop](https://img.shields.io/badge/Desktop-Windows%20%7C%20macOS%20%7C%20Linux-orange.svg)](https://www.jetbrains.com/lp/compose-multiplatform/)
@@ -291,17 +291,17 @@ Todos los instaladores de escritorio y el APK de Android también están publica
 
 | Componente                | Librería / Versión                                                            |
 |---------------------------|-------------------------------------------------------------------------------|
-| Lenguaje                  | Kotlin 2.4.0                                                                  |
+| Lenguaje                  | Kotlin 2.4.10                                                                 |
 | Arquitectura              | Kotlin Multiplatform (KMP)                                                    |
-| UI                        | Compose Multiplatform 1.10.3, Material Design 3                               |
+| UI                        | Compose Multiplatform 1.11.1, Material Design 3                               |
 | Inyección de dependencias | Koin 4.2.2                                                                    |
 | Almacenamiento local      | Room 2.8.4 (Android/Desktop), DataStore 1.2.1 (Android)                       |
 | Tests                     | JUnit 4.13.2, MockK 1.14.11, Coroutines Test 1.11.0                           |
 | Concurrencia              | Kotlin Coroutines 1.11.0                                                      |
-| Networking                | Ktor 3.5.0 (cliente + servidor, online en tarati.tech)                        |
+| Networking                | Ktor 3.5.1 (cliente + servidor, online en tarati.tech)                        |
 | Cliente Redis             | Kreds 0.9.1 (Kotlin-nativo, coroutines-first)                                 |
-| Base de datos (servidor)  | PostgreSQL 16, Exposed ORM 1.3.0                                              |
-| Auth (servidor)           | Auth0 java-jwt 4.5.2, jBCrypt 0.4                                             |
+| Base de datos (servidor)  | PostgreSQL 16, Exposed ORM 1.3.1                                              |
+| Auth (servidor)           | Auth0 java-jwt 4.6.0, jBCrypt 0.4                                             |
 | Serialización             | kotlinx-serialization 1.11.0                                                  |
 | Tiempo                    | kotlinx-datetime 0.8.0                                                        |
 | IA                        | Minimax con poda Alpha-Beta, profundización iterativa, tabla de transposición |

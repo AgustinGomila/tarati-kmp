@@ -4,7 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.skiaCanvas
 import androidx.compose.ui.graphics.toArgb
 import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
 import org.jetbrains.skia.FilterBlurMode
@@ -89,7 +89,7 @@ actual fun DrawScope.drawFlipShadow(
     }
 
     rotate(degrees = shadowOvalAngle, pivot = Offset(cx, cy)) {
-        drawContext.canvas.nativeCanvas.apply {
+        drawContext.canvas.skiaCanvas.apply {
             // Umbra — óvalo base más opaco
             drawOval(
                 r = Rect.makeLTRB(cx - sRx, cy - sRy, cx + sRx, cy + sRy),

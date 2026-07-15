@@ -6,12 +6,14 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import org.jetbrains.skia.ColorAlphaType
 import org.jetbrains.skia.ColorType
-import org.jetbrains.skia.FilterTileMode
 import org.jetbrains.skia.Image
 import org.jetbrains.skia.ImageInfo
 
@@ -21,7 +23,7 @@ import org.jetbrains.skia.ImageInfo
  *
  * Paridad con androidMain: genera un bitmap de ruido procedural (xorshift, mismo
  * SEED) y lo usa como shader en tile REPEAT con [BlendMode.Overlay]. Android usa
- * `BitmapShader`; aquí se construye un [Image] raster y su shader equivalente.
+ * `BitmapShader`; aquí se construye un [Image] raster y su [ImageShader] equivalente.
  */
 actual object NoiseTexture {
     private const val SIZE = 128
@@ -63,7 +65,7 @@ actual object NoiseTexture {
         }
         val info = ImageInfo(SIZE, SIZE, ColorType.RGBA_8888, ColorAlphaType.OPAQUE)
         val image = Image.makeRaster(info, bytes, SIZE * 4)
-        val shader = image.makeShader(FilterTileMode.REPEAT, FilterTileMode.REPEAT)
+        val shader = ImageShader(image.toComposeImageBitmap(), TileMode.Repeated, TileMode.Repeated)
         return ShaderBrush(shader)
     }
 }

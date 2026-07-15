@@ -1,7 +1,9 @@
 package com.agustin.tarati.core.data.database
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
@@ -13,8 +15,16 @@ import com.agustin.tarati.core.data.database.entities.GameEntity
     version = 3,
     exportSchema = true,
 )
+@ConstructedBy(TaratiDatabaseConstructor::class)
 abstract class TaratiDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
+}
+
+// Constructor multiplataforma requerido por Room en targets sin reflexión (iOS).
+// El compilador de Room genera las implementaciones `actual` para cada plataforma.
+@Suppress("NO_ACTUAL_FOR_EXPECT", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+expect object TaratiDatabaseConstructor : RoomDatabaseConstructor<TaratiDatabase> {
+    override fun initialize(): TaratiDatabase
 }
 
 val MIGRATION_1_2: Migration =

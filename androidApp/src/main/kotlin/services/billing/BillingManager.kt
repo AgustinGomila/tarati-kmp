@@ -18,6 +18,7 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryPurchasesParams
+import com.android.billingclient.api.acknowledgePurchase
 import com.android.billingclient.api.queryProductDetails
 import com.android.billingclient.api.queryPurchasesAsync
 import kotlinx.coroutines.CoroutineScope
@@ -244,17 +245,11 @@ class BillingManager(
                 val ackParams = AcknowledgePurchaseParams.newBuilder()
                     .setPurchaseToken(purchase.purchaseToken)
                     .build()
-                val ackResult = withContext(Dispatchers.IO) {
-                    var result: BillingResult? = null
-                    billingClient.acknowledgePurchase(ackParams) { r -> result = r }
-                    // acknowledgePurchase es callback-based; esperamos hasta que result esté listo.
-                    // En práctica el callback llega en el mismo thread (Main) de forma síncrona.
-                    result
-                }
-                if (ackResult?.responseCode != BillingResponseCode.OK) {
+                val ackResult = billingClient.acknowledgePurchase(ackParams)
+                if (ackResult.responseCode != BillingResponseCode.OK) {
                     logger.debug(
                         "BillingManager: acknowledgePurchase failed for ${purchase.products} " +
-                                "(${ackResult?.responseCode})",
+                                "(${ackResult.responseCode})",
                     )
                 }
             }

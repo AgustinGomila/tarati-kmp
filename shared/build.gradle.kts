@@ -2,7 +2,7 @@
 
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
+import java.util.*
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -18,7 +18,9 @@ plugins {
 // appVersion generado desde version.properties — fuente única, incluye build number.
 // Reemplaza los antiguos AppInfo.kt hardcodeados ("1.0.0") por plataforma.
 // ─────────────────────────────────────────────────────────────────────────────
-val generateAppVersion by tasks.registering {
+val generateAppVersion = tasks.register("generateAppVersion") {
+    description =
+        "Generate AppVersion.kt from version.properties (single source of truth for versionName/code, replacing hardcoded platform-specific values)"
     val versionFile = rootProject.file("version.properties")
     val outputDir = layout.buildDirectory.dir("generated/appVersion/kotlin")
     inputs.file(versionFile)
@@ -42,6 +44,13 @@ val generateAppVersion by tasks.registering {
 }
 
 kotlin {
+    // Silencia el warning "expect/actual classes are in Beta" (KT-61573) en todas las
+    // compilaciones del módulo — lo dispara el actual de TaratiDatabaseConstructor que
+    // genera room-compiler, no anotable con @Suppress.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     android {
         namespace = "com.agustin.tarati.shared"
         compileSdk =
@@ -63,8 +72,8 @@ kotlin {
 
     jvm()
 
+    // iosX64 (simulador Intel) eliminado: CMP 1.11+ ya no publica artefactos para ese target
     listOf(
-        iosX64(),
         iosArm64(),
         iosSimulatorArm64(),
     ).forEach { iosTarget ->
@@ -124,7 +133,7 @@ kotlin {
 
         // roomMain: Room runtime para Android / iOS / JVM (sin wasmJs — no tiene artifact).
         // Fuentes Room en src/roomMain/kotlin/.
-        val roomMain by creating {
+        val roomMain = create("roomMain") {
             dependsOn(commonMain.get())
             dependencies {
                 implementation(libs.androidx.room.runtime)
@@ -138,7 +147,7 @@ kotlin {
         // skikoMain: implementación gráfica única basada en Skiko (org.jetbrains.skia),
         // compartida por Desktop (jvm), Web (wasmJs) e iOS (native). Android NO la usa
         // (su backend es android.graphics). Mismo patrón intermedio que roomMain.
-        val skikoMain by creating {
+        val skikoMain = create("skikoMain") {
             dependsOn(commonMain.get())
         }
         jvmMain.get().dependsOn(skikoMain)
@@ -185,7 +194,6 @@ dependencies {
     add("kspAndroid", libs.androidx.room.compiler)
 
     // Room KSP para iOS
-    add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
 

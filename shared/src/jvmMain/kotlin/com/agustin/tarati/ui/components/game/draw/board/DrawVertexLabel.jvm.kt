@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.skiaCanvas
 import androidx.compose.ui.graphics.toArgb
 import org.jetbrains.skia.Font
 import org.jetbrains.skia.Paint
@@ -21,7 +22,7 @@ actual fun DrawScope.drawVertexLabel(
             this.color = color.toArgb()
         }
         val font = Font(null, textSize)
-        canvas.nativeCanvas.drawTextLine(
+        canvas.skiaCanvas.drawTextLine(
             line = TextLine.make(label, font),
             x = position.x - textSize * 0.8f,
             y = position.y - textSize * 0.8f,

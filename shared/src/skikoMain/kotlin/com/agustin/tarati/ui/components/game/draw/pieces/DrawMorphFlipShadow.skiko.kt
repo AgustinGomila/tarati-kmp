@@ -3,13 +3,13 @@ package com.agustin.tarati.ui.components.game.draw.pieces
 import androidx.compose.ui.graphics.asSkiaPath
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.skiaCanvas
 import androidx.compose.ui.graphics.toArgb
 import org.jetbrains.skia.FilterBlurMode
 import org.jetbrains.skia.MaskFilter
 import org.jetbrains.skia.Matrix33
 import org.jetbrains.skia.Paint
-import org.jetbrains.skia.Path as SkiaPath
+import org.jetbrains.skia.PathBuilder
 
 /**
  * Implementación Skiko de [drawMorphFlipShadow] (org.jetbrains.skia) — compartida por
@@ -32,10 +32,9 @@ actual fun DrawScope.drawMorphFlipShadow(params: MorphFlipShadowParams) {
     val matrix = Matrix33(*params.transformMatrix)
 
     // Copia del path para no mutar el backing del Path de Compose original.
-    val shadowSkia = SkiaPath().apply {
-        addPath(params.shadowPath.asSkiaPath())
-        transform(matrix)
-    }
+    val shadowSkia = PathBuilder()
+        .addPath(params.shadowPath.asSkiaPath(), matrix)
+        .detach()
 
     fun skiaPaint(alpha: Float, blurRadius: Float): Paint = Paint().apply {
         isAntiAlias = true
@@ -47,7 +46,7 @@ actual fun DrawScope.drawMorphFlipShadow(params: MorphFlipShadowParams) {
     }
 
     translate(left = params.position.x - params.radius, top = params.position.y - params.radius) {
-        drawContext.canvas.nativeCanvas.apply {
+        drawContext.canvas.skiaCanvas.apply {
             // Capa 1: Umbra (sombra principal)
             drawPath(shadowSkia, skiaPaint(alpha = params.umbraAlpha, blurRadius = params.umbraBlur))
 
