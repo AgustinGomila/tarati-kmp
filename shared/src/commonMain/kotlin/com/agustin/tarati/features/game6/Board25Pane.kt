@@ -31,6 +31,7 @@ fun Board25Pane(
     preMoveTargets: Set<Vertex> = emptySet(),
     pendingPreMove: MpMove? = null,
     forcedLabelVertices: Set<Vertex> = emptySet(),
+    guideArrows: List<MpMove> = emptyList(),
 ) {
     Board25View(
         state = state,
@@ -55,5 +56,6 @@ fun Board25Pane(
         preMoveTargets = preMoveTargets,
         pendingPreMove = pendingPreMove,
         forcedLabelVertices = forcedLabelVertices,
+        guideArrows = guideArrows,
     )
 }

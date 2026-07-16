@@ -84,23 +84,45 @@ fun DrawScope.drawArrowEdgeHighlightFromVertex(
     val shortSide = minOf(canvasSize.width, canvasSize.height)
     val pieceRadius = shortSide * 0.08f / 2f
 
+    drawArrowHighlight(
+        from = fromPos,
+        to = toPos,
+        pieceRadius = pieceRadius,
+        strokeWidth = shortSide * arrowStokeFactor,
+        colors = colors,
+        pulse = highlight.pulse,
+    )
+}
+
+/**
+ * Variante con posiciones ([from]→[to]) y [pieceRadius] **explícitos** de la flecha de movimiento
+ * sugerido (parpadea con [pulse]). Para reutilizar en tableros con geometría propia (p. ej. el
+ * multijugador), donde las posiciones no salen de `getVisualPosition`.
+ */
+fun DrawScope.drawArrowHighlight(
+    from: Offset,
+    to: Offset,
+    pieceRadius: Float,
+    strokeWidth: Float,
+    colors: BoardColors,
+    pulse: Boolean = false,
+) {
     // Recortar extremos para que la flecha arranque en el borde de la pieza origen
     // y la punta no llegue al centro del vértice destino.
-    val dx = toPos.x - fromPos.x
-    val dy = toPos.y - fromPos.y
+    val dx = to.x - from.x
+    val dy = to.y - from.y
     val len = sqrt(dx * dx + dy * dy).coerceAtLeast(1f)
     val ux = dx / len
     val uy = dy / len
     val startPad = pieceRadius * arrowStartPadFactor
     val endPad = pieceRadius * arrowEndPadFactor
-    val start = Offset(fromPos.x + ux * startPad, fromPos.y + uy * startPad)
-    val end = Offset(toPos.x - ux * endPad, toPos.y - uy * endPad)
+    val start = Offset(from.x + ux * startPad, from.y + uy * startPad)
+    val end = Offset(to.x - ux * endPad, to.y - uy * endPad)
 
-    val strokeWidth = shortSide * arrowStokeFactor
     val arrowSize = pieceRadius * arrowSizeFactor
     val arrowWidth = arrowSize * arrowWidthFactor
 
-    val pulseAlpha = if (highlight.pulse) {
+    val pulseAlpha = if (pulse) {
         val t = (Clock.System.now().toEpochMilliseconds() % 900L) / 900f
         sin(t * 2 * PI).toFloat() * arrowPulseAlpha
     } else arrowPulseAlpha

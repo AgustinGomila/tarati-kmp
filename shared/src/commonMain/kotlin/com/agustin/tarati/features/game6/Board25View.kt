@@ -59,6 +59,7 @@ import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
+import com.agustin.tarati.ui.components.game.draw.board.drawArrowHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawDynamicEdgeElectricHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcDynamicHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcImpactHighlight
@@ -288,6 +289,8 @@ private fun DrawScope.drawMpRestingPiece(
  * @param preMoveFrom pieza pre-seleccionada durante el turno ajeno (halo pulsante + dots de destino).
  * @param preMoveTargets destinos legales de [preMoveFrom].
  * @param pendingPreMove pre-movimiento confirmado (flecha), pendiente de ejecución al volver el turno.
+ * @param guideArrows movimientos permitidos de un paso interactivo del tutorial, marcados con la
+ *   misma flecha parpadeante que el tutorial single ([drawArrowHighlight]).
  */
 @Composable
 fun Board25View(
@@ -315,6 +318,7 @@ fun Board25View(
     // Vértices cuya etiqueta se muestra **aunque** [showLabels] esté apagado (p. ej. el tutorial
     // resalta el nombre del vértice que explica). Ignorado si [showLabels] ya está activo.
     forcedLabelVertices: Set<Vertex> = emptySet(),
+    guideArrows: List<MpMove> = emptyList(),
 ) {
     val boardColors = getBoardColors()
     val edgeColor = boardColors.boardEdgeColor.copy(alpha = 0.8f)
@@ -335,12 +339,13 @@ fun Board25View(
         converted.keys.associateWith { resolveConversionType(conversionStyle) }
     }
 
-    // Tick a ~60fps mientras haya una pieza seleccionada o un pre-movimiento activo, para animar el
-    // selector (anillo rotatorio), el pulso de los vértices alcanzables/amenazados y el halo del pre-move.
+    // Tick a ~60fps mientras haya una pieza seleccionada, un pre-movimiento activo o flechas guía
+    // del tutorial, para animar el selector (anillo rotatorio), el pulso de los vértices
+    // alcanzables/amenazados, el halo del pre-move y el parpadeo de las flechas.
     var animTick by remember { mutableLongStateOf(0L) }
     val hasSelection = selection != null
     val preMoveActive = preMoveFrom != null || pendingPreMove != null
-    val tickActive = hasSelection || preMoveActive
+    val tickActive = hasSelection || preMoveActive || guideArrows.isNotEmpty()
     LaunchedEffect(tickActive, animate) {
         while (tickActive && animate) {
             animTick = Clock.System.now().toEpochMilliseconds()
@@ -438,6 +443,21 @@ fun Board25View(
                         colors = boardColors,
                     )
                 }
+            }
+
+            // Flechas guía del tutorial (movimientos permitidos del paso interactivo) — misma
+            // flecha parpadeante que los pasos interactivos del tutorial single. Se dibujan **bajo
+            // las piezas** (sobre los vértices/aristas) para no taparlas. El grosor conserva la
+            // proporción flecha/pieza de single (0.03/0.04 = 0.75 del radio de pieza).
+            guideArrows.forEach { move ->
+                drawArrowHighlight(
+                    from = screen.getValue(move.from),
+                    to = screen.getValue(move.to),
+                    pieceRadius = pieceRadius,
+                    strokeWidth = pieceRadius * 0.75f,
+                    colors = boardColors,
+                    pulse = animate,
+                )
             }
 
             // Piezas — cob de Tarati. La del último movimiento se desliza; las capturadas voltean

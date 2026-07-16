@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialState
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialStep
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialStepId
@@ -125,10 +126,19 @@ internal fun MpTutorialBoard(
     val legalTargets by viewModel.legalTargets.collectAsState()
     val converted by viewModel.converted.collectAsState()
     val lastMove by viewModel.lastMove.collectAsState()
+    val tutorialState by viewModel.tutorialState.collectAsState()
 
     // Vértices que el paso resalta (la pieza y sus destinos): se etiquetan aunque las etiquetas estén
     // apagadas en Settings, para que el usuario ubique el vértice del que habla el paso.
     val forcedLabels = remember(selection, legalTargets) { legalTargets + listOfNotNull(selection) }
+
+    // Flechas guía del paso interactivo: los movimientos permitidos, con la misma flecha parpadeante
+    // que el tutorial single. Solo mientras la pieza sugerida siga seleccionada — si el usuario
+    // explora otra pieza propia (o ya resolvió el paso), las flechas se ocultan junto con los cues.
+    val guideArrows = remember(tutorialState, selection) {
+        val step = (tutorialState as? MpTutorialState.WaitingForMove)?.step
+        if (step != null && selection == step.selection) step.expectedMoves else emptyList<MpMove>()
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         display?.let { state ->
@@ -144,6 +154,7 @@ internal fun MpTutorialBoard(
                 boardVisual = boardVisual,
                 onVertexTap = viewModel::onVertexTap,
                 forcedLabelVertices = forcedLabels,
+                guideArrows = guideArrows,
                 modifier = Modifier.fillMaxSize().padding(12.dp),
             )
         }
