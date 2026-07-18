@@ -2,24 +2,16 @@ package com.agustin.tarati.core.domain.game.board
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import com.agustin.tarati.core.domain.game.pieces.CobColor
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
 
 /**
  * Extensiones de geometría visual para GameBoard.
- * Contiene funciones de renderizado que dependen de Compose (Offset, Size).
- *
- * Este archivo va en androidApp porque usa tipos Android-specific.
+ * Contiene funciones de renderizado que dependen de Compose (Offset, Size) —
+ * por eso viven separadas de [GameBoard], que se mantiene libre de
+ * dependencias de UI.
  */
 
 // ========== Constantes de Renderizado ==========
 
-private const val REFERENCE_BOARD_SIZE = 1100f
-private const val VERTEX_WIDTH = 250f
 const val BOARD_MARGIN_PERCENT: Float = 0.8f
 
 // ========== Data Classes de Renderizado ==========
@@ -49,14 +41,14 @@ data class NormalizedBounds(
 
 /**
  * Posiciones normalizadas de todos los vértices (0.0 a 1.0).
- * Calculadas una vez y cachéadas.
+ * Derivadas de [GameBoard.logicalPositions] (la única fuente de la geometría)
+ * y calculadas una vez.
  */
 val normalizedPositions: Map<Vertex, NormalizedBoard> by lazy {
-    GameBoard.vertices.associateWith { vertex ->
-        val position = getPosition(vertex, REFERENCE_BOARD_SIZE to REFERENCE_BOARD_SIZE, VERTEX_WIDTH)
+    GameBoard.logicalPositions.mapValues { (_, position) ->
         NormalizedBoard(
-            position.x / REFERENCE_BOARD_SIZE,
-            position.y / REFERENCE_BOARD_SIZE,
+            position.x / GameBoard.REFERENCE_BOARD_SIZE,
+            position.y / GameBoard.REFERENCE_BOARD_SIZE,
         )
     }
 }
@@ -158,79 +150,20 @@ fun findClosestVertex(
     size: Size,
     maxTapDistance: Float,
     orientation: BoardOrientation,
-): Vertex? =
-    GameBoard.vertices
-        .minByOrNull { vertex ->
+): Vertex? {
+    // Una posición y una distancia (al cuadrado) por vértice; el umbral se
+    // compara también al cuadrado para evitar la raíz.
+    val closest = GameBoard.vertices
+        .map { vertex ->
             val pos = getVisualPosition(vertex, size, orientation)
-            sqrt((tapOffset.x - pos.x).pow(2) + (tapOffset.y - pos.y).pow(2))
-        }?.takeIf { vertex ->
-            val pos = getVisualPosition(vertex, size, orientation)
-            sqrt((tapOffset.x - pos.x).pow(2) + (tapOffset.y - pos.y).pow(2)) < maxTapDistance
+            vertex to (tapOffset - pos).getDistanceSquared()
         }
+        .minByOrNull { (_, distanceSq) -> distanceSq }
+        ?: return null
 
-/**
- * Calcula la posición física de un vértice en el sistema de coordenadas del tablero.
- * Usado internamente para cálculos de renderizado.
- */
-private fun getPosition(
-    vertex: Vertex,
-    boardSize: Pair<Float, Float>,
-    vWidth: Float,
-): Offset {
-    val (width, height) = boardSize
-    val centerX = width / 2
-    val centerY = height / 2
-
-    if (vertex == GameBoard.A1) return Offset(centerX, centerY)
-
-    return when (vertex.zone) {
-        GameBoard.BRIDGE -> {
-            val angle = (vertex.position - 1) * (PI / 3)
-            Offset(
-                x = centerX + vWidth * cos(angle + PI / 2).toFloat(),
-                y = centerY + vWidth * sin(angle + PI / 2).toFloat(),
-            )
-        }
-
-        GameBoard.CIRCUMFERENCE -> {
-            val angle = (vertex.position - 1) * (PI / 6) - PI / 12 + PI / 2
-            val radius = vWidth * (1 + sqrt(11.0 / 13)).toFloat()
-            Offset(
-                x = centerX + radius * cos(angle).toFloat(),
-                y = centerY + radius * sin(angle).toFloat(),
-            )
-        }
-
-        GameBoard.DOMESTIC -> {
-            val connectedC = getConnectedCircumferenceVertex(vertex)
-            val baseRadius = vWidth * (1 + sqrt(11.0 / 13)).toFloat()
-            val baseAngle = (connectedC.position - 1) * (PI / 6) - PI / 12 + PI / 2
-
-            val basePos =
-                Offset(
-                    x = centerX + baseRadius * cos(baseAngle).toFloat(),
-                    y = centerY + baseRadius * sin(baseAngle).toFloat(),
-                )
-
-            val displacement =
-                if (vertex in GameBoard.homeBases[CobColor.WHITE]!!) {
-                    Offset(0f, vWidth)
-                } else {
-                    Offset(0f, -vWidth)
-                }
-
-            basePos + displacement
-        }
-
-        else -> Offset(centerX, centerY)
-    }
+    val (vertex, distanceSq) = closest
+    return vertex.takeIf { distanceSq < maxTapDistance * maxTapDistance }
 }
-
-private fun getConnectedCircumferenceVertex(domesticVertex: Vertex): Vertex =
-    GameBoard.domesticEdges
-        .filter { it.from == domesticVertex || it.to == domesticVertex }
-        .flatMap { listOf(it.from, it.to) }
-        .first { it.zone == GameBoard.CIRCUMFERENCE }
 
 // ========== Cache de Posiciones Visuales ==========
 

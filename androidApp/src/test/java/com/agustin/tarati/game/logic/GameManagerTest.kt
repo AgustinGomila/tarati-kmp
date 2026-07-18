@@ -178,6 +178,40 @@ class GameManagerTest {
         )
     }
 
+    // ── undo / navigation back to the initial position ────────────────────────
+
+    @Test
+    fun `undoMove past the first move restores the custom initial state`() {
+        manager.updateHistory(listOf(Move(C3 to B1)), initialState = editedState)
+
+        manager.undoMove()
+
+        assertEquals("moveIndex is -1 after undoing the only move", -1, manager.moveIndex.value)
+        assertEquals(
+            "Board shows the edited start, not the standard opening",
+            editedState, manager.gameState.value,
+        )
+    }
+
+    @Test
+    fun `updateHistory adopts the custom initialState as the game's initial position`() {
+        manager.updateHistory(listOf(Move(C3 to B1)), initialState = editedState)
+
+        assertEquals(
+            "initialGameState tracks the state history was rebuilt from",
+            editedState, manager.initialGameState,
+        )
+    }
+
+    @Test
+    fun `clearHistory adopts the given state as the game's initial position`() {
+        manager.clearHistory(editedState)
+
+        assertEquals("initialGameState tracks the cleared-to state", editedState, manager.initialGameState)
+        assertEquals("Board shows the given state", editedState, manager.gameState.value)
+        assertEquals("moveIndex is -1", -1, manager.moveIndex.value)
+    }
+
     // ── setInitialGameState ───────────────────────────────────────────────────
 
     @Test

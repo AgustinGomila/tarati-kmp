@@ -41,14 +41,14 @@ fun DrawScope.drawEdges(
     if (edgesVisible) {
         val strokeWidth: Float = minOf(canvasSize.width, canvasSize.height) * edgesStrokeFactor
 
-        edges.forEach { (edge) ->
+        edges.forEach { edge ->
             // OPT: positionCache elimina 2 × 34 = 68 llamadas a getVisualPosition
             // por redibujado del canvas estático, evitando las multiplicaciones
             // matriciales correspondientes.
-            val fromPos = positionCache?.get(edge.first)
-                ?: getVisualPosition(vertex = edge.first, size = canvasSize, orientation = orientation)
-            val toPos = positionCache?.get(edge.second)
-                ?: getVisualPosition(vertex = edge.second, size = canvasSize, orientation = orientation)
+            val fromPos = positionCache?.get(edge.from)
+                ?: getVisualPosition(vertex = edge.from, size = canvasSize, orientation = orientation)
+            val toPos = positionCache?.get(edge.to)
+                ?: getVisualPosition(vertex = edge.to, size = canvasSize, orientation = orientation)
 
             drawLine(
                 color = colors.boardEdgeColor.copy(alpha = edgesStrokeAlpha),

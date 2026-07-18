@@ -64,8 +64,6 @@ enum class TimeControl {
         fun fromKey(value: String): TimeControl =
             valueOf(value.uppercase())
 
-        fun list(): List<String> {
-            return listOf(BULLET.key, BLITZ.key, RAPID.key, CLASSICAL.key)
-        }
+        fun list(): List<String> = entries.map { it.key }
     }
 }

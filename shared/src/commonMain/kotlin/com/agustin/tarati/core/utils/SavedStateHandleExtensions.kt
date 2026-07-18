@@ -9,7 +9,12 @@ import kotlinx.serialization.serializer
  *
  * Permite guardar/recuperar objetos @Serializable serializándolos como JSON strings.
  */
-val json: Json = Json {
+
+/**
+ * Configuración de Json tolerante usada por [putSerializable]/[getSerializable].
+ * Pública porque las funciones inline reified la referencian desde el call site.
+ */
+val savedStateJson: Json = Json {
     ignoreUnknownKeys = true
     prettyPrint = false
     allowStructuredMapKeys = true
@@ -23,7 +28,7 @@ inline fun <reified T> SavedStateHandle.putSerializable(key: String, value: T?) 
         remove<String>(key)
     } else {
         val serializer = serializer<T>()
-        val jsonString = json.encodeToString(serializer, value)
+        val jsonString = savedStateJson.encodeToString(serializer, value)
         set(key, jsonString)
     }
 }
@@ -35,7 +40,7 @@ inline fun <reified T> SavedStateHandle.getSerializable(key: String): T? {
     val jsonString = get<String>(key) ?: return null
     return try {
         val serializer = serializer<T>()
-        json.decodeFromString(serializer, jsonString)
+        savedStateJson.decodeFromString(serializer, jsonString)
     } catch (e: Exception) {
         null
     }

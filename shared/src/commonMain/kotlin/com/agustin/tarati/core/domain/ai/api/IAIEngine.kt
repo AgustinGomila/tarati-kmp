@@ -26,7 +26,12 @@ data class DrawContext(
 interface IAIEngine {
     val name: String
 
-    val positionHistory: MutableMap<String, Int>
+    /**
+     * Historial de posiciones (hash → nº de ocurrencias) para la detección de
+     * triple repetición. Solo lectura desde afuera: se muta exclusivamente vía
+     * [putState] / [removeState] / [clearHistory].
+     */
+    val positionHistory: Map<String, Int>
 
     suspend fun getNextMove(gameState: GameState): MoveEval
 

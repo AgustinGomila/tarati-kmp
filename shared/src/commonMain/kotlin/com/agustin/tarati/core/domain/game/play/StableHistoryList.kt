@@ -18,11 +18,11 @@ import kotlinx.serialization.Serializable
  * compilador de Compose que el contenido no cambiará de forma observable
  * entre recomposiciones para la misma instancia, habilitando los skips.
  *
- * ## Parcelable para SavedStateHandle
- * La anotación [@Parcelize] permite serializar el historial en
- * [androidx.lifecycle.SavedStateHandle], sobreviviendo rotaciones de pantalla
- * y muerte de proceso. Una `List<HistoryEntry>` plana no sería serializable
- * directamente por `SavedStateHandle` sin configuración adicional.
+ * ## Serialización para SavedStateHandle
+ * La anotación [Serializable] permite persistir el historial como JSON en
+ * `SavedStateHandle` (vía `putSerializable`/`getSerializable` de
+ * SavedStateHandleExtensions), sobreviviendo rotaciones de pantalla y
+ * muerte de proceso.
  */
 @Stable
 @Serializable

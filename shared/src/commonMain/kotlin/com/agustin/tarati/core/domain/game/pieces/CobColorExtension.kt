@@ -6,12 +6,10 @@ import com.agustin.tarati.shared.generated.resources.white
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Extensiones Android para CobColor.
+ * Extensiones de CobColor con recursos de UI (Compose Resources).
  */
 
-/**
- * Alternativa: Property para mayor consistencia con otras extensiones.
- */
+/** Nombre localizado del color para mostrar en la UI. */
 val CobColor.colorNameRes: StringResource
     get() = when (this) {
         CobColor.WHITE -> Res.string.white

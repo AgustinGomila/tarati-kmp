@@ -70,7 +70,6 @@ internal class LegacyTaratiAI : IAIEngine {
         transpositionTable.clear()
         positionHistory.clear()
         cache.clear()
-        moveEvaluator.clearHeuristics()
     }
 
     override fun setConfig(config: EvaluationConfig) {

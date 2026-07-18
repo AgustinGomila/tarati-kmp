@@ -2,8 +2,15 @@ package com.agustin.tarati.core.domain.game.board
 
 import kotlinx.serialization.Serializable
 
+/**
+ * Arista no dirigida entre dos vértices del tablero.
+ *
+ * La igualdad es **simétrica**: `Edge(a to b) == Edge(b to a)` (con hashCode
+ * conmutativo acorde). Clase normal, no data class: los `copy`/`componentN`
+ * generados serían inconsistentes con esa igualdad no posicional.
+ */
 @Serializable
-data class Edge(
+class Edge(
     val pair: Pair<Vertex, Vertex>,
 ) {
     val from: Vertex get() = this.pair.first
@@ -19,4 +26,6 @@ data class Edge(
     }
 
     override fun hashCode(): Int = from.hashCode() + to.hashCode()
+
+    override fun toString(): String = name
 }

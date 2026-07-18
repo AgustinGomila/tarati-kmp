@@ -74,8 +74,9 @@ class HybridEvaluationCache(
         isMaximizing: Boolean,
         depth: Int,
     ): String {
-        val repetitionKey = positionHistory[gameState.hashBoard()] ?: 0
-        return "${gameState.hashBoard()}:$isMaximizing:$depth:$repetitionKey"
+        val hash = gameState.hashBoard()
+        val repetitionKey = positionHistory[hash] ?: 0
+        return "$hash:$isMaximizing:$depth:$repetitionKey"
     }
 
     fun getMoveOrdering(

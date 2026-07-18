@@ -17,13 +17,16 @@ import kotlin.math.sqrt
 object GameBoard {
     // ========== Constantes de Juego ==========
 
-    /** Umbral en unidades normalizadas para determinar si un movimiento es "hacia adelante" */
+    /** Umbral en unidades de referencia para determinar si un movimiento es "hacia adelante" */
     private const val FORWARD_MOVE_THRESHOLD = 10f
 
-    /** Tamaño de referencia para cálculos normalizados */
-    private const val REFERENCE_BOARD_SIZE = 1100f
+    /**
+     * Tamaño de referencia sobre el que se calculan las [logicalPositions].
+     * `BoardGeometry` lo usa para normalizarlas a 0..1.
+     */
+    const val REFERENCE_BOARD_SIZE: Float = 1100f
 
-    /** Ancho de vértice en unidades normalizadas */
+    /** Ancho de vértice en unidades de referencia */
     private const val VERTEX_WIDTH = 250f
 
     // ========== Zones ==========
@@ -200,75 +203,76 @@ object GameBoard {
     }
 
     /**
-     * Mapa de adyacencias del tablero.
+     * Mapa de adyacencias del tablero, derivado de [edges]. Inmutable hacia
+     * afuera — la topología no cambia tras la construcción.
      * CRÍTICO: Usado por el motor de IA para generar movimientos válidos.
      */
-    val adjacencyMap: MutableMap<Vertex, MutableList<Vertex>> by lazy {
-        edges.fold(mutableMapOf<Vertex, MutableList<Vertex>>()) { map, edge ->
-            map.apply {
-                getOrPut(edge.from) { mutableListOf() }.add(edge.to)
-                getOrPut(edge.to) { mutableListOf() }.add(edge.from)
-            }
+    val adjacencyMap: Map<Vertex, List<Vertex>> by lazy {
+        val map = mutableMapOf<Vertex, MutableList<Vertex>>()
+        edges.forEach { edge ->
+            map.getOrPut(edge.from) { mutableListOf() }.add(edge.to)
+            map.getOrPut(edge.to) { mutableListOf() }.add(edge.from)
         }
+        map
     }
 
     // ========== Movement Logic ==========
 
     /**
-     * Posición normalizada de un vértice (sin depender de Compose).
+     * Posición lógica 2D de un vértice (sin depender de Compose).
      */
-    private data class Position2D(val x: Float, val y: Float)
+    data class Position2D(val x: Float, val y: Float)
 
     /**
-     * Calcula la posición normalizada de un vértice.
-     * NOTA: Esta es una versión simplificada para lógica de juego.
-     * Para renderizado visual, usar BoardGeometry en androidApp.
+     * Posición lógica de cada vértice sobre el tamaño de referencia
+     * [REFERENCE_BOARD_SIZE], calculada una única vez. Única fuente de la
+     * geometría del tablero: `BoardGeometry` deriva de aquí las posiciones
+     * visuales normalizadas y [forwardTargets] la direccionalidad.
      */
-    private fun getLogicalPosition(
-        vertex: Vertex,
-        boardSize: Pair<Float, Float>,
-        vWidth: Float,
-    ): Position2D {
-        val (width, height) = boardSize
-        val centerX = width / 2
-        val centerY = height / 2
+    val logicalPositions: Map<Vertex, Position2D> by lazy {
+        vertices.associateWith { computeLogicalPosition(it) }
+    }
 
-        if (vertex == A1) return Position2D(centerX, centerY)
+    /** Calcula la posición lógica de un vértice en el tamaño de referencia. */
+    private fun computeLogicalPosition(vertex: Vertex): Position2D {
+        val center = REFERENCE_BOARD_SIZE / 2
+
+        if (vertex == A1) return Position2D(center, center)
 
         return when (vertex.zone) {
             BRIDGE -> {
                 val angle = (vertex.position - 1) * (PI / 3)
                 Position2D(
-                    x = centerX + vWidth * cos(angle + PI / 2).toFloat(),
-                    y = centerY + vWidth * sin(angle + PI / 2).toFloat(),
+                    x = center + VERTEX_WIDTH * cos(angle + PI / 2).toFloat(),
+                    y = center + VERTEX_WIDTH * sin(angle + PI / 2).toFloat(),
                 )
             }
 
             CIRCUMFERENCE -> {
                 val angle = (vertex.position - 1) * (PI / 6) - PI / 12 + PI / 2
-                val radius = vWidth * (1 + sqrt(11.0 / 13)).toFloat()
+                val radius = VERTEX_WIDTH * (1 + sqrt(11.0 / 13)).toFloat()
                 Position2D(
-                    x = centerX + radius * cos(angle).toFloat(),
-                    y = centerY + radius * sin(angle).toFloat(),
+                    x = center + radius * cos(angle).toFloat(),
+                    y = center + radius * sin(angle).toFloat(),
                 )
             }
 
             DOMESTIC -> {
                 val connectedC = getConnectedCircumferenceVertex(vertex)
-                val baseRadius = vWidth * (1 + sqrt(11.0 / 13)).toFloat()
+                val baseRadius = VERTEX_WIDTH * (1 + sqrt(11.0 / 13)).toFloat()
                 val baseAngle = (connectedC.position - 1) * (PI / 6) - PI / 12 + PI / 2
 
                 val basePos =
                     Position2D(
-                        x = centerX + baseRadius * cos(baseAngle).toFloat(),
-                        y = centerY + baseRadius * sin(baseAngle).toFloat(),
+                        x = center + baseRadius * cos(baseAngle).toFloat(),
+                        y = center + baseRadius * sin(baseAngle).toFloat(),
                     )
 
                 val displacement =
                     if (vertex in homeBases[CobColor.WHITE]!!) {
-                        Position2D(0f, vWidth)
+                        Position2D(0f, VERTEX_WIDTH)
                     } else {
-                        Position2D(0f, -vWidth)
+                        Position2D(0f, -VERTEX_WIDTH)
                     }
 
                 Position2D(
@@ -277,7 +281,7 @@ object GameBoard {
                 )
             }
 
-            else -> Position2D(centerX, centerY)
+            else -> Position2D(center, center)
         }
     }
 
@@ -288,16 +292,46 @@ object GameBoard {
             .first { it.zone == CIRCUMFERENCE }
 
     /**
+     * Destinos "hacia adelante" por color para cada vértice, precomputados una
+     * única vez sobre las aristas del tablero con el predicado geométrico
+     * [computeIsForwardMove]. Evita recalcular trigonometría en cada consulta
+     * del generador/validador de movimientos (hot path del minimax).
+     */
+    private val forwardTargets: Map<CobColor, Map<Vertex, Set<Vertex>>> by lazy {
+        CobColor.entries.associateWith { color ->
+            val targets = mutableMapOf<Vertex, MutableSet<Vertex>>()
+            edges.forEach { edge ->
+                if (computeIsForwardMove(color, edge.from, edge.to)) {
+                    targets.getOrPut(edge.from) { mutableSetOf() }.add(edge.to)
+                }
+                if (computeIsForwardMove(color, edge.to, edge.from)) {
+                    targets.getOrPut(edge.to) { mutableSetOf() }.add(edge.from)
+                }
+            }
+            targets
+        }
+    }
+
+    /**
      * Determina si un movimiento es "hacia adelante" para un color dado.
      * WHITE avanza hacia arriba (Y decrece), BLACK hacia abajo (Y crece).
+     *
+     * Consulta la tabla precomputada [forwardTargets], definida sobre las
+     * aristas del tablero: un par de vértices no adyacentes nunca es forward.
      */
     fun isForwardMove(
         color: CobColor,
         move: Move,
+    ): Boolean = forwardTargets.getValue(color)[move.from]?.contains(move.to) == true
+
+    /** Predicado geométrico usado para construir [forwardTargets]. */
+    private fun computeIsForwardMove(
+        color: CobColor,
+        from: Vertex,
+        to: Vertex,
     ): Boolean {
-        val boardCenter = VERTEX_WIDTH to VERTEX_WIDTH
-        val fromPos = getLogicalPosition(move.from, boardCenter, VERTEX_WIDTH)
-        val toPos = getLogicalPosition(move.to, boardCenter, VERTEX_WIDTH)
+        val fromPos = logicalPositions.getValue(from)
+        val toPos = logicalPositions.getValue(to)
 
         return when (color) {
             CobColor.WHITE -> fromPos.y - toPos.y > FORWARD_MOVE_THRESHOLD

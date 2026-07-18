@@ -205,6 +205,22 @@ class ZobristHashTest {
         assert(valid) { "hashBoard() must return a hex string, got: $h" }
     }
 
+    // ── 9. Cross-process stability (fixed-seed contract) ─────────────────────
+
+    @Test
+    fun `initial position hash matches the golden value`() {
+        // The Zobrist tables derive from a fixed seed (SplitMix64), so the hash
+        // of a given position is identical across processes, platforms and
+        // releases: positionHistory maps keyed by these hashes are persisted
+        // (server session recovery in Redis). If this test fails, the key
+        // derivation changed and any persisted position history is orphaned.
+        assertEquals(
+            "hashBoard must be stable across processes (fixed Zobrist seed)",
+            "437858b6624d9d48",
+            initialGameState().hashBoard(),
+        )
+    }
+
     @Test
     fun `domestic vertex pieces are correctly included in hash`() {
         val withDomestic = GameState(

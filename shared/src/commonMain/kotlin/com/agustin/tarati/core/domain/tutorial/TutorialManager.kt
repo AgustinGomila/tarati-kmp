@@ -7,6 +7,8 @@ import com.agustin.tarati.ui.components.game.animation.AnimationEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +20,9 @@ import kotlin.time.Duration.Companion.milliseconds
 class TutorialManager(
     private val animationCoordinator: AnimationCoordinator,
 ) {
-    private val coroutineScope = CoroutineScope(Dispatchers.Main)
+    // SupervisorJob: el fallo de un paso no cancela el scope completo; los
+    // pasos diferidos en vuelo se cancelan explícitamente en [closeTutorial].
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var autoAdvanceJob: Job? = null
 
     private val _tutorialState = MutableStateFlow<TutorialState>(TutorialState.Idle)
@@ -238,6 +242,9 @@ class TutorialManager(
     fun closeTutorial() {
         stopCurrentAnimations()
         autoAdvanceJob?.cancel()
+        // Cancela los pasos diferidos en vuelo (delays de nextStep/showStep)
+        // para que no re-aparezca un paso después de cerrar.
+        coroutineScope.coroutineContext.cancelChildren()
         updateTutorialState(TutorialState.Idle)
     }
 

@@ -14,8 +14,10 @@ import com.agustin.tarati.core.domain.game.play.Move
 class MoveEvaluator(
     private val cache: HybridEvaluationCache,
 ) {
-    private val killerMoves = mutableMapOf<Int, MutableSet<String>>()
-    private val historyHeuristic = mutableMapOf<String, Int>()
+    // Instancia propia: el precomputador cachea valores por config y no debe
+    // compartir estado mutable entre motores que buscan en paralelo (bots del servidor).
+    // Las heurísticas killer/history viven en el SearchContext de cada búsqueda.
+    private val patternPrecomputer = PatternPrecomputer()
 
     fun sortMoves(
         moves: List<Move>,
@@ -29,7 +31,10 @@ class MoveEvaluator(
 
         val cachedOrder = cache.getMoveOrdering(gameState, isMaximizing, depth)
         if (cachedOrder != null) {
-            return reconstructMovesFromCache(moves, cachedOrder)
+            val reconstructed = reconstructMovesFromCache(moves, cachedOrder)
+            // Guard: si el orden cacheado no cubre todos los movimientos actuales,
+            // descartarlo y reordenar en fresco — nunca excluir movimientos de la búsqueda.
+            if (reconstructed.size == moves.size) return reconstructed
         }
 
         // Local cache scoped to this sortMoves call — avoids recomputing isolation
@@ -39,7 +44,7 @@ class MoveEvaluator(
 
         val evaluatedMoves =
             moves.map { move ->
-                evaluateMoveWithHeuristics(move, gameState, config, context, localIsolationCache)
+                evaluateMoveWithHeuristics(move, gameState, config, depth, context, localIsolationCache)
             }
 
         val sortedMoves =
@@ -62,11 +67,12 @@ class MoveEvaluator(
         move: Move,
         gameState: GameState,
         config: EvaluationConfig,
+        depth: Int,
         context: SearchContext?,
         isolationCache: HashMap<String, Boolean>,
     ): AdvancedMoveEvaluation {
         val basicEvaluation = evaluateBasicMove(move, gameState, config, isolationCache)
-        val heuristicBonus = calculateHeuristicBonus(move, basicEvaluation, config, context)
+        val heuristicBonus = calculateHeuristicBonus(move, basicEvaluation, config, depth, context)
 
         return basicEvaluation.copy(
             heuristicScore = heuristicBonus,
@@ -93,7 +99,8 @@ class MoveEvaluator(
 
         val baseScore = calculateBaseScore(newState, wouldCauseRepetition, config)
         val tacticalScore = calculateTacticalScore(rocFlips, cobFlips, leadsToUpgrade, isImmediateWin, config)
-        val positionalScore = calculatePositionalScore(move, gameState, gameState.currentTurn, config, isolationCache)
+        val positionalScore =
+            calculatePositionalScore(move, gameState, newState, gameState.currentTurn, config, isolationCache)
 
         val totalScore = baseScore + tacticalScore + positionalScore
 
@@ -164,14 +171,15 @@ class MoveEvaluator(
     private fun calculatePositionalScore(
         move: Move,
         gameState: GameState,
+        newState: GameState,
         playerColor: CobColor,
         config: EvaluationConfig,
         isolationCache: HashMap<String, Boolean>,
     ): Double {
         var score = 0.0
 
-        val strategicTo = PatternPrecomputer.getStrategicValues(move.to, playerColor, config)
-        val strategicFrom = PatternPrecomputer.getStrategicValues(move.from, playerColor, config)
+        val strategicTo = patternPrecomputer.getStrategicValues(move.to, playerColor, config)
+        val strategicFrom = patternPrecomputer.getStrategicValues(move.from, playerColor, config)
         score += strategicTo - strategicFrom
 
         if (move.to in centerVertices) {
@@ -179,28 +187,24 @@ class MoveEvaluator(
         }
 
         val fromMobility = calculateVertexMobility(move.from, gameState)
-        val newState = gameState.applyMove(move)
         val toMobility = calculateVertexMobility(move.to, newState)
         score += (toMobility - fromMobility) * config.mobilityScore * config.mobilityImprovementMultiplier
 
-        score += calculateIsolationPenalty(move, gameState, playerColor, config, isolationCache)
+        score += calculateIsolationPenalty(move, newState, playerColor, config, isolationCache)
 
         return score
     }
 
     private fun calculateIsolationPenalty(
         move: Move,
-        gameState: GameState,
+        newState: GameState,
         playerColor: CobColor,
         config: EvaluationConfig,
         isolationCache: HashMap<String, Boolean>,
-    ): Double {
-        val newState = gameState.applyMove(move)
-        return when {
-            newState.cobs[move.to] == null -> 0.0
-            isPieceIsolated(move.to, newState, playerColor, isolationCache) -> -config.isolationPenalty
-            else -> 0.0
-        }
+    ): Double = when {
+        newState.cobs[move.to] == null -> 0.0
+        isPieceIsolated(move.to, newState, playerColor, isolationCache) -> -config.isolationPenalty
+        else -> 0.0
     }
 
     private fun isPieceIsolated(
@@ -244,10 +248,10 @@ class MoveEvaluator(
         move: Move,
         evaluation: AdvancedMoveEvaluation,
         config: EvaluationConfig,
+        depth: Int,
         context: SearchContext?,
     ): Double {
         var bonus = 0.0
-        val depth = context?.nodesEvaluated?.toInt() ?: 0
 
         if (isKillerMove(move, depth, context)) {
             bonus += config.killerMoveBaseBonus * (depth + 1)
@@ -311,11 +315,6 @@ class MoveEvaluator(
             val currentScore = table[move.name] ?: 0
             table[move.name] = currentScore + depth * depth
         }
-    }
-
-    fun clearHeuristics() {
-        killerMoves.clear()
-        historyHeuristic.clear()
     }
 
     private fun isKillerMove(

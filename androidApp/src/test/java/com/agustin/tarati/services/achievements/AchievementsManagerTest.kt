@@ -169,7 +169,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -183,7 +183,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = BLACK,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -197,7 +197,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -211,7 +211,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.STALEMIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -225,7 +225,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.TRIPLE,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -239,7 +239,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.CHAMPION)
@@ -253,7 +253,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.HARD)
@@ -267,7 +267,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.FIFTY_MOVES,
             winner = null,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.CHAMPION)
@@ -282,7 +282,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.FIFTY_MOVES,
             winner = null,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -296,7 +296,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = BLACK,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
         coEvery { repository.incrementTotalGames() } returns 5
 
@@ -313,7 +313,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.EASY)
@@ -327,7 +327,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -341,7 +341,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.HARD)
@@ -355,7 +355,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.EASY)
@@ -370,7 +370,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = WHITE,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.DEFAULT)
@@ -385,7 +385,7 @@ class AchievementsManagerTest {
             gameState = mockk(relaxed = true),
             gameEndReason = GameEndReason.MIT,
             winner = BLACK,
-            moveHistory = emptyMap(),
+            positionHistory = emptyMap(),
         )
 
         manager.onGameOver(matchState, playerSide = WHITE, difficulty = Difficulty.HARD)

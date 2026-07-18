@@ -81,30 +81,21 @@ private fun extractMovesFromPgn(pgn: String): List<Move> {
             .joinToString(" ")
             .trim()
 
-        // Extraer tokens que son movimientos: comienzan con una letra y contienen "-" o "→" (legacy) o terminan en "=R"
+        // Extraer tokens que son movimientos: comienzan con una letra y contienen "-" o "→" (legacy)
+        // o terminan en el sufijo de promoción ("=R")
         val moveTokens = moveSection.split(Regex("\\s+"))
             .filter { token ->
                 token.first().isLetter() &&
                         (token.contains(Move.MOVE_SEPARATOR) ||
                                 token.contains(Move.LEGACY_SEPARATOR) ||
-                                token.endsWith("=R"))
+                                token.endsWith(Move.PROMOTION_SUFFIX))
             }
 
         if (moveTokens.isEmpty()) return emptyList()
 
-        // Normalizar tokens: promoción "C3=R" → "C3-C3"; legacy "→" → "-"
+        // Normalizar legacy "→" → "-"; las promociones "C3=R" las entiende parseMoveHistory.
         val normalized = moveTokens.joinToString(",") { token ->
-            when {
-                token.endsWith("=R") -> {
-                    val vertex = token.removeSuffix("=R")
-                    "$vertex${Move.MOVE_SEPARATOR}$vertex"
-                }
-
-                token.contains(Move.LEGACY_SEPARATOR) ->
-                    token.replace(Move.LEGACY_SEPARATOR, Move.MOVE_SEPARATOR)
-
-                else -> token
-            }
+            token.replace(Move.LEGACY_SEPARATOR, Move.MOVE_SEPARATOR)
         }
 
         Move.parseMoveHistory(normalized)

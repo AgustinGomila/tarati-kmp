@@ -36,7 +36,7 @@ class PersonalityEngine(
     var currentConfig: EvaluationConfig = EvaluationConfig()
         private set
 
-    override val positionHistory: MutableMap<String, Int> get() = engine.positionHistory
+    override val positionHistory: Map<String, Int> get() = engine.positionHistory
     override suspend fun getNextMove(gameState: GameState): MoveEval = engine.getNextMove(gameState)
     override fun clearHistory(): Unit = engine.clearHistory()
     override fun putState(gameState: GameState, moveBy: CobColor): CobColor? = engine.putState(gameState, moveBy)

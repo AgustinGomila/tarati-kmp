@@ -8,7 +8,7 @@ import com.agustin.tarati.shared.generated.resources.difficulty_medium
 import org.jetbrains.compose.resources.StringResource
 
 /**
- * Extensiones Android para Difficulty.
+ * Extensiones de Difficulty con recursos de UI (Compose Resources).
  * Agregan los nombres de display localizados.
  */
 

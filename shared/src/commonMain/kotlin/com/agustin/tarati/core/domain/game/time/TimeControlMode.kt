@@ -24,12 +24,8 @@ import kotlinx.serialization.Serializable
  * ## Serialización
  * [serialize] produce strings compactas tipo `"fischer:180000:2000"` para persistir
  * en DataStore y en el campo `timeControl` del PGN. [deserialize] es tolerante:
- * cualquier string mal formada o id desconocido cae a [Unlimited].
- *
- * ## Parcelable
- * Cada subclase lleva `@Parcelize` para sobrevivir a `SavedStateHandle` en Android 13+.
- * La sealed class padre no necesita la anotación —solo declara el contrato `Parcelable`—
- * pero sí cada subclase concreta, incluyendo el `object Unlimited`.
+ * cualquier string mal formada o id desconocido cae a [Unlimited]. La jerarquía
+ * es además [Serializable] (kotlinx) para viajar embebida en otros estados.
  */
 @Serializable
 sealed class TimeControlMode {

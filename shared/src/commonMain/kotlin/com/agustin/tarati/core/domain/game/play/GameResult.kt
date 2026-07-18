@@ -3,7 +3,7 @@ package com.agustin.tarati.core.domain.game.play
 import kotlinx.serialization.Serializable
 
 /**
- * GameEndReason - Resultado de la partida
+ * GameResult - Resultado de la partida
  */
 @Serializable
 enum class GameResult {

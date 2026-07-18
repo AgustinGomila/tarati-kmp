@@ -141,7 +141,6 @@ class TaratiAI : IAIEngine {
         transpositionTable.clear()
         positionHistory.clear()
         cache.clear()
-        moveEvaluator.clearHeuristics()
     }
 
     /**
@@ -159,15 +158,14 @@ class TaratiAI : IAIEngine {
     }
 
     override fun getDiagnostics(): AIDiagnostics {
-        val (nodes, cuts, hits) = (aiStrategy as? MinimaxStrategy)?.getStats()
-            ?: Triple(0L, 0, 0)
+        val stats = (aiStrategy as? MinimaxStrategy)?.getStats()
         return AIDiagnostics(
             cacheStats = cache.getStats(),
             positionHistorySize = positionHistory.size,
             transpositionTableSize = transpositionTable.size(),
-            nodesEvaluated = nodes,
-            cutoffs = cuts,
-            cacheHits = hits,
+            nodesEvaluated = stats?.nodesEvaluated ?: 0L,
+            cutoffs = stats?.cutoffs ?: 0,
+            cacheHits = stats?.cacheHits ?: 0,
         )
     }
 

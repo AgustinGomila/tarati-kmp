@@ -21,9 +21,7 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.CobColor.BLACK
 import com.agustin.tarati.core.domain.game.pieces.CobColor.WHITE
 import com.agustin.tarati.core.domain.game.pieces.PieceCounts
-import com.agustin.tarati.core.domain.game.pieces.cobColorByName
 import com.agustin.tarati.core.domain.game.pieces.flipAdjacentCobs
-import com.agustin.tarati.core.domain.game.pieces.getName
 import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.POS_DELIMITER_CHAR
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.TURN_DELIMITER_CHAR
@@ -39,8 +37,9 @@ data class GameState(
     /**
      * Half-move clock for the 50-move rule (§7.2). Counts consecutive half-moves
      * (single-player turns) without a cob being moved or promoted. Resets to 0
-     * whenever a cob is moved (forward, home-base) or any promotion occurs.
-     * Rok moves increment it. At 100 (= 50 moves per player) the game may be drawn,
+     * whenever a cob is moved (forward, home-base), any promotion occurs, or a
+     * rok move captures pieces; rok moves without captures increment it.
+     * At 100 (= 50 moves per player) the game may be drawn,
      * unless the player to move has an immediate winning move available.
      */
     val halfMoveClock: Int = 0,
@@ -132,34 +131,17 @@ data class GameState(
     fun withTurn(newTurn: CobColor): GameState = this.copy(currentTurn = newTurn)
 
     /**
-     * Genera una clave compacta de la posición actual para ser usada como
-     * clave en la tabla de transposición y en el historial de posiciones
-     * (detección de triple repetición).
-     *
-     * ## Por qué no usar hashCode()
-     * El [hashCode] de Kotlin para data classes es un Int de 32 bits — demasiado
-     * corto para distinguir de forma confiable los ~10k estados que puede alcanzar
-     * una partida. Las colisiones producirían falsos positivos de triple repetición
-     * o entradas incorrectas en la tabla de transposición, ambos errores silenciosos
-     * que corrompen el juego.
-     *
-     * ## Construcción a partir de toPositionNotation
-     * Reutiliza [toPositionNotation], que produce una representación canónica
-     * ordenada de todas las piezas y el turno, y reemplaza los delimitadores
-     * ['/' y ' '] por el carácter nulo [Char(0)]. Dos posiciones idénticas
-     * siempre producen el mismo hash, y posiciones distintas producen hashes
-     * distintos — sin colisiones por diseño, al ser el hash el estado completo.
-     */
-    /**
      * Zobrist hash of the current position.
      *
-     * Computes a 64-bit XOR fingerprint from precomputed random keys for
+     * Computes a 64-bit XOR fingerprint from precomputed fixed-seed keys for
      * each (vertex, piece-type) pair on the board, XOR-ed with a side-to-move
      * key when it is BLACK's turn. Probability of collision between distinct
-     * positions is 1/2^64 -- negligible in practice.
+     * positions is 1/2^64 -- negligible in practice. A plain data-class
+     * [hashCode] (32-bit Int) would collide too easily for the transposition
+     * table and the triple-repetition history.
      *
-     * Complexity: O(n) over pieces on the board. No String allocation,
-     * no sort, no delimiter replacement (vs. the previous O(n log n) impl).
+     * Complexity: O(n) over pieces on the board, with no String allocation
+     * or sorting.
      *
      * Returns a hex String for drop-in compatibility with positionHistory,
      * TranspositionTable, and HybridEvaluationCache (all use String keys).
@@ -203,79 +185,42 @@ data class GameState(
     fun getMatchState(
         positionHistory: Map<String, Int> = emptyMap(),
     ): MatchState {
-        val whiteCobs = this.cobs.values.count { it.color == WHITE }
-        val blackCobs = this.cobs.values.count { it.color == BLACK }
-
-        var matchState =
+        fun matchState(reason: GameEndReason, winner: CobColor?) =
             MatchState(
                 gameState = this,
-                gameEndReason = GameEndReason.PLAYING,
-                winner = null,
-                moveHistory = positionHistory,
+                gameEndReason = reason,
+                winner = winner,
+                positionHistory = positionHistory,
             )
 
-        if (!this.isGameOver(positionHistory)) return matchState
+        if (!isGameOver(positionHistory)) return matchState(GameEndReason.PLAYING, winner = null)
 
         // TIMEOUT tiene precedencia sobre todas las demás condiciones: es un
         // evento externo (del reloj) que invalida la partida independientemente
         // de la posición del tablero.
-        this.timedOutColor?.let { loser ->
-            matchState = matchState.copy(
-                winner = loser.opponent,
-                gameEndReason = GameEndReason.TIMEOUT,
-            )
-            return matchState
-        }
+        timedOutColor?.let { loser -> return matchState(GameEndReason.TIMEOUT, winner = loser.opponent) }
 
         // RESIGNATION: evento externo sin cambio en el tablero.
         // Tiene precedencia sobre cualquier condición derivada de la posición.
-        this.resignedColor?.let { loser ->
-            matchState = matchState.copy(
-                winner = loser.opponent,
-                gameEndReason = GameEndReason.RESIGNATION,
-            )
-            return matchState
-        }
+        resignedColor?.let { loser -> return matchState(GameEndReason.RESIGNATION, winner = loser.opponent) }
 
         // DRAW_AGREEMENT: tablas pactadas externamente, sin movimiento final.
-        if (this.drawAgreed) {
-            matchState = matchState.copy(winner = null, gameEndReason = GameEndReason.DRAW_AGREEMENT)
-            return matchState
+        if (drawAgreed) return matchState(GameEndReason.DRAW_AGREEMENT, winner = null)
+
+        // Draw — no winner. Must be checked before triple repetition since both
+        // could technically be true; 50-move draw takes precedence as it was
+        // established first in game time.
+        if (claimedFiftyMoveDraw) return matchState(GameEndReason.FIFTY_MOVES, winner = null)
+
+        if (hasTripleRepetition(positionHistory)) return matchState(GameEndReason.TRIPLE, winner = currentTurn)
+
+        val (whiteCobs, blackCobs) = getPieceCounts()
+        return when {
+            whiteCobs == 0 -> matchState(GameEndReason.MIT, winner = BLACK)
+            blackCobs == 0 -> matchState(GameEndReason.MIT, winner = WHITE)
+            // isGameOver ya descartó el resto: sin movimientos → STALEMIT.
+            else -> matchState(GameEndReason.STALEMIT, winner = currentTurn.opponent)
         }
-
-        if (this.claimedFiftyMoveDraw) {
-            // Draw — no winner. Must be checked before triple repetition since both
-            // could technically be true; 50-move draw takes precedence as it was
-            // established first in game time.
-            matchState = matchState.copy(winner = null, gameEndReason = GameEndReason.FIFTY_MOVES)
-            return matchState
-        }
-
-        if (this.hasTripleRepetition(positionHistory)) {
-            matchState = matchState.copy(winner = this.currentTurn, gameEndReason = GameEndReason.TRIPLE)
-            return matchState
-        }
-
-        matchState =
-            when {
-                whiteCobs == 0 -> {
-                    matchState.copy(winner = BLACK, gameEndReason = GameEndReason.MIT)
-                }
-
-                blackCobs == 0 -> {
-                    matchState.copy(winner = WHITE, gameEndReason = GameEndReason.MIT)
-                }
-
-                this.allMovesForTurn().isEmpty() -> {
-                    matchState.copy(winner = this.currentTurn.opponent, gameEndReason = GameEndReason.STALEMIT)
-                }
-
-                else -> {
-                    matchState.copy(winner = this.currentTurn, gameEndReason = GameEndReason.STALEMIT)
-                }
-            }
-
-        return matchState
     }
 
     private fun hasTripleRepetition(
@@ -294,16 +239,13 @@ data class GameState(
     }
 
     /**
-     * Returns true if the 50-move draw rule can be claimed (§7.2).
+     * Returns true if the 50-move draw rule can be claimed (§7.2.2).
      *
      * Conditions:
      * - At least 100 consecutive half-moves (50 per player) without a cob move or promotion.
      * - The player to move does NOT have an immediate winning move available.
      *   (A player who is about to win cannot be forced into a draw by this rule.)
-     */
-    /**
-     * Returns true when the 50-move draw can be claimed (§7.2.2):
-     * clock ≥ 100 AND the current player has no immediate winning move.
+     *
      * Used by the UI to show the claim badge and by the AI to auto-claim.
      */
     fun canClaimFiftyMoveDraw(): Boolean {
@@ -336,10 +278,10 @@ data class GameState(
         return false
     }
 
-    fun allMovesForTurn(): MutableList<Move> {
+    fun allMovesForTurn(): List<Move> {
         val normal = normalMovesForTurn()
-        if (normal.isNotEmpty()) return normal.toMutableList()
-        return getForcedPromotions().toMutableList()
+        if (normal.isNotEmpty()) return normal
+        return getForcedPromotions()
     }
 
     /**
@@ -632,9 +574,7 @@ data class GameState(
                 .sortedBy { it.key.name }
                 .forEach { (position, piece) ->
                     val colorChar =
-                        piece.color.getName().let { name ->
-                            if (piece.isUpgraded) name.uppercase() else name
-                        }
+                        if (piece.isUpgraded) piece.color.letter.uppercaseChar() else piece.color.letter
                     append("${position.name}$colorChar$POS_DELIMITER_CHAR")
                 }
 
@@ -642,7 +582,7 @@ data class GameState(
                 setLength(length - 1)
             }
 
-            append("$TURN_DELIMITER_CHAR${currentTurn.getName()}")
+            append("$TURN_DELIMITER_CHAR${currentTurn.letter}")
         }
 
     fun toMatchDto(
@@ -666,17 +606,33 @@ data class GameState(
         // 23 vertices x 4 piece types + 1 side-to-move key = 93 Long values.
         // Piece type index: WHITE_COB=0, WHITE_ROK=1, BLACK_COB=2, BLACK_ROK=3
         // Vertex index: position in GameBoard.vertices (0..22)
-        private val ZOBRIST_PIECES: Array<LongArray> =
-            Array(vertices.size) { LongArray(4) { kotlin.random.Random.nextLong() } }
+        //
+        // Las claves se derivan con SplitMix64 desde una semilla fija: la secuencia
+        // es idéntica en todas las plataformas, procesos y versiones de Kotlin.
+        // Los hashes viajan dentro de positionHistory persistido (recovery de
+        // sesiones del servidor en Redis), por lo que deben ser estables entre
+        // reinicios del proceso.
+        private const val ZOBRIST_SEED = 0x544152415449L // "TARATI" en ASCII
 
-        private val ZOBRIST_SIDE_TO_MOVE: Long = kotlin.random.Random.nextLong()
+        /** SplitMix64: flujo de claves pseudo-aleatorias determinista para las tablas Zobrist. */
+        private fun zobristKey(index: Int): Long {
+            var z = ZOBRIST_SEED + (index + 1L) * 0x9E3779B97F4A7C15uL.toLong()
+            z = (z xor (z ushr 30)) * 0xBF58476D1CE4E5B9uL.toLong()
+            z = (z xor (z ushr 27)) * 0x94D049BB133111EBuL.toLong()
+            return z xor (z ushr 31)
+        }
+
+        private val ZOBRIST_PIECES: Array<LongArray> =
+            Array(vertices.size) { vi -> LongArray(4) { pi -> zobristKey(vi * 4 + pi) } }
+
+        private val ZOBRIST_SIDE_TO_MOVE: Long = zobristKey(vertices.size * 4)
 
         /** Stable vertex-to-index mapping for Zobrist key lookup (O(1)). */
         private val VERTEX_INDEX: Map<Vertex, Int> =
             vertices.mapIndexed { i, v -> v to i }.toMap()
 
-        const val POS_DELIMITER_CHAR = '/'
-        const val TURN_DELIMITER_CHAR = ' '
+        const val POS_DELIMITER_CHAR: Char = '/'
+        const val TURN_DELIMITER_CHAR: Char = ' '
 
         fun initialGameState(currentTurn: CobColor = WHITE): GameState {
             val map =
@@ -722,7 +678,7 @@ data class GameState(
                         vertices.find { it.name == positionStr }
                             ?: throw IllegalArgumentException("Posición inválida: $positionStr")
 
-                    val color = cobColorByName(colorChar.lowercaseChar())
+                    val color = CobColor.fromLetter(colorChar.lowercaseChar())
                         ?: throw IllegalArgumentException("Color inválido: $colorChar")
 
                     val isUpgraded = colorChar.isUpperCase()

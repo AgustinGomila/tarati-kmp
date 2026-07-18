@@ -7,17 +7,22 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.opponent
 
 /**
- * Stateless precomputer for per-vertex strategic values.
+ * Precomputer for per-vertex strategic values.
  *
  * Values depend only on board topology and a small subset of [EvaluationConfig]
- * weights (center, domestic, mobility). Results are cached by config identity so
- * that repeated calls with the same config object pay zero recomputation cost —
- * the common case during a single search. A different config instance (e.g. after
- * [TaratiAI.setConfig]) triggers a fresh computation automatically.
+ * weights (center, domestic, mobility). Results are cached per config (structural
+ * equality of the data class) so that repeated calls with the same config pay
+ * zero recomputation cost — the common case during a single search. A different
+ * config (e.g. after [TaratiAI.setConfig]) triggers a fresh computation
+ * automatically.
+ *
+ * Each [MoveEvaluator] owns its instance: the cache is single-threaded per
+ * engine, with no mutable state shared between engines searching concurrently
+ * (server bots).
  */
-object PatternPrecomputer {
-    // Keyed by config identity (reference equality) so that the same EvaluationConfig
-    // instance always hits the cache regardless of tournament round or search depth.
+class PatternPrecomputer {
+    // Keyed by EvaluationConfig (data class → structural equality): identical
+    // configs share the cached entry regardless of tournament round or search depth.
     private val cache = mutableMapOf<EvaluationConfig, Map<Vertex, Double>>()
 
     private fun valuesFor(config: EvaluationConfig): Map<Vertex, Double> =

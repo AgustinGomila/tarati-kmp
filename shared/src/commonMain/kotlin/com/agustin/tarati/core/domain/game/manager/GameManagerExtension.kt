@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.combine
 
 /**
  * Extensiones Compose para GameManager.
- * Agrega funcionalidad específica de Android/Compose.
+ * Agrega funcionalidad específica de Compose (observación como [State]).
  */
 
 /**

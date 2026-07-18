@@ -140,14 +140,14 @@ class SpecialEventManagerTest {
         gameState = mockk(relaxed = true),
         gameEndReason = GameEndReason.MIT,
         winner = color,
-        moveHistory = emptyMap(),
+        positionHistory = emptyMap(),
     )
 
     private val draw = MatchState(
         gameState = mockk(relaxed = true),
         gameEndReason = GameEndReason.FIFTY_MOVES,
         winner = null,
-        moveHistory = emptyMap(),
+        positionHistory = emptyMap(),
     )
 
     // ══════════════════════════════════════════════════════════════════════════

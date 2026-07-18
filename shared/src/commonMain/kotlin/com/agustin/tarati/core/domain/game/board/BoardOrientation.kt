@@ -31,12 +31,12 @@ fun BoardOrientation.rotateCW(): BoardOrientation = when (this) {
 }
 
 fun toBoardOrientation(
-    landScape: Boolean,
+    landscape: Boolean,
     playerSide: CobColor,
 ): BoardOrientation =
     when {
-        landScape && playerSide == CobColor.BLACK -> BoardOrientation.LANDSCAPE_BLACK
-        landScape && playerSide == CobColor.WHITE -> BoardOrientation.LANDSCAPE_WHITE
-        !landScape && playerSide == CobColor.BLACK -> BoardOrientation.PORTRAIT_BLACK
+        landscape && playerSide == CobColor.BLACK -> BoardOrientation.LANDSCAPE_BLACK
+        landscape && playerSide == CobColor.WHITE -> BoardOrientation.LANDSCAPE_WHITE
+        !landscape && playerSide == CobColor.BLACK -> BoardOrientation.PORTRAIT_BLACK
         else -> BoardOrientation.PORTRAIT_WHITE
     }

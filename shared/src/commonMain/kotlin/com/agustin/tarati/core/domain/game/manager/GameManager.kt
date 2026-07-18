@@ -2,7 +2,6 @@ package com.agustin.tarati.core.domain.game.manager
 
 import com.agustin.tarati.core.domain.game.manager.GameManagerState.Companion.createInitialUiState
 import com.agustin.tarati.core.domain.game.play.GameState
-import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.domain.game.play.HistoryEntry
 import com.agustin.tarati.core.domain.game.play.Move
@@ -51,10 +50,13 @@ class GameManager(
 
     /**
      * Estado del tablero antes del primer movimiento de la partida actual.
-     * Se fija en [setInitialGameState] al iniciar o importar una partida
-     * y se usa al exportar para reconstruir posiciones intermedias.
+     * Se fija en [setInitialGameState] al iniciar o importar una partida —
+     * [clearHistory] y [updateHistory] también lo mantienen, garantizando el
+     * invariante «estado en índice -1 == [initialGameState]» — y se usa al
+     * navegar a la posición inicial ([undoMove] / [moveToIndex]) y al exportar
+     * para reconstruir posiciones intermedias.
      */
-    var initialGameState: GameState = initialGameState()
+    var initialGameState: GameState = GameState.initialGameState()
         private set
 
     fun setInitialGameState(state: GameState) {
@@ -65,7 +67,8 @@ class GameManager(
         _gameState.update { newState }
     }
 
-    fun updateHistory(moves: List<Move>, initialState: GameState = initialGameState()) {
+    fun updateHistory(moves: List<Move>, initialState: GameState = initialGameState) {
+        initialGameState = initialState
         var currentState = initialState
 
         val historyEntries = moves.map { move ->
@@ -122,7 +125,7 @@ class GameManager(
             if (targetIndex >= 0) {
                 _history.value[targetIndex].gameState
             } else {
-                initialGameState()
+                initialGameState
             }
         updateGameState(targetState)
     }
@@ -161,7 +164,8 @@ class GameManager(
         }
     }
 
-    fun clearHistory(gameState: GameState = initialGameState()) {
+    fun clearHistory(gameState: GameState = GameState.initialGameState()) {
+        initialGameState = gameState
         _history.update { StableHistoryList(emptyList()) }
         _moveIndex.update { -1 }
         updateGameState(gameState)

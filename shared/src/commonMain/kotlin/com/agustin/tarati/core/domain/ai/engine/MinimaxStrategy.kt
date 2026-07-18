@@ -77,21 +77,18 @@ class MinimaxStrategy(
     private val positionHistory: Map<String, Int>,
     private val evalConfig: () -> EvaluationConfig,
 ) : IAIStrategy {
-    private var nodesEvaluated = 0
-    private var cacheHits = 0
-    private var cutoffs = 0
     private val timeLimitMs = 10_000L
 
     // Minimum elapsed time (ms) between animation yields at the root search level.
     private val yieldIntervalMs = 12L
 
+    // Contexto de la última búsqueda — sus contadores alimentan [getStats].
+    private var lastContext: SearchContext = SearchContext()
+
     override suspend fun getNextMove(
         gameState: GameState,
         difficulty: Difficulty,
-    ): MoveEval {
-        resetStats()
-        return iterativeDeepening(gameState, difficulty)
-    }
+    ): MoveEval = iterativeDeepening(gameState, difficulty)
 
     private suspend fun iterativeDeepening(
         gameState: GameState,
@@ -141,7 +138,7 @@ class MinimaxStrategy(
 
         val boardHash = gameState.hashBoard()
         transpositionTable.get(boardHash, depth)?.let {
-            cacheHits++
+            context.cacheHits++
             return it
         }
 
@@ -260,7 +257,7 @@ class MinimaxStrategy(
             }
 
             if (causesCutoff) {
-                cutoffs++
+                context.cutoffs++
                 break
             }
 
@@ -301,10 +298,11 @@ class MinimaxStrategy(
         depth: Int,
         config: EvaluationConfig,
     ): MoveEval? {
-        if (depth != 0 && !gameState.isGameOver(positionHistory)) return null
+        val gameOver = gameState.isGameOver(positionHistory)
+        if (depth != 0 && !gameOver) return null
 
         val score =
-            if (gameState.isGameOver(positionHistory)) {
+            if (gameOver) {
                 when (gameState.getWinner(positionHistory)) {
                     gameState.currentTurn -> config.winningScore
                     gameState.currentTurn.opponent -> -config.winningScore
@@ -342,17 +340,10 @@ class MinimaxStrategy(
         return elapsed > context.maxTimeMs * 0.9
     }
 
-    private fun resetStats() {
-        nodesEvaluated = 0
-        cacheHits = 0
-        cutoffs = 0
-    }
-
-    fun getStats(): Triple<Long, Int, Int> = Triple(
-        nodesEvaluated.toLong() + lastContext.nodesEvaluated,
-        cutoffs,
-        cacheHits,
+    /** Contadores de la última búsqueda (del [SearchContext] más reciente). */
+    fun getStats(): SearchStats = SearchStats(
+        nodesEvaluated = lastContext.nodesEvaluated,
+        cutoffs = lastContext.cutoffs,
+        cacheHits = lastContext.cacheHits,
     )
-
-    private var lastContext: SearchContext = SearchContext()
 }

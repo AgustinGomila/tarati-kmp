@@ -9,6 +9,13 @@ package com.agustin.tarati.core.domain.ai.cache
  * mantiene un límite de capacidad y elimina automáticamente el elemento
  * menos recientemente usado cuando se alcanza el límite.
  *
+ * ## Implementación — O(1) amortizado por acceso
+ * Un único LinkedHashMap (orden de inserción) simula el orden de acceso:
+ * cada get/put reinserta la clave (remove + put), moviéndola al final del
+ * orden de iteración. La entrada menos recientemente usada queda siempre
+ * primera, y se desaloja con el iterador en O(1). Sin lista auxiliar de
+ * orden de acceso (que costaría O(n) por acceso).
+ *
  * ## Uso
  * ```kotlin
  * val cache = LruCache<String, Double>(maxSize = 100)
@@ -22,14 +29,9 @@ package com.agustin.tarati.core.domain.ai.cache
 class LruCache<K, V>(
     private val maxSize: Int
 ) {
-    // LinkedHashMap mantiene orden de inserción
+    // LinkedHashMap mantiene orden de inserción; la reinserión en cada acceso
+    // lo convierte en orden de acceso (el primero es el candidato a evicción).
     private val map = LinkedHashMap<K, V>()
-
-    /**
-     * Lista que mantiene el orden de acceso: el último elemento es el más
-     * recientemente usado, el primero es el más antiguo (candidato a evicción).
-     */
-    private val accessOrder = mutableListOf<K>()
 
     val size: Int
         get() = map.size
@@ -39,41 +41,33 @@ class LruCache<K, V>(
      * Si la key no existe, retorna null.
      */
     operator fun get(key: K): V? {
-        val value = map[key] ?: return null
+        val value = map.remove(key) ?: return null
 
-        // Mover al final (más reciente)
-        accessOrder.remove(key)
-        accessOrder.add(key)
+        // Reinsertar al final (más reciente)
+        map[key] = value
 
         return value
     }
 
     /**
-     * Inserta o actualiza un valor. Si se alcanza maxSize, elimina
-     * el elemento menos recientemente usado.
+     * Inserta o actualiza un valor (moviéndolo al final, más reciente).
+     * Si se alcanza maxSize, elimina el elemento menos recientemente usado.
      */
     fun put(key: K, value: V) {
-        // Si la key ya existe, actualizarla sin afectar el tamaño
-        if (map.containsKey(key)) {
-            map[key] = value
-            // Mover al final (más reciente)
-            accessOrder.remove(key)
-            accessOrder.add(key)
-            return
-        }
+        // Quitar la entrada previa si existe — la reinserción la mueve al final
+        // y una actualización no debe disparar evicción.
+        map.remove(key)
 
-        // Nueva entrada: verificar capacidad
         if (map.size >= maxSize) {
-            // Eliminar el elemento menos recientemente usado (primero en la lista)
-            val eldest = accessOrder.removeFirstOrNull()
-            if (eldest != null) {
-                map.remove(eldest)
+            // Eliminar el elemento menos recientemente usado (primero en iteración)
+            val eldest = map.keys.iterator()
+            if (eldest.hasNext()) {
+                eldest.next()
+                eldest.remove()
             }
         }
 
-        // Agregar nueva entrada
         map[key] = value
-        accessOrder.add(key)
     }
 
     /**
@@ -88,7 +82,6 @@ class LruCache<K, V>(
      */
     fun clear() {
         map.clear()
-        accessOrder.clear()
     }
 
     /**
@@ -99,8 +92,5 @@ class LruCache<K, V>(
     /**
      * Elimina una key específica del cache.
      */
-    fun remove(key: K): V? {
-        accessOrder.remove(key)
-        return map.remove(key)
-    }
+    fun remove(key: K): V? = map.remove(key)
 }

@@ -35,14 +35,14 @@ class GameBoardTest {
 
     @Test
     fun adjacencyMap_hasBidirectionalConnections() {
-        edges.forEach { (edge) ->
+        edges.forEach { edge ->
             assertTrue(
-                "${edge.first} should connect to ${edge.second}",
-                adjacencyMap[edge.first]?.contains(edge.second) == true,
+                "${edge.from} should connect to ${edge.to}",
+                adjacencyMap[edge.from]?.contains(edge.to) == true,
             )
             assertTrue(
-                "${edge.second} should connect to ${edge.first}",
-                adjacencyMap[edge.second]?.contains(edge.first) == true,
+                "${edge.to} should connect to ${edge.from}",
+                adjacencyMap[edge.to]?.contains(edge.from) == true,
             )
         }
     }

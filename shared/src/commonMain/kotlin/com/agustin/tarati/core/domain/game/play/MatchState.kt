@@ -9,7 +9,8 @@ data class MatchState(
     val gameState: GameState,
     val gameEndReason: GameEndReason,
     val winner: CobColor?,
-    val moveHistory: Map<String, Int>,
+    /** Historial de posiciones (hash → nº de ocurrencias) con el que se evaluó el estado. */
+    val positionHistory: Map<String, Int>,
 ) {
     companion object {
         fun createInitialMatchState(): MatchState =
@@ -17,7 +18,7 @@ data class MatchState(
                 gameState = initialGameState(),
                 gameEndReason = GameEndReason.UNDETERMINED,
                 winner = null,
-                moveHistory = mapOf(),
+                positionHistory = mapOf(),
             )
     }
 }

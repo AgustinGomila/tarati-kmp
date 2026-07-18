@@ -12,12 +12,10 @@ import kotlinx.serialization.Serializable
  * Representa un movimiento de una pieza desde [from] hasta [to].
  *
  * ## Por qué from/to son los parámetros primarios (no Pair)
- * `kotlin.Pair` implementa `java.io.Serializable` pero NO `Parcelable`.
- * Cuando `@Parcelize` encontraba `Pair<Vertex, Vertex>` como campo primario,
- * caía al fallback de Java serialization, que fallaba con
- * `NotSerializableException: Vertex` porque `Vertex` solo implementa
- * `Parcelable`. Al exponer `from` y `to` directamente, el plugin `@Parcelize`
- * los serializa como `Parcelable` nativo sin pasar por serialización Java.
+ * kotlinx.serialization serializa exactamente el constructor primario;
+ * exponer `from` y `to` directos produce un JSON plano y estable, sin
+ * depender del serializer de `Pair` en un tipo central del protocolo y
+ * de la persistencia.
  *
  * ## Compatibilidad de call sites
  * El constructor secundario `constructor(Pair<Vertex, Vertex>)` mantiene la
@@ -31,14 +29,14 @@ data class Move(
 ) {
     /**
      * Convenience constructor para la sintaxis `Move(A1 to B1)`.
-     * Delega al constructor primario — no se parcela; `from` y `to` sí.
+     * Delega al constructor primario.
      */
     constructor(vertices: Pair<Vertex, Vertex>) : this(vertices.first, vertices.second)
 
     /**
-     * Pair de vértices derivado de [from] y [to].
-     * Marcado con `@IgnoredOnParcel` porque no forma parte del constructor
-     * primario y no debe serializarse de forma independiente.
+     * Pair de vértices derivado de [from] y [to]. No forma parte del
+     * constructor primario, por lo que kotlinx.serialization no lo incluye
+     * en el payload.
      */
     val vertices: Pair<Vertex, Vertex> = from to to
 
@@ -47,7 +45,8 @@ data class Move(
      * - Normal move:               "B6-B1"
      * - Forced in-place promotion: "C12=R"  (Cob promoted to Rok in place)
      */
-    val name: String get() = if (isPromotion()) "${from.name}=R" else "${from.name}$MOVE_SEPARATOR${to.name}"
+    val name: String
+        get() = if (isPromotion()) "${from.name}$PROMOTION_SUFFIX" else "${from.name}$MOVE_SEPARATOR${to.name}"
 
     /**
      * Returns true if this move is a forced in-place promotion (from == to).
@@ -118,18 +117,25 @@ data class Move(
     companion object {
         const val MOVE_SEPARATOR: String = "-"
 
+        /** Sufijo de la notación de promoción in-place ("C12=R"), producida por [name]. */
+        const val PROMOTION_SUFFIX: String = "=R"
+
         /** Separador usado en partidas guardadas antes del cambio a ASCII. */
         const val LEGACY_SEPARATOR: String = "→"
 
         fun parseMoveHistory(moveHistory: String): List<Move> =
             if (moveHistory.isNotEmpty()) {
                 moveHistory.split(",").map { moveStr ->
-                    // Acepta tanto "-" (actual) como "→" (partidas previas en BD)
-                    val parts = moveStr.split(MOVE_SEPARATOR, LEGACY_SEPARATOR)
-                    if (parts.size != 2) throw IllegalArgumentException("Invalid move format: $moveStr")
-                    val fromVertex = parseVertex(parts[0])
-                    val toVertex = parseVertex(parts[1])
-                    Move(fromVertex to toVertex)
+                    // Promoción in-place ("C12=R") → movimiento con from == to.
+                    if (moveStr.endsWith(PROMOTION_SUFFIX)) {
+                        val vertex = parseVertex(moveStr.removeSuffix(PROMOTION_SUFFIX))
+                        Move(vertex, vertex)
+                    } else {
+                        // Acepta tanto "-" (actual) como "→" (partidas previas en BD)
+                        val parts = moveStr.split(MOVE_SEPARATOR, LEGACY_SEPARATOR)
+                        if (parts.size != 2) throw IllegalArgumentException("Invalid move format: $moveStr")
+                        Move(parseVertex(parts[0]), parseVertex(parts[1]))
+                    }
                 }
             } else {
                 emptyList()

@@ -48,11 +48,11 @@ fun createCenterAnimations(duration: Long = 3200L): List<List<HighlightAnimation
     sequences.add(listOf(HighlightAnimation.Pause()))
 
     // Secuencia 3: Aristas centrales en secuencia
-    absoluteCenterToBridgeEdges.forEachIndexed { index, (edge) ->
+    absoluteCenterToBridgeEdges.forEachIndexed { index, edge ->
         sequences.add(
             listOf(
                 createElectricEdgeAnimation(
-                    edge = Edge(edge),
+                    edge = edge,
                     duration = duration / 4,
                     startDelay = baseDelay * index,
                     pulse = true,
@@ -102,11 +102,11 @@ fun createBridgeAnimations(duration: Long = 2200L): List<List<HighlightAnimation
     sequences.add(listOf(HighlightAnimation.Pause()))
 
     // Aristas del puente una por una
-    bridgeEdges.forEachIndexed { index, (edge) ->
+    bridgeEdges.forEachIndexed { index, edge ->
         sequences.add(
             listOf(
                 createElectricEdgeAnimation(
-                    edge = Edge(edge),
+                    edge = edge,
                     duration = duration / 2,
                     startDelay = edgeDelay * index,
                     pulse = true,
@@ -120,9 +120,9 @@ fun createBridgeAnimations(duration: Long = 2200L): List<List<HighlightAnimation
 
     // Todas las aristas A1↔Bx simultáneamente — rayos desde el centro absoluto
     sequences.add(
-        absoluteCenterToBridgeEdges.map { (edge) ->
+        absoluteCenterToBridgeEdges.map { edge ->
             createElectricEdgeAnimation(
-                edge = Edge(edge),
+                edge = edge,
                 duration = (duration * 1.2).toLong(),
                 pulse = true,
             )
@@ -138,9 +138,9 @@ fun createBridgeAnimations(duration: Long = 2200L): List<List<HighlightAnimation
     bridgeToCircumferenceEdges.chunked(2).forEach { pair ->
         sequences.add(listOf(HighlightAnimation.Pause()))
         sequences.add(
-            pair.map { (edge) ->
+            pair.map { edge ->
                 createElectricEdgeAnimation(
-                    edge = Edge(edge),
+                    edge = edge,
                     duration = (duration * 0.8).toLong(),
                     pulse = true,
                 )
@@ -174,11 +174,11 @@ fun createCircumferenceAnimations(duration: Long = 2800L): List<List<HighlightAn
     sequences.add(listOf(HighlightAnimation.Pause()))
 
     // Aristas de la circunferencia una por una
-    circumferenceEdges.forEachIndexed { index, (edge) ->
+    circumferenceEdges.forEachIndexed { index, edge ->
         sequences.add(
             listOf(
                 createElectricEdgeAnimation(
-                    edge = Edge(edge),
+                    edge = edge,
                     duration = duration / 2,
                     startDelay = edgeDelay * index,
                     pulse = true,
@@ -189,9 +189,9 @@ fun createCircumferenceAnimations(duration: Long = 2800L): List<List<HighlightAn
 
     // Todas las aristas C→B simultáneamente como rayos
     sequences.add(
-        bridgeToCircumferenceEdges.map { (edge) ->
+        bridgeToCircumferenceEdges.map { edge ->
             createElectricEdgeAnimation(
-                edge = Edge(edge),
+                edge = edge,
                 duration = (duration * 1.5).toLong(),
                 pulse = true,
             )
