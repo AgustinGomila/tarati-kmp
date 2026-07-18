@@ -553,11 +553,14 @@ fun MainContent(
             // ── TurnIndicator + FiftyMoveClaimBadge: overlays TopEnd ───────────
             // Se muestran fuera de modo edición y tutorial. Al ser hijos de este Box,
             // se renderizan sobre el tablero sin afectar su tamaño ni layout.
+            // El padding superior es fijo: la distancia al borde visual superior
+            // (bajo la top bar, ya descontada por innerPadding) es la misma en
+            // cualquier disposición.
             if (!isEditing && !isTutorialActive) {
                 Column(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(top = if (isLandscape) 8.dp else 32.dp, end = 8.dp),
+                        .padding(top = 8.dp, end = 8.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
