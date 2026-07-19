@@ -423,6 +423,9 @@
     <string name="profile_stat_loss_short">L</string>
     <string name="settings_online">Online</string>
     <string name="settings_install_app">Install as app</string>
+    <string name="about_get_google_play">Get it on Google Play</string>
+    <string name="about_get_itch">Download on itch.io</string>
+    <string name="about_rate_app">Rate on Google Play</string>
     <string name="profile_bio">Description</string>
     <string name="profile_bio_placeholder">Tell us about yourself…</string>
     <string name="profile_visible_online">Visible in online list</string>
