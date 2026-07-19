@@ -288,12 +288,18 @@ data class GameState(
      * Memoized list of standard moves for the current turn player.
      *
      * [GameState] is immutable, so this result is computed at most once per instance.
-     * [LazyThreadSafetyMode.NONE] is safe because the minimax engine is single-threaded;
-     * it avoids the AtomicReferenceFieldUpdater overhead of the synchronized default.
+     * [LazyThreadSafetyMode.PUBLICATION] is required — NOT [LazyThreadSafetyMode.NONE]:
+     * on the server, the root `session.gameState` is read concurrently by multiple
+     * threads (GameSessionManager.processMove under the session lock, and each
+     * BotPlayer's poll loop without it). NONE publishes the computed list through a
+     * plain field, so a racing reader can observe a partially-published ArrayList
+     * (NPE / IndexOutOfBounds while iterating). PUBLICATION publishes via CAS: readers
+     * either see nothing (and compute their own copy of this pure function) or a fully
+     * initialized list. Post-initialization cost is a single volatile read.
      *
      * Not a constructor parameter: invisible to equals, hashCode, copy, and Parcelize.
      */
-    private val normalMoves: List<Move> by lazy(LazyThreadSafetyMode.NONE) {
+    private val normalMoves: List<Move> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         buildList {
             cobs.forEach { (from, cob) ->
                 if (cob.color != currentTurn) return@forEach

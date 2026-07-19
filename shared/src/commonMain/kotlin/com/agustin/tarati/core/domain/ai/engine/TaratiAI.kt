@@ -187,6 +187,19 @@ class TaratiAI : IAIEngine {
         }
     }
 
+    /**
+     * Replaces the engine's position history with the game's real one.
+     *
+     * Server-side bots don't build history incrementally via [putState] — the game
+     * session owns the authoritative history. They inject a snapshot of it before
+     * each search so the minimax can avoid triple-repetition defeats and penalize
+     * second occurrences, exactly as the client engine does with [putState].
+     */
+    fun replaceHistory(history: Map<String, Int>) {
+        positionHistory.clear()
+        positionHistory.putAll(history)
+    }
+
     // ================ Funciones auxiliares ================
 
     private fun putState(gameState: GameState): Int {

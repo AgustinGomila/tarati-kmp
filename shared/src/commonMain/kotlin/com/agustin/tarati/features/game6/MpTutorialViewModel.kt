@@ -27,7 +27,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * de movimientos) y le agrega el estado visual del tablero (posición + cues) y el sonido.
  *
  * No se anota `@Stable`: [progress] es un getter no observable (lee el manager) que cambia durante
- * la vida del objeto — anotarlo rompería la promesa de estabilidad (ver convención en `docs/CLAUDE.md`).
+ * la vida del objeto — anotarlo rompería la promesa de estabilidad.
  */
 class MpTutorialViewModel(
     private val soundService: ISoundService,
