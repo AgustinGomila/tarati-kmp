@@ -301,7 +301,6 @@ fun OnlineGameSideEffects(
     // Se usa Alert en lugar de Toast para que sea visible aunque el toast de resultado
     // o el de revancha propia estén activos.
     LaunchedEffect(rematchOffer) {
-        val offeredBy = rematchOffer ?: return@LaunchedEffect
         if (currentOnlineGame?.status !is OnlineGameStatus.Finished) return@LaunchedEffect
         bus.alert { dismiss ->
             AlertDialog(
@@ -354,11 +353,28 @@ fun OnlineGameSideEffects(
 
     // ── Errores del servidor ──────────────────────────────────────────────────
 
+    // rememberUpdatedState: el colector es LaunchedEffect(Unit) de larga vida; leer el param
+    // directo lo congelaría en la primera composición. (Además viewModel.gameManagerState tiene un
+    // getter @Composable, no invocable dentro de la corrutina.)
+    val latestGameManagerState by rememberUpdatedState(gameManagerState)
+
     LaunchedEffect(Unit) {
         onlineGameViewModel.serverErrors.collect { event ->
             val msg = when (event) {
-                is ServerErrorEvent.InvalidMove ->
+                is ServerErrorEvent.InvalidMove -> {
+                    // Revertir la aplicación optimista: handleMove aplica la jugada al historial local
+                    // antes de mandarla. Si el servidor la rechaza y sigue siendo la última del
+                    // historial, truncarla para no dejar el tablero/lista desincronizados. Preciso: si
+                    // otra actualización del rival llegó después, la última ya no coincide y no se toca
+                    // nada (el sync incremental converge).
+                    val rejected = event.move
+                    val moves = latestGameManagerState.history.getMoves()
+                    if (rejected != null && moves.lastOrNull() == rejected) {
+                        viewModel.updateHistory(moves.dropLast(1), initialGameState())
+                        viewModel.moveToCurrentState()
+                    }
                     onlineMoveFailedMsg.replace($$"%1$s", event.reason)
+                }
 
                 is ServerErrorEvent.GenericError ->
                     serverErrorMsg.replace($$"%1$s", event.message)

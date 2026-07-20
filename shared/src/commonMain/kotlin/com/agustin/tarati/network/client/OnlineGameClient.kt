@@ -532,7 +532,7 @@ class OnlineGameClient(
             // Errors
             is ServerMessage.InvalidMove -> {
                 logger.warn("Invalid move: ${message.reason}")
-                _serverErrors.tryEmit(InvalidMove(message.reason))
+                _serverErrors.tryEmit(InvalidMove(message.reason, message.move))
             }
 
             is ServerMessage.Error -> {

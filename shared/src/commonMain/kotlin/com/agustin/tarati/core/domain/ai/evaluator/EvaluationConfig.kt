@@ -29,6 +29,12 @@ data class EvaluationConfig(
     val tactical: TacticalWeights = TacticalWeights(),
     val search: SearchWeights = SearchWeights(),
     val behavior: BehaviorConfig = BehaviorConfig(),
+    /**
+     * Si el motor consulta el opening book antes de buscar (ver
+     * [com.agustin.tarati.core.domain.ai.book.OpeningBook]). Gateable; por defecto activo solo en
+     * HARD y CHAMPION — EASY/MEDIUM conservan su juego más débil y variado.
+     */
+    val openingBookEnabled: Boolean = false,
 ) {
     // ── MaterialWeights accessors ────────────────────────────────────────────
     val cobScore: Double get() = material.cobScore
@@ -123,6 +129,7 @@ data class EvaluationConfig(
         // No explota piezas aisladas ni oportunidades de promoción forzada.
         val HARD: EvaluationConfig = EvaluationConfig(
             difficulty = Difficulty.HARD,
+            openingBookEnabled = true,
             material = MaterialWeights(
                 cobScore = 206.0,
                 rocScore = 414.0,
@@ -143,6 +150,7 @@ data class EvaluationConfig(
         // HARD en lugar de introducir valores desconectados que distorsionen la búsqueda.
         val CHAMPION: EvaluationConfig = EvaluationConfig(
             difficulty = Difficulty.CHAMPION,
+            openingBookEnabled = true,
             material = MaterialWeights(
                 cobScore = 216.0,
                 rocScore = 454.0,

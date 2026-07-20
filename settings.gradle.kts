@@ -36,3 +36,9 @@ include(":shared")
 listOf("server", "androidApp", "desktopApp", "webApp").forEach { module ->
     if (File(settingsDir, module).isDirectory) include(":$module")
 }
+
+// Tool interno de minería de aperturas (opening book). No se publica ni entra al
+// build Docker del server, por eso se incluye solo si su directorio existe.
+if (File(settingsDir, "tools/opening-miner").isDirectory) {
+    include(":tools:opening-miner")
+}

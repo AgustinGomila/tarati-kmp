@@ -1,0 +1,8 @@
+# Salidas generadas por Gradle en los módulos de tools/ — no se versionan.
+build/
+.gradle/
+
+# Datos de trabajo del opening-miner (corpus exportado + tablas de stats). Efímeros,
+# regenerables desde Postgres; no entran al repo.
+*.tsv
+*.sqlite

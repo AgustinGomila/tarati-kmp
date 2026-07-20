@@ -25,16 +25,16 @@ data class BehaviorConfig(
      */
     val evalNoise: Double = 0.0,
 ) {
-    fun scaleWinning(threshold: Double = 1.0, positionThreshold: Double = 1.0) = copy(
+    fun scaleWinning(threshold: Double = 1.0, positionThreshold: Double = 1.0): BehaviorConfig = copy(
         winningThreshold = winningThreshold * threshold,
         winningPositionThreshold = winningPositionThreshold * positionThreshold,
     )
 
-    fun scaleRepetition(factor: Double) = copy(
+    fun scaleRepetition(factor: Double): BehaviorConfig = copy(
         repetitionPenaltyMultiplier = repetitionPenaltyMultiplier * factor,
     )
 
-    fun scaleStalling(penalty: Double = 1.0, threshold: Int = stallingThreshold) = copy(
+    fun scaleStalling(penalty: Double = 1.0, threshold: Int = stallingThreshold): BehaviorConfig = copy(
         stallingPenalty = stallingPenalty * penalty,
         stallingThreshold = threshold,
     )

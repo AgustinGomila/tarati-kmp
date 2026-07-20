@@ -461,11 +461,13 @@ sealed class ServerMessage {
      *
      * @param gameId ID de la partida
      * @param reason Razón por la cual es inválido
+     * @param move Jugada rechazada, para que el cliente pueda revertir su aplicación optimista
      */
     @Serializable
     data class InvalidMove(
         val gameId: String,
-        val reason: String
+        val reason: String,
+        val move: Move? = null,
     ) : ServerMessage()
 
     /**

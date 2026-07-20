@@ -4,6 +4,7 @@ package com.agustin.tarati.core.domain.ai.engine
 import com.agustin.tarati.core.domain.ai.api.AIDiagnostics
 import com.agustin.tarati.core.domain.ai.api.DrawContext
 import com.agustin.tarati.core.domain.ai.api.IAIEngine
+import com.agustin.tarati.core.domain.ai.book.OpeningBook
 import com.agustin.tarati.core.domain.ai.cache.HybridEvaluationCache
 import com.agustin.tarati.core.domain.ai.cache.TranspositionTable
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI.Companion.HALF_MOVE_CLOCK_MAX
@@ -53,6 +54,10 @@ class TaratiAI : IAIEngine {
 
     override suspend fun getNextMove(gameState: GameState): MoveEval {
         val config = evalConfig
+        // Opening book (gateado): jugada empíricamente más fuerte en aperturas conocidas, sin buscar.
+        if (config.openingBookEnabled) {
+            OpeningBook.lookup(gameState)?.let { return MoveEval(move = it, score = 0.0) }
+        }
         if (config.randomMoveChance > 0.0 && Random.nextDouble() < config.randomMoveChance) {
             val randomMove = gameState.allMovesForTurn().randomOrNull()
             return MoveEval(move = randomMove, score = 0.0)

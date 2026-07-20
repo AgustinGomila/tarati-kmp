@@ -1,6 +1,7 @@
 package com.agustin.tarati.core.domain.game.play
 
 import androidx.compose.runtime.Immutable
+import com.agustin.tarati.core.domain.game.board.BoardSymmetry
 import com.agustin.tarati.core.domain.game.board.GameBoard.adjacencyMap
 import com.agustin.tarati.core.domain.game.board.GameBoard.homeBases
 import com.agustin.tarati.core.domain.game.board.Vertex
@@ -54,6 +55,13 @@ data class Move(
      * via [GameState.applyPromotion].
      */
     fun isPromotion(): Boolean = from == to
+
+    /**
+     * This move reflected across the board's bilateral axis of symmetry (see [BoardSymmetry]):
+     * the same move toward the opposite side. A promotion (from == to) stays a promotion at the
+     * mirrored vertex.
+     */
+    fun mirrored(): Move = Move(BoardSymmetry.mirror(from), BoardSymmetry.mirror(to))
 
     fun isCaptureMove(
         oldState: GameState,

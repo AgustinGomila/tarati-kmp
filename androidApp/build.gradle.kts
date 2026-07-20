@@ -152,7 +152,8 @@ tasks.withType<Test>().configureEach {
         exclude(
             "**/*RegressionTest*.class",
             "**/*RoundRobinTest*.class",
-            "**/*DifficultyDiagnosticTest*.class"
+            "**/*DifficultyDiagnosticTest*.class",
+            "**/*OpeningBookAbTest*.class"
         )
         doFirst {
             logger.lifecycle("⏭️  SKIPPING heavy AI tests")

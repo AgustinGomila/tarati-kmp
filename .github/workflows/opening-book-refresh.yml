@@ -1,0 +1,117 @@
+name: Opening Book Refresh
+
+# Regenera el opening book (OpeningBookData.kt) desde el corpus de partidas de producción y abre un
+# PR si cambió. Mensual (el corpus crece por auto-juego de bots) + disparo manual.
+#
+# Pipeline: export TSV del Postgres de prod → minero (Etapa 1) → compilador (Etapa 2, --kotlin).
+# El PR NO se auto-mergea: antes de mergear conviene correr el A/B
+# (`-PskipHeavyTests=false --tests "*OpeningBookAbTest*"`) para confirmar que el book sigue ayudando.
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'   # 03:00 UTC, día 1 de cada mes
+  workflow_dispatch:
+    inputs:
+      min_rating:
+        description: 'Rating mínimo de ambos jugadores (filtro de calidad)'
+        default: '1600'
+      min_support:
+        description: 'MIN_SUPPORT — mínimo de partidas por jugada para entrar al book'
+        default: '100'
+
+permissions:
+  contents: write        # push de la rama del PR
+  pull-requests: write   # abrir el PR
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # El repo público podría no incluir tools/ (herramienta interna). Sin esta guarda los
+      # pasos siguientes fallarían allí.
+      - name: Detect opening-miner tool
+        id: detect
+        run: |
+          if [ -d "tools/opening-miner" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "✅ tool presente — se regenera el book"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ tools/opening-miner ausente — se omite"
+          fi
+
+      - name: Set up JDK 21
+        if: steps.detect.outputs.present == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        if: steps.detect.outputs.present == 'true'
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        if: steps.detect.outputs.present == 'true'
+        run: chmod +x gradlew
+
+      # Export del corpus por SSH crudo (COPY TO STDOUT → archivo en el runner). Tab-delimited: el
+      # PGN tiene espacios pero nunca tabs. Columnas = las que espera el minero (mapea por nombre).
+      - name: Export corpus from prod Postgres
+        if: steps.detect.outputs.present == 'true'
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/build/opening"
+          install -m 600 /dev/null /tmp/vps_key
+          printf '%s\n' "$VPS_SSH_KEY" > /tmp/vps_key
+          SQL="COPY (SELECT pgn, result, end_method, is_rated, time_control, white_rating_before AS w_rating, black_rating_before AS b_rating FROM games) TO STDOUT WITH (FORMAT csv, DELIMITER E'\t', HEADER)"
+          ssh -i /tmp/vps_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            "$VPS_USER@$VPS_HOST" \
+            "docker exec tarati-postgres-prod psql -U tarati -d tarati -q -c \"$SQL\"" \
+            > "$GITHUB_WORKSPACE/build/opening/games_export.tsv"
+          rm -f /tmp/vps_key
+          echo "Exportadas $(($(wc -l < "$GITHUB_WORKSPACE/build/opening/games_export.tsv") - 1)) partidas"
+
+      - name: Mine opening stats (stage 1)
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          ./gradlew -q :tools:opening-miner:run \
+            --args="--input $GITHUB_WORKSPACE/build/opening/games_export.tsv --output $GITHUB_WORKSPACE/build/opening/opening_stats.tsv --min-rating ${{ github.event.inputs.min_rating || '1600' }}"
+
+      - name: Compile book + regenerate OpeningBookData.kt (stage 2)
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          ./gradlew -q :tools:opening-miner:compileBook \
+            --args="--input $GITHUB_WORKSPACE/build/opening/opening_stats.tsv --output $GITHUB_WORKSPACE/build/opening/book.tsv --min-support ${{ github.event.inputs.min_support || '100' }} --kotlin $GITHUB_WORKSPACE/shared/src/commonMain/kotlin/com/agustin/tarati/core/domain/ai/book/OpeningBookData.kt"
+
+      - name: Open PR if the book changed
+        if: steps.detect.outputs.present == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          add-paths: shared/src/commonMain/kotlin/com/agustin/tarati/core/domain/ai/book/OpeningBookData.kt
+          branch: chore/opening-book-refresh
+          delete-branch: true
+          title: "Refresh opening book from corpus"
+          commit-message: "Refresh opening book from corpus"
+          labels: opening-book, automated
+          body: |
+            Regeneración automática de `OpeningBookData.kt` desde el corpus de partidas de producción.
+
+            **Antes de mergear**, correr el A/B para confirmar que el book sigue ayudando:
+
+            ```
+            ./gradlew :androidApp:testDebugUnitTest -PskipHeavyTests=false \
+              --tests "*OpeningBookAbTest*"
+            ```
+
+            Pipeline: export TSV (Postgres prod) → minero (Etapa 1) → compilador (Etapa 2).
+            Si este PR está vacío, el book no cambió respecto del corpus actual.

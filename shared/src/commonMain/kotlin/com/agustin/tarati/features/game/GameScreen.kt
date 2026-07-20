@@ -402,6 +402,7 @@ fun GameScreen(
         animationViewModel = animationViewModel,
         onMoveHandled = handleMove,
         isOnlineGame = currentOnlineGame != null,
+        onlinePlayerSide = onlinePlayerSide,
         isSpectating = spectatingState != null,
     )
 

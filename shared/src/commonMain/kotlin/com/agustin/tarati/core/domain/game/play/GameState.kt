@@ -5,6 +5,7 @@ import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.data.database.dto.GameDto
 import com.agustin.tarati.core.data.database.dto.MatchDto
 import com.agustin.tarati.core.data.database.dto.PGNHeader.Companion.createPGNHeader
+import com.agustin.tarati.core.domain.game.board.BoardSymmetry
 import com.agustin.tarati.core.domain.game.board.GameBoard
 import com.agustin.tarati.core.domain.game.board.GameBoard.adjacencyMap
 import com.agustin.tarati.core.domain.game.board.GameBoard.deadVertices
@@ -151,15 +152,56 @@ data class GameState(
             if (currentTurn == BLACK) ZOBRIST_SIDE_TO_MOVE else 0L
         for ((vertex, cob) in cobs) {
             val vi = VERTEX_INDEX[vertex] ?: continue
-            val pi = when {
-                cob.color == WHITE && !cob.isUpgraded -> 0
-                cob.color == WHITE && cob.isUpgraded -> 1
-                !cob.isUpgraded -> 2
-                else -> 3
-            }
-            hash = hash xor ZOBRIST_PIECES[vi][pi]
+            hash = hash xor ZOBRIST_PIECES[vi][pieceIndex(cob)]
         }
         return hash.toString(16)
+    }
+
+    /**
+     * Hash de la posición reflejada especularmente (ver [BoardSymmetry]), computado sin construir el
+     * estado espejo: cada pieza se indexa por su vértice reflejado. Preserva el turno.
+     */
+    fun mirroredHashBoard(): String {
+        var hash =
+            if (currentTurn == BLACK) ZOBRIST_SIDE_TO_MOVE else 0L
+        for ((vertex, cob) in cobs) {
+            val vi = VERTEX_INDEX[BoardSymmetry.mirror(vertex)] ?: continue
+            hash = hash xor ZOBRIST_PIECES[vi][pieceIndex(cob)]
+        }
+        return hash.toString(16)
+    }
+
+    /**
+     * Clave estable bajo la simetría bilateral del tablero: el menor entre [hashBoard] y
+     * [mirroredHashBoard]. Dos posiciones espejo comparten `canonicalHash`.
+     */
+    fun canonicalHash(): String = minOf(hashBoard(), mirroredHashBoard())
+
+    /**
+     * Representante canónico del par (posición, jugada) bajo la reflexión especular: pliega los pares
+     * espejo en una sola clave. Devuelve `(hash canónico, jugada en el marco canónico)`.
+     *
+     * En posiciones auto-simétricas (posición == su espejo, p. ej. la inicial) desempata por nombre
+     * de jugada, de modo que una jugada y su espejo colapsan al mismo representante.
+     */
+    fun canonicalMove(move: Move): Pair<String, Move> {
+        val hash = hashBoard()
+        val mirroredHash = mirroredHashBoard()
+        return when {
+            hash < mirroredHash -> hash to move
+            mirroredHash < hash -> mirroredHash to move.mirrored()
+            else -> {
+                val mirrored = move.mirrored()
+                if (move.name <= mirrored.name) hash to move else hash to mirrored
+            }
+        }
+    }
+
+    private fun pieceIndex(cob: Cob): Int = when {
+        cob.color == WHITE && !cob.isUpgraded -> 0
+        cob.color == WHITE && cob.isUpgraded -> 1
+        !cob.isUpgraded -> 2
+        else -> 3
     }
 
     // ==================== Estado del Juego ====================

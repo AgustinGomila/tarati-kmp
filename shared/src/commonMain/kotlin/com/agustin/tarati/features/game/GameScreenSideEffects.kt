@@ -51,6 +51,12 @@ fun GameScreenSideEffects(
     onMoveHandled: (Move) -> Unit = {},
     /** When true, server is the game-over authority — local timeout only stops the clock visually. */
     isOnlineGame: Boolean = false,
+    /**
+     * The human's color in an online game. Used instead of [GameScreenState.whiteIsAI]/blackIsAI to
+     * identify the human's own turn, since those flags are stale online (inherited from the last
+     * local game). Null in local games.
+     */
+    onlinePlayerSide: CobColor? = null,
     /** When true, clock is managed by spectating sync — skip local pause/reset logic. */
     isSpectating: Boolean = false,
 ) {
@@ -82,13 +88,20 @@ fun GameScreenSideEffects(
         }
     }
 
-    // whiteIsAI/blackIsAI rather than playerSide == currentTurn so AI vs AI doesn't
-    // double-apply promotions already handled by the engine.
+    // Auto-aplica una promoción forzada única (transformar el cob + mover el rok es un solo turno).
+    // whiteIsAI/blackIsAI identifica el turno humano en local (para que IA vs IA no re-aplique lo que
+    // el motor ya maneja). En online esos flags quedan STALE de la última partida local, así que el
+    // turno propio se determina por el color online: sin este guard, el cliente auto-enviaría (y
+    // aplicaría optimistamente) la promoción forzada del RIVAL, corriendo la lista de movimientos y
+    // disparando un rechazo "fuera de turno" del servidor.
     LaunchedEffect(gameManagerState.gameState) {
         val state = gameManagerState.gameState
-        val isCurrentTurnHuman =
+        val isCurrentTurnHuman = if (isOnlineGame) {
+            state.currentTurn == onlinePlayerSide
+        } else {
             (state.currentTurn == CobColor.WHITE && !screenState.whiteIsAI) ||
                     (state.currentTurn == CobColor.BLACK && !screenState.blackIsAI)
+        }
         if (!isCurrentTurnHuman || isEditing || screenState.isTutorialActive) return@LaunchedEffect
         if (gameManagerState.gameStatus != GameStatus.PLAYING) return@LaunchedEffect
 
@@ -99,6 +112,9 @@ fun GameScreenSideEffects(
     }
 
     LaunchedEffect(gameManagerState.gameState) {
+        // En online el servidor es la autoridad del fin de partida (incl. la regla de 50 jugadas);
+        // el reclamo automático local no debe dispararse — whiteIsAI/blackIsAI están stale online.
+        if (isOnlineGame) return@LaunchedEffect
         val state = gameManagerState.gameState
         val isCurrentTurnAI = (state.currentTurn == CobColor.WHITE && screenState.whiteIsAI) ||
                 (state.currentTurn == CobColor.BLACK && screenState.blackIsAI)

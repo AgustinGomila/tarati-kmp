@@ -288,8 +288,8 @@ interface IOnlineGameViewModel {
 
 /** Errores del servidor propagados a la UI como notificaciones. */
 sealed class ServerErrorEvent {
-    /** El servidor rechazó el movimiento (ilegal o fuera de turno). */
-    data class InvalidMove(val reason: String) : ServerErrorEvent()
+    /** El servidor rechazó el movimiento (ilegal o fuera de turno). [move] es la jugada rechazada. */
+    data class InvalidMove(val reason: String, val move: Move? = null) : ServerErrorEvent()
 
     /** El servidor reportó un error genérico. */
     data class GenericError(val code: String, val message: String) : ServerErrorEvent()
