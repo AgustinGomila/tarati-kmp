@@ -30,17 +30,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # El repo público podría no incluir tools/ (herramienta interna). Sin esta guarda los
-      # pasos siguientes fallarían allí.
-      - name: Detect opening-miner tool
+      # El opening-miner y el corpus son ops/servidor: el repo público (tarati-kmp) no incluye
+      # `tools/` ni los secrets del VPS. Se corre solo si AMBOS están presentes; si no (repo
+      # público o fork), el job es un no-op limpio en vez de fallar por falta de acceso.
+      - name: Detect tool and VPS access
         id: detect
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
-          if [ -d "tools/opening-miner" ]; then
+          if [ -d "tools/opening-miner" ] && [ -n "$VPS_HOST" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
-            echo "✅ tool presente — se regenera el book"
+            echo "✅ tool + acceso al VPS presentes — se regenera el book"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "ℹ️ tools/opening-miner ausente — se omite"
+            echo "ℹ️ tools/opening-miner o secrets del VPS ausentes (p. ej. repo público) — se omite"
           fi
 
       - name: Set up JDK 21
