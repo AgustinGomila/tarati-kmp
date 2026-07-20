@@ -394,6 +394,10 @@ fun OnlineGameSideEffects(
                 onlinePlayerSide = onlineColor
                 setShowMatchmakingModal(false)
                 bus.clearAlert()
+                // Cancelar de inmediato los toasts de revancha/resultado de la partida anterior:
+                // al arrancar una partida nueva (matchmaking o revancha aceptada) el status ya es
+                // InProgress —no Finished—, así que el clear por reset de tablero no los cubre.
+                bus.clearAllToasts()
                 setOnlineFinishedResult(null)
                 viewModel.startGame(onlineColor)
                 // Orientar el tablero para que las piezas del jugador humano queden
