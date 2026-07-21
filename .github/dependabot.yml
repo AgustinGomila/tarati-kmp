@@ -1,0 +1,22 @@
+# Dependabot — chequeo automático de actualizaciones/CVEs de dependencias.
+# Escanea el catálogo de versiones (gradle/libs.versions.toml) + los build.gradle.kts,
+# y las versiones de las GitHub Actions usadas en los workflows.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      # Agrupa minor/patch en un solo PR para reducir ruido; los majors van sueltos para revisarlos.
+      gradle-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

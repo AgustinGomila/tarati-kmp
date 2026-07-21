@@ -245,7 +245,10 @@ fun GameScreenSideEffects(
     LaunchedEffect(Unit) {
         clockService.timeoutEvents.collect { loser ->
             if (latestIsEditing || latestScreenState.isTutorialActive) return@collect
-            if (isOnlineGame) return@collect
+            // Igual que el collector de gameOverReady: leer los valores latest (este es
+            // LaunchedEffect(Unit), no se relanza) y saltar también en espectado. En online/espectado
+            // el servidor es la autoridad del fin por tiempo; un onTimeout local sería un falso "por tiempo".
+            if (latestIsOnlineGame || latestIsSpectating) return@collect
             events.onTimeout(loser)
         }
     }

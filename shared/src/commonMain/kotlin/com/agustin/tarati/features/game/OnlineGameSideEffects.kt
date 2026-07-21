@@ -64,6 +64,7 @@ import com.agustin.tarati.shared.generated.resources.spectator_game_ended_draw
 import com.agustin.tarati.shared.generated.resources.spectator_game_ended_wins
 import com.agustin.tarati.ui.components.game.animation.AnimationCoordinator
 import com.agustin.tarati.ui.components.game.animation.AnimationEvent
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -162,17 +163,25 @@ fun OnlineGameSideEffects(
         val logger = getLogger("OnlineGameSideEffects")
         while (true) {
             delay(60_000L.milliseconds)
-            if (authViewModel.isTokenExpiringSoon()) {
-                logger.debug("Access token expiring soon — refreshing proactively")
-                val result = authViewModel.refreshToken()
-                if (result.isSuccess) {
-                    if (connectionViewModel.isConnected) {
-                        val newToken = result.getOrNull() ?: return@LaunchedEffect
-                        connectionViewModel.connectToServer(devServerUrl, newToken)
+            // Guardar cada iteración: una excepción de isTokenExpiringSoon/connectToServer no debe
+            // matar el loop (dejaría de refrescar el token toda la sesión). refreshToken ya devuelve Result.
+            try {
+                if (authViewModel.isTokenExpiringSoon()) {
+                    logger.debug("Access token expiring soon — refreshing proactively")
+                    val result = authViewModel.refreshToken()
+                    if (result.isSuccess) {
+                        if (connectionViewModel.isConnected) {
+                            val newToken = result.getOrNull()
+                            if (newToken != null) connectionViewModel.connectToServer(devServerUrl, newToken)
+                        }
+                    } else {
+                        logger.debug("Proactive refresh failed: ${result.exceptionOrNull()?.message}")
                     }
-                } else {
-                    logger.debug("Proactive refresh failed: ${result.exceptionOrNull()?.message}")
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.debug("Proactive token refresh iteration failed: ${e.message}")
             }
         }
     }
