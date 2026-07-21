@@ -98,7 +98,7 @@ jobs:
 
       - name: Open PR if the book changed
         if: steps.detect.outputs.present == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           add-paths: shared/src/commonMain/kotlin/com/agustin/tarati/core/domain/ai/book/OpeningBookData.kt
           branch: chore/opening-book-refresh
