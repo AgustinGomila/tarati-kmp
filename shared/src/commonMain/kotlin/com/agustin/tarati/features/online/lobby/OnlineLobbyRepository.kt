@@ -2,6 +2,7 @@ package com.agustin.tarati.features.online.lobby
 
 
 import com.agustin.tarati.features.online.devServerUrl
+import com.agustin.tarati.network.authGet
 import com.agustin.tarati.network.models.Game
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
@@ -10,12 +11,7 @@ import com.agustin.tarati.network.models.MpTableDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
 import com.agustin.tarati.network.models.PagedResponse
-import com.agustin.tarati.network.models.PublicProfileDto
 import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.bearerAuth
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 
 /**
  * Repositorio para los endpoints del lobby online.
@@ -36,11 +32,8 @@ class OnlineLobbyRepository(
      *
      * @param token JWT del usuario autenticado.
      */
-    suspend fun getLiveGames(token: String): Result<List<LiveGameDto>> = runCatching {
-        httpClient.get("$baseUrl/api/live-games") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getLiveGames(token: String): Result<List<LiveGameDto>> =
+        httpClient.authGet("$baseUrl/api/live-games", token)
 
     /**
      * Obtiene el historial paginado de partidas del usuario autenticado.
@@ -59,16 +52,14 @@ class OnlineLobbyRepository(
         timeControl: String? = null,
         result: String? = null,
         rated: Boolean? = null,
-    ): Result<PagedResponse<GameHistoryDto>> = runCatching {
-        httpClient.get("$baseUrl/api/games") {
-            bearerAuth(token)
-            parameter("page", page)
-            parameter("limit", limit)
-            if (timeControl != null) parameter("timeControl", timeControl)
-            if (result != null) parameter("result", result)
-            if (rated != null) parameter("rated", rated)
-        }.body()
-    }
+    ): Result<PagedResponse<GameHistoryDto>> = httpClient.authGet(
+        "$baseUrl/api/games", token,
+        "page" to page,
+        "limit" to limit,
+        "timeControl" to timeControl,
+        "result" to result,
+        "rated" to rated,
+    )
 
     /**
      * Obtiene el feed social: partidas recientes de jugadores seguidos por el usuario autenticado.
@@ -82,13 +73,11 @@ class OnlineLobbyRepository(
         token: String,
         page: Int = 0,
         limit: Int = 20,
-    ): Result<PagedResponse<GameHistoryDto>> = runCatching {
-        httpClient.get("$baseUrl/api/feed") {
-            bearerAuth(token)
-            parameter("page", page)
-            parameter("limit", limit)
-        }.body()
-    }
+    ): Result<PagedResponse<GameHistoryDto>> = httpClient.authGet(
+        "$baseUrl/api/feed", token,
+        "page" to page,
+        "limit" to limit,
+    )
 
     /**
      * Obtiene una partida finalizada por ID.
@@ -97,11 +86,8 @@ class OnlineLobbyRepository(
      * @param token  JWT del usuario autenticado.
      * @param gameId ID de la partida.
      */
-    suspend fun getGame(token: String, gameId: String): Result<Game> = runCatching {
-        httpClient.get("$baseUrl/api/games/$gameId") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getGame(token: String, gameId: String): Result<Game> =
+        httpClient.authGet("$baseUrl/api/games/$gameId", token)
 
     /**
      * Obtiene las búsquedas abiertas actualmente en colas de matchmaking.
@@ -109,11 +95,8 @@ class OnlineLobbyRepository(
      *
      * @param token JWT del usuario autenticado.
      */
-    suspend fun getOpenSearches(token: String): Result<List<OpenSearchDto>> = runCatching {
-        httpClient.get("$baseUrl/api/lobby/open-searches") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getOpenSearches(token: String): Result<List<OpenSearchDto>> =
+        httpClient.authGet("$baseUrl/api/lobby/open-searches", token)
 
     /**
      * Obtiene la lista de usuarios actualmente conectados al servidor.
@@ -121,44 +104,22 @@ class OnlineLobbyRepository(
      *
      * @param token JWT del usuario autenticado.
      */
-    suspend fun getOnlineUsers(token: String): Result<List<OnlineUserDto>> = runCatching {
-        httpClient.get("$baseUrl/api/lobby/online-users") {
-            bearerAuth(token)
-        }.body()
-    }
-
-    /**
-     * Obtiene el perfil público de un usuario, incluyendo sus estadísticas
-     * sumarizadas por control de tiempo ([PublicProfileDto.stats]).
-     *
-     * @param token  JWT del usuario autenticado.
-     * @param userId ID del usuario cuyo perfil se solicita.
-     */
-    suspend fun getProfile(token: String, userId: String): Result<PublicProfileDto> = runCatching {
-        httpClient.get("$baseUrl/api/users/$userId") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getOnlineUsers(token: String): Result<List<OnlineUserDto>> =
+        httpClient.authGet("$baseUrl/api/lobby/online-users", token)
 
     /**
      * Obtiene las mesas públicas abiertas del lobby multijugador (tablero `25`).
      *
      * @param token JWT del usuario autenticado.
      */
-    suspend fun getMpTables(token: String): Result<List<MpTableDto>> = runCatching {
-        httpClient.get("$baseUrl/api/mp/tables") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getMpTables(token: String): Result<List<MpTableDto>> =
+        httpClient.authGet("$baseUrl/api/mp/tables", token)
 
     /**
      * Obtiene las partidas multijugador **en curso** (para observar como espectador — M7.5).
      *
      * @param token JWT del usuario autenticado.
      */
-    suspend fun getMpLiveGames(token: String): Result<List<MpLiveGameDto>> = runCatching {
-        httpClient.get("$baseUrl/api/mp/games") {
-            bearerAuth(token)
-        }.body()
-    }
+    suspend fun getMpLiveGames(token: String): Result<List<MpLiveGameDto>> =
+        httpClient.authGet("$baseUrl/api/mp/games", token)
 }

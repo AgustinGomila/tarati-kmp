@@ -20,13 +20,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.core.domain.game.time.TimeControl
+import com.agustin.tarati.network.models.ProfileStatsDto
+import com.agustin.tarati.network.models.ProfileTimeControlStatsDto
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.auth_guest_banner_title
 import com.agustin.tarati.shared.generated.resources.auth_guest_description
 import com.agustin.tarati.shared.generated.resources.auth_sign_in
+import com.agustin.tarati.shared.generated.resources.casual_info_card
 import com.agustin.tarati.shared.generated.resources.draw
 import com.agustin.tarati.shared.generated.resources.loss
+import com.agustin.tarati.shared.generated.resources.rated_info_card
 import com.agustin.tarati.shared.generated.resources.win
 import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.datetime.LocalDate
@@ -81,6 +86,45 @@ internal fun formatGameDate(epochMs: Long): String =
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
         .format(gameDateFormat)
+
+/** Fecha local "dd/MM/yyyy" a partir de un [Instant] (p. ej. fecha de registro del perfil). */
+internal fun formatDate(instant: Instant): String =
+    instant.toLocalDateTime(TimeZone.currentSystemDefault())
+        .date
+        .format(gameDateFormat)
+
+/** Etiqueta localizada "Puntuada"/"Amistosa" según [rated]. */
+@Composable
+internal fun ratedCasualLabel(rated: Boolean): String =
+    if (rated) localizedString(Res.string.rated_info_card)
+    else localizedString(Res.string.casual_info_card)
+
+/**
+ * Subtítulo estándar de las cards de partida: "TC · Puntuada/Amistosa[ · dd/MM/yyyy]".
+ *
+ * @param timeControlDisplay Control de tiempo ya formateado (p. ej. `GameTimeControl.toDisplayString()`).
+ * @param dateMs             Fecha de fin en epoch-ms, o null para omitirla.
+ */
+@Composable
+internal fun gameCardSubtitle(timeControlDisplay: String, rated: Boolean, dateMs: Long? = null): String =
+    buildString {
+        append(timeControlDisplay)
+        append(" · ")
+        append(ratedCasualLabel(rated))
+        if (dateMs != null) {
+            append(" · ")
+            append(formatGameDate(dateMs))
+        }
+    }
+
+/** Estadísticas del control de tiempo [key], o las totales si es null o desconocido. */
+internal fun ProfileStatsDto.forTimeControl(key: String?): ProfileTimeControlStatsDto = when (key) {
+    TimeControl.BULLET.key -> bullet
+    TimeControl.BLITZ.key -> blitz
+    TimeControl.RAPID.key -> rapid
+    TimeControl.CLASSICAL.key -> classical
+    else -> total
+}
 
 /** Verde de "victoria / cambio de rating positivo", consistente en todas las pestañas. */
 internal val PositiveGreen = Color(0xFF4CAF50)

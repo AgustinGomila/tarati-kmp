@@ -1,7 +1,6 @@
 package com.agustin.tarati.features.online.auth
 
 import com.agustin.tarati.services.billing.EntitlementsRepository
-import io.ktor.client.HttpClient
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -37,7 +36,7 @@ import kotlin.test.assertTrue
 class AuthViewModelTest {
 
     private lateinit var mockAuthRepository: AuthRepository
-    private lateinit var mockHttpClient: HttpClient
+    private lateinit var mockAuthApi: AuthApi
     private lateinit var viewModel: AuthViewModel
     private val testDispatcher = StandardTestDispatcher()
 
@@ -50,9 +49,9 @@ class AuthViewModelTest {
             // Sin refresh token → logout omite el POST a /auth/logout y completa inmediatamente.
             every { getRefreshToken() } returns null
         }
-        mockHttpClient = mockk(relaxed = true)
+        mockAuthApi = mockk(relaxed = true)
 
-        viewModel = AuthViewModel(mockAuthRepository, mockHttpClient)
+        viewModel = AuthViewModel(mockAuthRepository, mockAuthApi)
     }
 
     @After
@@ -146,7 +145,7 @@ class AuthViewModelTest {
         val token = makeTestJwt(sub = "user-123", username = "test_player")
         every { mockAuthRepository.getToken() } returns token
 
-        val newViewModel = AuthViewModel(mockAuthRepository, mockHttpClient)
+        val newViewModel = AuthViewModel(mockAuthRepository, mockAuthApi)
 
         assertTrue(newViewModel.authState.value is AuthState.Authenticated)
         assertEquals(token, newViewModel.accessToken)
@@ -162,7 +161,7 @@ class AuthViewModelTest {
         every { mockAuthRepository.getToken() } returns token
         val mockEntitlements = mockk<EntitlementsRepository>(relaxed = true)
 
-        AuthViewModel(mockAuthRepository, mockHttpClient, mockEntitlements)
+        AuthViewModel(mockAuthRepository, mockAuthApi, mockEntitlements)
         advanceUntilIdle()
 
         coVerify { mockEntitlements.refresh() }
@@ -172,7 +171,7 @@ class AuthViewModelTest {
     fun `does not restore session when no token exists`() {
         every { mockAuthRepository.getToken() } returns null
 
-        val newViewModel = AuthViewModel(mockAuthRepository, mockHttpClient)
+        val newViewModel = AuthViewModel(mockAuthRepository, mockAuthApi)
 
         assertTrue(newViewModel.authState.value is AuthState.Unauthenticated)
         assertNull(newViewModel.accessToken)

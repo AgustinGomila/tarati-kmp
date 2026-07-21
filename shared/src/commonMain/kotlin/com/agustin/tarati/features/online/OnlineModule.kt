@@ -5,6 +5,7 @@ import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.achievements.AchievementsViewModel
 import com.agustin.tarati.features.achievements.IAchievementsViewModel
 import com.agustin.tarati.features.game6.MpLobbyViewModel
+import com.agustin.tarati.features.online.auth.AuthApi
 import com.agustin.tarati.features.online.auth.AuthRepository
 import com.agustin.tarati.features.online.auth.AuthViewModel
 import com.agustin.tarati.features.online.auth.IAuthViewModel
@@ -172,12 +173,9 @@ val onlineModule: Module = module {
 
     // ============ ViewModels ============
 
-    /**
-     * AuthViewModel
-     *
-     * Gestiona autenticación y tokens.
-     * Versión simplificada para Fase 7 - solo gestión de tokens.
-     */
+    // Cliente HTTP de los endpoints /auth/* y /api/profile.
+    single { AuthApi(httpClient = get()) }
+
     /**
      * AuthViewModel — singleton de sesión.
      *
@@ -191,7 +189,7 @@ val onlineModule: Module = module {
     single<IAuthViewModel> {
         AuthViewModel(
             authRepository = get(),
-            httpClient = get(),
+            authApi = get(),
             entitlementsRepository = get(),
             achievementsManager = getOrNull(),
         )
@@ -256,6 +254,7 @@ val onlineModule: Module = module {
     viewModel {
         OnlineLobbyViewModel(
             repository = get(),
+            socialRepository = get(),
             authViewModel = get(),
         )
     } bind IOnlineLobbyViewModel::class

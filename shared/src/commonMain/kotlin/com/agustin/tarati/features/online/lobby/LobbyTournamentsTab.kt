@@ -23,7 +23,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +30,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,10 +46,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.tournament.ITournamentViewModel
 import com.agustin.tarati.features.online.tournament.TournamentViewModel
+import com.agustin.tarati.features.online.ui.LabeledSwitchRow
+import com.agustin.tarati.features.online.ui.TimeControlChips
 import com.agustin.tarati.network.models.CreateTournamentRequest
 import com.agustin.tarati.network.models.TournamentStatus
 import com.agustin.tarati.network.models.TournamentSummaryDto
@@ -111,12 +110,10 @@ private enum class TournamentSort { NEWEST, MOST_PLAYERS }
 @Composable
 internal fun TournamentsTab(
     onNavigateToTournament: ((tournamentId: String) -> Unit)? = null,
-    authViewModel: IAuthViewModel = koinInject(),
     viewModel: ITournamentViewModel = koinViewModel<TournamentViewModel>(),
 ) {
     val state by viewModel.listState.collectAsState()
     val scope = rememberCoroutineScope()
-    val token = authViewModel.accessToken ?: authViewModel.getStoredToken()
     var showCreateDialog by remember { mutableStateOf(false) }
 
     // ── Filtros locales ────────────────────────────────────────────────────────
@@ -156,9 +153,7 @@ internal fun TournamentsTab(
 
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            state.isLoading -> CenteredLoader()
 
             state.error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -168,7 +163,7 @@ internal fun TournamentsTab(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { if (token != null) viewModel.loadTournaments(token) }) {
+                    Button(onClick = { viewModel.loadTournaments() }) {
                         Text(localizedString(Res.string.retry))
                     }
                 }
@@ -301,8 +296,8 @@ internal fun TournamentsTab(
         CreateTournamentDialog(
             onDismiss = { showCreateDialog = false },
             onCreate = { request ->
-                if (token != null) scope.launch {
-                    viewModel.createTournament(token, request)
+                scope.launch {
+                    viewModel.createTournament(request)
                     showCreateDialog = false
                 }
             },
@@ -422,7 +417,7 @@ private fun TournamentCard(
                 )
                 val statusColor = when (tournament.status) {
                     TournamentStatus.REGISTERING -> Color(0xFFFFC107)
-                    TournamentStatus.ACTIVE -> Color(0xFF4CAF50)
+                    TournamentStatus.ACTIVE -> PositiveGreen
                     TournamentStatus.FINISHED -> MaterialTheme.colorScheme.onSurfaceVariant
                     TournamentStatus.CANCELLED -> MaterialTheme.colorScheme.error
                 }
@@ -558,16 +553,7 @@ private fun CreateTournamentDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    TimeControl.list().forEach { tc ->
-                        FilterChip(
-                            selected = selectedTc == tc,
-                            onClick = { selectedTc = tc },
-                            label = { Text(tc.replaceFirstChar { it.uppercase() }) },
-                            leadingIcon = {
-                                Icon(timeControlIcon(tc), null, Modifier.size(16.dp))
-                            },
-                        )
-                    }
+                    TimeControlChips(selected = selectedTc, onSelect = { selectedTc = it })
                 }
                 // Duración — solo Arena (ventana de tiempo fija)
                 if (isArena) {
@@ -585,31 +571,19 @@ private fun CreateTournamentDialog(
                     )
                 }
                 // Rated toggle — invitados solo juegan no puntuado
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(localizedString(Res.string.rated))
-                    Switch(
-                        checked = if (isGuest) false else isRated,
-                        onCheckedChange = { isRated = it },
-                        enabled = !isGuest,
-                    )
-                }
+                LabeledSwitchRow(
+                    label = localizedString(Res.string.rated),
+                    checked = if (isGuest) false else isRated,
+                    onCheckedChange = { isRated = it },
+                    enabled = !isGuest,
+                )
                 // Spectating toggle — invitados siempre permiten espectadores
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(localizedString(Res.string.allow_spectators))
-                    Switch(
-                        checked = if (isGuest) true else spectatingAllowed,
-                        onCheckedChange = { spectatingAllowed = it },
-                        enabled = !isGuest,
-                    )
-                }
+                LabeledSwitchRow(
+                    label = localizedString(Res.string.allow_spectators),
+                    checked = if (isGuest) true else spectatingAllowed,
+                    onCheckedChange = { spectatingAllowed = it },
+                    enabled = !isGuest,
+                )
                 // Jugadores
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(

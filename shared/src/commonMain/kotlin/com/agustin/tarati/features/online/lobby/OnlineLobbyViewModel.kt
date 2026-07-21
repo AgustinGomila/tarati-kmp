@@ -8,13 +8,11 @@ import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.lobby.OnlineLobbyViewModel.Companion.LIVE_POLL_INTERVAL
-import com.agustin.tarati.network.models.GameHistoryDto
+import com.agustin.tarati.features.online.social.SocialRepository
 import com.agustin.tarati.network.models.LiveGameDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
-import com.agustin.tarati.network.models.PagedResponse
 import com.agustin.tarati.network.models.ProfileStatsDto
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,23 +60,6 @@ data class LobbyFilters(
     val sort: LobbySort = LobbySort.NEWEST,
 )
 
-data class HistoryFilters(
-    val timeControl: String? = null,   // null = todos
-    val result: String? = null,        // "win" | "loss" | "draw" | null
-    val rated: Boolean? = null,        // null = todos
-)
-
-data class GameHistoryUiState(
-    val games: List<GameHistoryDto> = emptyList(),
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val error: String? = null,
-    val filters: HistoryFilters = HistoryFilters(),
-    val currentPage: Int = 0,
-    val hasMore: Boolean = true,
-    val total: Long = 0,
-)
-
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
 /**
@@ -93,11 +74,14 @@ data class GameHistoryUiState(
  * y con qué criterio de ordenamiento. El ViewModel expone los datos crudos —
  * la pantalla aplica los filtros sobre ellos.
  *
- * ## Tab "Mis Partidas"
- * Carga paginada con filtros por time control, resultado y tipo de partida.
+ * ## Tab "Mis Partidas" / feed
+ * Carga paginada delegada en [PagedGameHistoryLoader] (compartido con
+ * [PublicProfileViewModel]); el historial propio filtra por time control,
+ * resultado y tipo de partida.
  */
 class OnlineLobbyViewModel(
     private val repository: OnlineLobbyRepository,
+    private val socialRepository: SocialRepository,
     private val authViewModel: IAuthViewModel,
 ) : ViewModel(), IOnlineLobbyViewModel {
 
@@ -112,17 +96,30 @@ class OnlineLobbyViewModel(
     private val _openSearches = MutableStateFlow(OpenSearchesUiState())
     override val openSearches: StateFlow<OpenSearchesUiState> = _openSearches.asStateFlow()
 
-    private val _history = MutableStateFlow(GameHistoryUiState())
-    override val history: StateFlow<GameHistoryUiState> = _history.asStateFlow()
-
     private val _myStats = MutableStateFlow<ProfileStatsDto?>(null)
     override val myStats: StateFlow<ProfileStatsDto?> = _myStats.asStateFlow()
 
     private val _lobbyFilters = MutableStateFlow(LobbyFilters())
     override val lobbyFilters: StateFlow<LobbyFilters> = _lobbyFilters.asStateFlow()
 
-    private val _feedState = MutableStateFlow(GameHistoryUiState())
-    override val feedState: StateFlow<GameHistoryUiState> = _feedState.asStateFlow()
+    /** Historial propio ([GET /api/games]) con filtros aplicados en el servidor. */
+    private val historyLoader = PagedGameHistoryLoader(viewModelScope, authViewModel) { token, page, limit, filters ->
+        repository.getGameHistory(
+            token = token,
+            page = page,
+            limit = limit,
+            timeControl = filters.timeControl,
+            result = filters.result,
+            rated = filters.rated,
+        )
+    }
+    override val history: StateFlow<GameHistoryUiState> = historyLoader.state
+
+    /** Feed social ([GET /api/feed]) — sin filtros de servidor; la pantalla filtra en cliente. */
+    private val feedLoader = PagedGameHistoryLoader(viewModelScope, authViewModel) { token, page, limit, _ ->
+        repository.getFeed(token = token, page = page, limit = limit)
+    }
+    override val feedState: StateFlow<GameHistoryUiState> = feedLoader.state
 
     private var pollingJob: Job? = null
     private var connectedPollingJob: Job? = null
@@ -133,7 +130,6 @@ class OnlineLobbyViewModel(
 
         /** Usuarios en línea se refrescan cada 2 ciclos (~10 s) dentro del polling de En Vivo. */
         private const val ONLINE_USERS_EVERY_N_CYCLES = 2
-        const val PAGE_SIZE: Int = 20
     }
 
     private var pollCycle = 0
@@ -200,7 +196,6 @@ class OnlineLobbyViewModel(
                 _liveGames.update { it.copy(games = games, isLoading = false) }
             }
             .onFailure { e ->
-                if (e is CancellationException) throw e
                 logger.error("fetchLiveGames error: ${e::class.simpleName} — ${e.message}")
                 _liveGames.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -216,7 +211,6 @@ class OnlineLobbyViewModel(
                 _openSearches.update { it.copy(searches = searches, isLoading = false) }
             }
             .onFailure { e ->
-                if (e is CancellationException) throw e
                 logger.error("fetchOpenSearches error: ${e::class.simpleName} — ${e.message}")
                 _openSearches.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -240,17 +234,10 @@ class OnlineLobbyViewModel(
 
     override fun loadHistory() {
         loadMyStats()
-        loadPagedContent(_history) { token, page, limit ->
-            repository.getGameHistory(
-                token = token,
-                page = page,
-                limit = limit,
-                timeControl = _history.value.filters.timeControl,
-                result = _history.value.filters.result,
-                rated = _history.value.filters.rated,
-            )
-        }
+        historyLoader.load()
     }
+
+    override fun loadMoreHistory(): Unit = historyLoader.loadMore()
 
     /**
      * Carga las estadísticas sumarizadas del propio usuario una sola vez por sesión
@@ -262,49 +249,21 @@ class OnlineLobbyViewModel(
         val userId = authViewModel.currentUser?.userId ?: return
         viewModelScope.launch {
             val token = authViewModel.validToken() ?: return@launch
-            repository.getProfile(token, userId)
+            socialRepository.getUserProfile(token, userId)
                 .onSuccess { profile -> _myStats.value = profile.stats }
-                .onFailure { e ->
-                    if (e is CancellationException) throw e
-                    logger.debug("loadMyStats failed: ${e.message}")
-                }
-        }
-    }
-
-    override fun loadMoreHistory() {
-        loadMorePagedContent(_history) { token, page, limit ->
-            repository.getGameHistory(
-                token = token,
-                page = page,
-                limit = limit,
-                timeControl = _history.value.filters.timeControl,
-                result = _history.value.filters.result,
-                rated = _history.value.filters.rated,
-            )
+                .onFailure { e -> logger.debug("loadMyStats failed: ${e.message}") }
         }
     }
 
     // ── History filters ────────────────────────────────────────────────────────
 
-    override fun setTimeControlFilter(tc: String?) {
-        _history.update { it.copy(filters = it.filters.copy(timeControl = tc)) }
-        loadHistory()
-    }
+    override fun setTimeControlFilter(tc: String?): Unit = historyLoader.setTimeControlFilter(tc)
 
-    override fun setResultFilter(result: String?) {
-        _history.update { it.copy(filters = it.filters.copy(result = result)) }
-        loadHistory()
-    }
+    override fun setResultFilter(result: String?): Unit = historyLoader.setResultFilter(result)
 
-    override fun setRatedFilter(rated: Boolean?) {
-        _history.update { it.copy(filters = it.filters.copy(rated = rated)) }
-        loadHistory()
-    }
+    override fun setRatedFilter(rated: Boolean?): Unit = historyLoader.setRatedFilter(rated)
 
-    override fun clearFilters() {
-        _history.update { it.copy(filters = HistoryFilters()) }
-        loadHistory()
-    }
+    override fun clearFilters(): Unit = historyLoader.clearFilters()
 
     // ── Game preview ──────────────────────────────────────────────────────────
 
@@ -317,83 +276,7 @@ class OnlineLobbyViewModel(
 
     // ── Social feed ────────────────────────────────────────────────────────────
 
-    override fun loadFeed() {
-        loadPagedContent(_feedState) { token, page, limit ->
-            repository.getFeed(token = token, page = page, limit = limit)
-        }
-    }
+    override fun loadFeed(): Unit = feedLoader.load()
 
-    override fun loadMoreFeed() {
-        loadMorePagedContent(_feedState) { token, page, limit ->
-            repository.getFeed(token = token, page = page, limit = limit)
-        }
-    }
-
-    // ── Pagination helpers ─────────────────────────────────────────────────────
-
-    /**
-     * Carga la primera página de contenido paginado en [stateFlow].
-     * Resetea el estado y delega la llamada al repositorio a [load].
-     */
-    private fun loadPagedContent(
-        stateFlow: MutableStateFlow<GameHistoryUiState>,
-        load: suspend (token: String, page: Int, limit: Int) -> Result<PagedResponse<GameHistoryDto>>,
-    ) {
-        viewModelScope.launch {
-            val token = authViewModel.validToken() ?: run {
-                logger.debug("loadPagedContent: no token, skipping")
-                return@launch
-            }
-            stateFlow.update { it.copy(isLoading = true, error = null, currentPage = 0, games = emptyList()) }
-            load(token, 0, PAGE_SIZE)
-                .onSuccess { paged ->
-                    stateFlow.update {
-                        it.copy(
-                            games = paged.items,
-                            isLoading = false,
-                            currentPage = 0,
-                            total = paged.total,
-                            hasMore = paged.items.size < paged.total,
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    if (e is CancellationException) throw e
-                    stateFlow.update { it.copy(isLoading = false, error = e.message) }
-                }
-        }
-    }
-
-    /**
-     * Agrega la siguiente página de contenido paginado en [stateFlow].
-     * No-op si ya hay una carga en curso o no hay más páginas.
-     */
-    private fun loadMorePagedContent(
-        stateFlow: MutableStateFlow<GameHistoryUiState>,
-        load: suspend (token: String, page: Int, limit: Int) -> Result<PagedResponse<GameHistoryDto>>,
-    ) {
-        val state = stateFlow.value
-        if (state.isLoadingMore || !state.hasMore) return
-        viewModelScope.launch {
-            val token = authViewModel.validToken() ?: return@launch
-            val nextPage = state.currentPage + 1
-            stateFlow.update { it.copy(isLoadingMore = true) }
-            load(token, nextPage, PAGE_SIZE)
-                .onSuccess { paged ->
-                    stateFlow.update {
-                        it.copy(
-                            games = it.games + paged.items,
-                            isLoadingMore = false,
-                            currentPage = nextPage,
-                            total = paged.total,
-                            hasMore = (it.games.size + paged.items.size) < paged.total,
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    if (e is CancellationException) throw e
-                    stateFlow.update { it.copy(isLoadingMore = false, error = e.message) }
-                }
-        }
-    }
+    override fun loadMoreFeed(): Unit = feedLoader.loadMore()
 }

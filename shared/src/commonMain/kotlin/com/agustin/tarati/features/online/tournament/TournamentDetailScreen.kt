@@ -42,13 +42,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
+import com.agustin.tarati.features.online.lobby.PositiveGreen
 import com.agustin.tarati.network.models.TournamentDetailDto
 import com.agustin.tarati.network.models.TournamentGameStatus
 import com.agustin.tarati.network.models.TournamentPairingDto
@@ -135,11 +135,10 @@ fun TournamentDetailScreen(
 ) {
     val state by viewModel.detailState.collectAsState()
     val scope = rememberCoroutineScope()
-    val token = authViewModel.accessToken ?: authViewModel.getStoredToken()
     val currentUserId = authViewModel.currentUser?.userId
 
-    LaunchedEffect(tournamentId, token) {
-        if (token != null) viewModel.loadTournament(token, tournamentId)
+    LaunchedEffect(tournamentId) {
+        viewModel.loadTournament(tournamentId)
     }
 
     TaratiBackground {
@@ -175,19 +174,19 @@ fun TournamentDetailScreen(
                     currentUserId = currentUserId,
                     contentPadding = padding,
                     onRegister = {
-                        if (token != null) scope.launch { viewModel.register(token, tournamentId) }
+                        scope.launch { viewModel.register(tournamentId) }
                     },
                     onUnregister = {
-                        if (token != null) scope.launch { viewModel.unregister(token, tournamentId) }
+                        scope.launch { viewModel.unregister(tournamentId) }
                     },
                     onStart = {
-                        if (token != null) scope.launch { viewModel.start(token, tournamentId) }
+                        scope.launch { viewModel.start(tournamentId) }
                     },
                     onCancel = {
-                        if (token != null) scope.launch { viewModel.cancel(token, tournamentId) }
+                        scope.launch { viewModel.cancel(tournamentId) }
                     },
                     onRefresh = {
-                        if (token != null) viewModel.loadTournament(token, tournamentId)
+                        viewModel.loadTournament(tournamentId)
                     },
                     onSpectateGame = if (onSpectateGame != null) { gameId ->
                         scope.launch {
@@ -197,7 +196,7 @@ fun TournamentDetailScreen(
                             } else {
                                 // La partida terminó entre el fixture load y el tap.
                                 // Recargar el fixture y abrir detalles si es posible.
-                                if (token != null) viewModel.loadTournament(token, tournamentId)
+                                viewModel.loadTournament(tournamentId)
                                 onNavigateToGameDetails?.invoke(gameId)
                             }
                         }
@@ -652,7 +651,7 @@ private fun RoundSection(
                 Box(
                     modifier = Modifier
                         .size(8.dp)
-                        .background(Color(0xFF4CAF50), CircleShape)
+                        .background(PositiveGreen, CircleShape)
                 )
             }
         }
@@ -743,12 +742,12 @@ private fun PairingRow(
                     Box(
                         modifier = Modifier
                             .size(6.dp)
-                            .background(Color(0xFF4CAF50), CircleShape)
+                            .background(PositiveGreen, CircleShape)
                     )
                     Text(
                         localizedString(Res.string.tournament_status_active),
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF4CAF50),
+                        color = PositiveGreen,
                     )
                     if (onSpectate != null) {
                         Icon(
@@ -940,11 +939,11 @@ private fun BracketSlotCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Box(Modifier.size(6.dp).background(Color(0xFF4CAF50), CircleShape))
+                Box(Modifier.size(6.dp).background(PositiveGreen, CircleShape))
                 Text(
                     localizedString(Res.string.tournament_status_active),
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF4CAF50),
+                    color = PositiveGreen,
                 )
                 if (onSpectate != null) {
                     Icon(
@@ -1266,7 +1265,7 @@ private fun CrossTableCell(
             )
 
             is CrossTableResult.Active -> Box(
-                Modifier.size(7.dp).background(Color(0xFF4CAF50), CircleShape)
+                Modifier.size(7.dp).background(PositiveGreen, CircleShape)
             )
 
             is CrossTableResult.Completed -> {

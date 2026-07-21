@@ -7,7 +7,7 @@ import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
 import com.agustin.tarati.features.online.lobby.GameHistoryUiState
-import com.agustin.tarati.features.online.lobby.HistoryFilters
+import com.agustin.tarati.features.online.lobby.PagedGameHistoryLoader
 import com.agustin.tarati.network.models.ServerAchievementDto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +25,19 @@ class PublicProfileViewModel(
     private val _profileState = MutableStateFlow(PublicProfileUiState())
     override val profileState: StateFlow<PublicProfileUiState> = _profileState.asStateFlow()
 
-    private val _historyState = MutableStateFlow(GameHistoryUiState())
-    override val historyState: StateFlow<GameHistoryUiState> = _historyState.asStateFlow()
+    /** Historial del usuario del perfil ([GET /api/users/:id/games]) con filtros del servidor. */
+    private val historyLoader = PagedGameHistoryLoader(viewModelScope, authViewModel) { token, page, limit, filters ->
+        repository.getUserGames(
+            token = token,
+            userId = userId,
+            page = page,
+            limit = limit,
+            timeControl = filters.timeControl,
+            result = filters.result,
+            rated = filters.rated,
+        )
+    }
+    override val historyState: StateFlow<GameHistoryUiState> = historyLoader.state
 
     private val _followStatusState = MutableStateFlow(FollowStatusUiState())
     override val followStatusState: StateFlow<FollowStatusUiState> = _followStatusState.asStateFlow()
@@ -39,7 +50,7 @@ class PublicProfileViewModel(
 
     init {
         loadProfile()
-        loadHistory()
+        historyLoader.load()
         loadAchievements()
         if (!isOwnProfile) loadFollowStatus()
     }
@@ -61,83 +72,17 @@ class PublicProfileViewModel(
         }
     }
 
-    private fun loadHistory() {
-        viewModelScope.launch {
-            val token = authViewModel.validToken() ?: return@launch
-            _historyState.update {
-                it.copy(isLoading = true, error = null, currentPage = 0, games = emptyList())
-            }
-            repository.getUserGames(
-                token = token,
-                userId = userId,
-                timeControl = _historyState.value.filters.timeControl,
-                result = _historyState.value.filters.result,
-                rated = _historyState.value.filters.rated,
-            ).onSuccess { paged ->
-                _historyState.update {
-                    it.copy(
-                        games = paged.items,
-                        isLoading = false,
-                        currentPage = 0,
-                        total = paged.total,
-                        hasMore = paged.items.size < paged.total,
-                    )
-                }
-            }.onFailure { e ->
-                _historyState.update { it.copy(isLoading = false, error = e.message) }
-            }
-        }
-    }
+    // ── History (delegado en el loader compartido) ────────────────────────────
 
-    override fun loadMoreHistory() {
-        val state = _historyState.value
-        if (state.isLoadingMore || !state.hasMore) return
-        viewModelScope.launch {
-            val token = authViewModel.validToken() ?: return@launch
-            val nextPage = state.currentPage + 1
-            _historyState.update { it.copy(isLoadingMore = true) }
-            repository.getUserGames(
-                token = token,
-                userId = userId,
-                page = nextPage,
-                timeControl = state.filters.timeControl,
-                result = state.filters.result,
-                rated = state.filters.rated,
-            ).onSuccess { paged ->
-                _historyState.update {
-                    it.copy(
-                        games = it.games + paged.items,
-                        isLoadingMore = false,
-                        currentPage = nextPage,
-                        total = paged.total,
-                        hasMore = (it.games.size + paged.items.size) < paged.total,
-                    )
-                }
-            }.onFailure { e ->
-                _historyState.update { it.copy(isLoadingMore = false, error = e.message) }
-            }
-        }
-    }
+    override fun loadMoreHistory(): Unit = historyLoader.loadMore()
 
-    override fun setTimeControlFilter(tc: String?) {
-        _historyState.update { it.copy(filters = it.filters.copy(timeControl = tc)) }
-        loadHistory()
-    }
+    override fun setTimeControlFilter(tc: String?): Unit = historyLoader.setTimeControlFilter(tc)
 
-    override fun setResultFilter(result: String?) {
-        _historyState.update { it.copy(filters = it.filters.copy(result = result)) }
-        loadHistory()
-    }
+    override fun setResultFilter(result: String?): Unit = historyLoader.setResultFilter(result)
 
-    override fun setRatedFilter(rated: Boolean?) {
-        _historyState.update { it.copy(filters = it.filters.copy(rated = rated)) }
-        loadHistory()
-    }
+    override fun setRatedFilter(rated: Boolean?): Unit = historyLoader.setRatedFilter(rated)
 
-    override fun clearFilters() {
-        _historyState.update { it.copy(filters = HistoryFilters()) }
-        loadHistory()
-    }
+    override fun clearFilters(): Unit = historyLoader.clearFilters()
 
     // ── Follow ────────────────────────────────────────────────────────────────
 

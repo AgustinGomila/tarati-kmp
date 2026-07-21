@@ -4,7 +4,6 @@ package com.agustin.tarati.features.online.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
-import com.agustin.tarati.features.online.devServerUrl
 import com.agustin.tarati.network.models.ApiErrorBody
 import com.agustin.tarati.network.models.AuthResponseDto
 import com.agustin.tarati.network.models.ForgotPasswordRequest
@@ -20,15 +19,7 @@ import com.agustin.tarati.network.models.localizedApiError
 import com.agustin.tarati.services.achievements.IAchievementsManager
 import com.agustin.tarati.services.billing.EntitlementsRepository
 import io.ktor.client.call.body
-import io.ktor.client.request.delete
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.put
-import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.ContentType.Application
-import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +27,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 
 /**
@@ -47,7 +41,7 @@ import kotlin.time.Clock
  * loginWithServer(user, pass)
  *   → POST /auth/login
  *   → guarda accessToken + refreshToken en AuthRepository
- *   → authState = Authenticated(expiry = now + 15 min)
+ *   → authState = Authenticated(expiry = claim `exp` del JWT)
  *
  * refreshToken()  [llamado proactivamente ~2 min antes de expirar]
  *   → POST /auth/refresh con refreshToken guardado
@@ -62,11 +56,11 @@ import kotlin.time.Clock
  * el usuario deberá hacer login nuevamente.
  *
  * @param authRepository Repositorio para almacenar tokens persistentemente
- * @param httpClient     Cliente HTTP KMP inyectado por Koin
+ * @param authApi        Cliente HTTP de los endpoints de auth y perfil propio
  */
 class AuthViewModel(
     private val authRepository: AuthRepository,
-    private val httpClient: io.ktor.client.HttpClient,
+    private val authApi: AuthApi,
     // Opcional (nullable) para no romper construcciones directas en tests; Koin inyecta el real.
     private val entitlementsRepository: EntitlementsRepository? = null,
     // Reconcilia logros cross-platform al establecerse la sesión (Android: Play Games ↔ servidor;
@@ -79,6 +73,7 @@ class AuthViewModel(
     // Parser tolerante para el payload (claims) del JWT: ignora claims que no modelamos.
     private val jwtJson = Json { ignoreUnknownKeys = true }
 
+    /** Duración por defecto del access token — fallback si el JWT no trae claim `exp`. */
     private val _accessTokenDurationMs = 15 * 60 * 1000L   // 15 minutos
 
     // Refresh token en memoria para sesiones sin "Recordarme".
@@ -114,7 +109,10 @@ class AuthViewModel(
 
         return try {
             val userInfo = parseUserInfoFromToken(token)
-            val expiresAt = Clock.System.now().toEpochMilliseconds() + _accessTokenDurationMs
+            // Expiración real del claim `exp` (los guest tokens duran 4 h, no 15 min);
+            // fallback a 15 min si el token no la trae.
+            val expiresAt = parseTokenExpiry(token)
+                ?: (Clock.System.now().toEpochMilliseconds() + _accessTokenDurationMs)
 
             _accessToken = token
             _authState.value = AuthState.Authenticated(
@@ -173,10 +171,7 @@ class AuthViewModel(
         _authState.value = AuthState.Authenticating
 
         return try {
-            val response = httpClient.post("$devServerUrl/auth/login") {
-                contentType(Application.Json)
-                setBody(LoginRequest(usernameOrEmail = username, password = password))
-            }
+            val response = authApi.login(LoginRequest(usernameOrEmail = username, password = password))
 
             if (response.status.value == 200) {
                 val tokens = response.body<AuthResponseDto>().tokens
@@ -213,10 +208,7 @@ class AuthViewModel(
         }
 
         return try {
-            val response = httpClient.post("$devServerUrl/auth/refresh") {
-                contentType(Application.Json)
-                setBody(RefreshRequest(refreshToken = storedRefreshToken))
-            }
+            val response = authApi.refresh(RefreshRequest(refreshToken = storedRefreshToken))
 
             when (response.status.value) {
                 200 -> {
@@ -234,7 +226,8 @@ class AuthViewModel(
                     val currentState = _authState.value
                     val userInfo = (currentState as? AuthState.Authenticated)?.userInfo
                         ?: parseUserInfoFromToken(tokens.accessToken)
-                    val newExpiry = Clock.System.now().toEpochMilliseconds() + _accessTokenDurationMs
+                    val newExpiry = parseTokenExpiry(tokens.accessToken)
+                        ?: (Clock.System.now().toEpochMilliseconds() + _accessTokenDurationMs)
 
                     _accessToken = tokens.accessToken
                     _authState.value = AuthState.Authenticated(
@@ -242,7 +235,7 @@ class AuthViewModel(
                         tokenExpiry = newExpiry
                     )
 
-                    logger.debug("Token refreshed successfully, new expiry in 15 min")
+                    logger.debug("Token refreshed successfully")
                     Result.success(tokens.accessToken)
 
                 }
@@ -294,17 +287,14 @@ class AuthViewModel(
         _authState.value = AuthState.Authenticating
 
         return try {
-            val response = httpClient.post("$devServerUrl/auth/register") {
-                contentType(Application.Json)
-                setBody(
-                    RegisterRequest(
-                        username = username,
-                        email = email,
-                        password = password,
-                        displayName = displayName?.trim()?.takeIf { it.isNotBlank() },
-                    )
+            val response = authApi.register(
+                RegisterRequest(
+                    username = username,
+                    email = email,
+                    password = password,
+                    displayName = displayName?.trim()?.takeIf { it.isNotBlank() },
                 )
-            }
+            )
 
             if (response.status.value in 200..201) {
                 val tokens = response.body<AuthResponseDto>().tokens
@@ -330,10 +320,7 @@ class AuthViewModel(
         val refreshToken = authRepository.getRefreshToken() ?: _inMemoryRefreshToken
         if (refreshToken != null) {
             try {
-                httpClient.post("$devServerUrl/auth/logout") {
-                    contentType(Application.Json)
-                    setBody(LogoutRequest(refreshToken = refreshToken))
-                }
+                authApi.logout(LogoutRequest(refreshToken = refreshToken))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -352,10 +339,9 @@ class AuthViewModel(
         _authState.value = AuthState.Authenticating
 
         return try {
-            val response = httpClient.post("$devServerUrl/auth/guest") {
-                contentType(Application.Json)
-                setBody(GuestRequest(desiredUsername = desiredUsername?.trim()?.takeIf { it.isNotBlank() }))
-            }
+            val response = authApi.guest(
+                GuestRequest(desiredUsername = desiredUsername?.trim()?.takeIf { it.isNotBlank() })
+            )
 
             if (response.status.value == 200) {
                 // Guest sessions are not persisted — in-memory only for the current session.
@@ -378,10 +364,7 @@ class AuthViewModel(
 
     override suspend fun forgotPassword(email: String): Result<Unit> {
         return try {
-            httpClient.post("$devServerUrl/auth/forgot-password") {
-                contentType(Application.Json)
-                setBody(ForgotPasswordRequest(email = email.trim()))
-            }
+            authApi.forgotPassword(ForgotPasswordRequest(email = email.trim()))
             // Siempre éxito desde el punto de vista del cliente — el servidor nunca revela si el email existe
             Result.success(Unit)
         } catch (e: CancellationException) {
@@ -394,10 +377,9 @@ class AuthViewModel(
 
     override suspend fun resetPassword(token: String, newPassword: String): Result<Unit> {
         return try {
-            val response = httpClient.post("$devServerUrl/auth/reset-password") {
-                contentType(Application.Json)
-                setBody(ResetPasswordRequest(token = token, newPassword = newPassword))
-            }
+            val response = authApi.resetPassword(
+                ResetPasswordRequest(token = token, newPassword = newPassword)
+            )
             if (response.status.value == 200) {
                 Result.success(Unit)
             } else {
@@ -414,14 +396,12 @@ class AuthViewModel(
     override suspend fun fetchProfile(): Result<Unit> {
         val token = _accessToken ?: return Result.success(Unit)
         return try {
-            val response = httpClient.get("$devServerUrl/api/profile") {
-                header("Authorization", "Bearer $token")
-            }
+            val response = authApi.fetchProfile(token)
             if (response.status.value == 200) {
                 _profileData.value = response.body<OwnProfileDto>().toProfileData()
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("fetchProfile HTTP ${response.status.value}"))
+                Result.failure(Exception(errorMessage(response, fallback = "Fetch profile failed")))
             }
         } catch (e: CancellationException) {
             throw e
@@ -433,26 +413,22 @@ class AuthViewModel(
 
     override suspend fun updateProfile(bio: String?, isVisible: Boolean?, challengesEnabled: Boolean?): Result<Unit> {
         val token = _accessToken ?: return Result.failure(Exception("Not authenticated"))
-        val bodyParts = mutableListOf<String>()
-        if (bio != null) {
-            val escaped = bio.trim().jsonEscape()
-            bodyParts.add(""""bio":"$escaped"""")
+        // Actualización parcial: solo los campos presentes se modifican en el servidor
+        // (ausente = sin cambio), por eso se arma un JsonObject en lugar de un DTO fijo.
+        val fields = buildJsonObject {
+            if (bio != null) put("bio", bio.trim())
+            if (isVisible != null) put("isVisible", isVisible)
+            if (challengesEnabled != null) put("challengesEnabled", challengesEnabled)
         }
-        if (isVisible != null) bodyParts.add(""""isVisible":$isVisible""")
-        if (challengesEnabled != null) bodyParts.add(""""challengesEnabled":$challengesEnabled""")
-        if (bodyParts.isEmpty()) return Result.success(Unit)
+        if (fields.isEmpty()) return Result.success(Unit)
 
         return try {
-            val response = httpClient.put("$devServerUrl/api/profile") {
-                header("Authorization", "Bearer $token")
-                contentType(Application.Json)
-                setBody("{${bodyParts.joinToString(",")}}")
-            }
+            val response = authApi.updateProfile(token, fields)
             if (response.status.value == 200) {
                 _profileData.value = response.body<OwnProfileDto>().toProfileData()
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("updateProfile HTTP ${response.status.value}"))
+                Result.failure(Exception(errorMessage(response, fallback = "Update profile failed")))
             }
         } catch (e: CancellationException) {
             throw e
@@ -465,9 +441,7 @@ class AuthViewModel(
     override suspend fun deleteAccount(): Result<Unit> {
         val token = _accessToken ?: return Result.failure(Exception("Not authenticated"))
         return try {
-            val response = httpClient.delete("$devServerUrl/api/profile") {
-                header("Authorization", "Bearer $token")
-            }
+            val response = authApi.deleteAccount(token)
             if (response.status.value == 200) {
                 authRepository.clearAll()
                 _inMemoryRefreshToken = null
@@ -476,7 +450,7 @@ class AuthViewModel(
                 _authState.value = AuthState.Unauthenticated
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("deleteAccount HTTP ${response.status.value}"))
+                Result.failure(Exception(errorMessage(response, fallback = "Delete account failed")))
             }
         } catch (e: CancellationException) {
             throw e
@@ -581,12 +555,6 @@ class AuthViewModel(
         }
     }
 
-    private fun String.jsonEscape(): String = replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("\t", "\\t")
-
     private fun parseTokenExpiry(token: String): Long? =
         runCatching { decodeJwtPayload(token).exp?.let { it * 1000L } }.getOrNull()
 
@@ -608,27 +576,11 @@ class AuthViewModel(
         return jwtJson.decodeFromString(base64UrlDecode(parts[1]))
     }
 
-    /** Decodes a URL-safe Base64 string to UTF-8 text. Pure Kotlin, no platform dependencies. */
-    private fun base64UrlDecode(input: String): String {
-        val padded = buildString {
-            append(input.replace('-', '+').replace('_', '/'))
-            repeat((4 - input.length % 4) % 4) { append('=') }
-        }
-        val table = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-        val bytes = mutableListOf<Byte>()
-        var i = 0
-        while (i + 3 < padded.length) {
-            val n = (table.indexOf(padded[i]) shl 18) or
-                    (table.indexOf(padded[i + 1]) shl 12) or
-                    (if (padded[i + 2] == '=') 0 else table.indexOf(padded[i + 2]) shl 6) or
-                    (if (padded[i + 3] == '=') 0 else table.indexOf(padded[i + 3]))
-            bytes.add((n shr 16).toByte())
-            if (padded[i + 2] != '=') bytes.add((n shr 8 and 0xFF).toByte())
-            if (padded[i + 3] != '=') bytes.add((n and 0xFF).toByte())
-            i += 4
-        }
-        return bytes.toByteArray().decodeToString()
-    }
+    /** Decodifica Base64 URL-safe (sin padding, como los segmentos de un JWT) a texto UTF-8. */
+    private fun base64UrlDecode(input: String): String =
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
+            .decode(input)
+            .decodeToString()
 }
 
 /** Claims del payload JWT que consume el cliente. El resto se ignora ([jwtJson]). */

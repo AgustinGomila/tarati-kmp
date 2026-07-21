@@ -7,20 +7,26 @@ import com.agustin.tarati.network.models.TournamentDetailDto
 import com.agustin.tarati.network.models.TournamentSummaryDto
 import kotlinx.coroutines.flow.StateFlow
 
+/**
+ * Contrato público del ViewModel de torneos.
+ *
+ * El token JWT es un detalle interno: el ViewModel lo obtiene (y renueva) con
+ * `validToken()` en cada petición — la UI nunca maneja tokens.
+ */
 @Stable
 interface ITournamentViewModel {
     val listState: StateFlow<TournamentListUiState>
     val detailState: StateFlow<TournamentDetailUiState>
 
-    fun loadTournaments(token: String)
-    fun loadTournament(token: String, id: String)
+    fun loadTournaments()
+    fun loadTournament(id: String)
     fun startTournamentPolling()
     fun stopTournamentPolling()
-    suspend fun createTournament(token: String, request: CreateTournamentRequest): Result<TournamentSummaryDto>
-    suspend fun register(token: String, id: String): Result<Unit>
-    suspend fun unregister(token: String, id: String): Result<Unit>
-    suspend fun start(token: String, id: String): Result<Unit>
-    suspend fun cancel(token: String, id: String): Result<Unit>
+    suspend fun createTournament(request: CreateTournamentRequest): Result<TournamentSummaryDto>
+    suspend fun register(id: String): Result<Unit>
+    suspend fun unregister(id: String): Result<Unit>
+    suspend fun start(id: String): Result<Unit>
+    suspend fun cancel(id: String): Result<Unit>
 }
 
 @Immutable

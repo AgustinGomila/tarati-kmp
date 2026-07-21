@@ -14,29 +14,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,28 +38,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.agustin.tarati.core.domain.game.pieces.CobColor
-import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.achievements.ProfileAchievementsSection
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.lobby.GameHistoryCard
+import com.agustin.tarati.features.online.lobby.GameHistoryFilterRow
 import com.agustin.tarati.features.online.lobby.GameHistoryUiState
-import com.agustin.tarati.features.online.lobby.formatGameDate
-import com.agustin.tarati.features.online.lobby.gameResultDisplay
-import com.agustin.tarati.features.online.lobby.ratingChangeDisplay
-import com.agustin.tarati.network.models.GameHistoryDto
+import com.agustin.tarati.features.online.lobby.PositiveGreen
+import com.agustin.tarati.features.online.lobby.forTimeControl
+import com.agustin.tarati.features.online.lobby.formatDate
+import com.agustin.tarati.features.online.ui.ChallengeDialog
 import com.agustin.tarati.network.models.ProfileRatingsDto
 import com.agustin.tarati.network.models.ProfileStatsDto
 import com.agustin.tarati.network.models.ProfileTimeControlStatsDto
 import com.agustin.tarati.network.models.PublicProfileDto
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
-import com.agustin.tarati.shared.generated.resources.cancel
-import com.agustin.tarati.shared.generated.resources.casual_info_card
-import com.agustin.tarati.shared.generated.resources.draw
 import com.agustin.tarati.shared.generated.resources.error
-import com.agustin.tarati.shared.generated.resources.loss
-import com.agustin.tarati.shared.generated.resources.moves
 import com.agustin.tarati.shared.generated.resources.no_games_found
 import com.agustin.tarati.shared.generated.resources.profile_games_played
 import com.agustin.tarati.shared.generated.resources.profile_history_section
@@ -78,37 +65,23 @@ import com.agustin.tarati.shared.generated.resources.profile_stat_draw_short
 import com.agustin.tarati.shared.generated.resources.profile_stat_loss_short
 import com.agustin.tarati.shared.generated.resources.profile_stat_win_short
 import com.agustin.tarati.shared.generated.resources.profile_title
-import com.agustin.tarati.shared.generated.resources.rated
-import com.agustin.tarati.shared.generated.resources.rated_info_card
-import com.agustin.tarati.shared.generated.resources.rating
-import com.agustin.tarati.shared.generated.resources.result
 import com.agustin.tarati.shared.generated.resources.social_challenge
-import com.agustin.tarati.shared.generated.resources.social_challenge_dialog_title
 import com.agustin.tarati.shared.generated.resources.social_follow
 import com.agustin.tarati.shared.generated.resources.social_followers
 import com.agustin.tarati.shared.generated.resources.social_following
 import com.agustin.tarati.shared.generated.resources.social_unfollow
-import com.agustin.tarati.shared.generated.resources.win
+import com.agustin.tarati.ui.components.InfiniteScrollEffect
 import com.agustin.tarati.ui.components.SupporterBadge
-import com.agustin.tarati.ui.components.carditem.GameCardItem
-import com.agustin.tarati.ui.components.game.CobColorIndicator
+import com.agustin.tarati.ui.components.loadingMoreIndicator
 import com.agustin.tarati.ui.components.supporterNameColor
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.theme.TaratiBackground
 import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.icon
-import com.agustin.tarati.ui.theme.timeControlIcon
-import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.format
-import kotlinx.datetime.format.Padding
-import kotlinx.datetime.format.char
-import kotlinx.datetime.toLocalDateTime
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlin.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -205,16 +178,7 @@ private fun ProfileContent(
         )
     }
 
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val total = listState.layoutInfo.totalItemsCount
-            total > 0 && lastVisible >= total - 3
-        }
-    }
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) viewModel.loadMoreHistory()
-    }
+    InfiniteScrollEffect(listState) { viewModel.loadMoreHistory() }
 
     LazyColumn(
         state = listState,
@@ -254,7 +218,12 @@ private fun ProfileContent(
                 stats = profile.stats,
                 timeControlFilter = historyState.filters.timeControl,
             )
-            ProfileHistoryFilters(state = historyState, viewModel = viewModel)
+            GameHistoryFilterRow(
+                filters = historyState.filters,
+                onTimeControlFilter = viewModel::setTimeControlFilter,
+                onResultFilter = viewModel::setResultFilter,
+                onRatedFilter = viewModel::setRatedFilter,
+            )
         }
 
         // History items
@@ -293,20 +262,13 @@ private fun ProfileContent(
             }
 
             else -> {
-                itemsIndexed(historyState.games, key = { _, g -> g.gameId }) { _, game ->
-                    ProfileHistoryCard(
+                items(historyState.games, key = { it.gameId }) { game ->
+                    GameHistoryCard(
                         game = game,
                         onClick = onNavigateToGameDetails?.let { cb -> { cb(game.gameId) } },
                     )
                 }
-                if (historyState.isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) { CircularProgressIndicator(modifier = Modifier.size(24.dp)) }
-                    }
-                }
+                loadingMoreIndicator(historyState.isLoadingMore)
             }
         }
     }
@@ -376,7 +338,7 @@ private fun ProfileHeader(
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
-        val joinDate = remember(profile.createdAt) { formatJoinDate(profile.createdAt) }
+        val joinDate = remember(profile.createdAt) { formatDate(profile.createdAt) }
         Text(
             text = localizedString(Res.string.profile_member_since, joinDate),
             style = MaterialTheme.typography.labelSmall,
@@ -512,86 +474,6 @@ private fun RatingCard(
     }
 }
 
-// ── History filters ───────────────────────────────────────────────────────────
-
-@Composable
-private fun ProfileHistoryFilters(
-    state: GameHistoryUiState,
-    viewModel: IPublicProfileViewModel,
-) {
-    val filters = state.filters
-    LazyRow(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        item {
-            TimeControl.list().forEach { tc ->
-                FilterChip(
-                    selected = filters.timeControl == tc,
-                    onClick = {
-                        viewModel.setTimeControlFilter(if (filters.timeControl == tc) null else tc)
-                    },
-                    label = { Text(tc.replaceFirstChar { it.titlecase() }) },
-                    leadingIcon = {
-                        Icon(timeControlIcon(tc), null, Modifier.size(16.dp))
-                    },
-                )
-            }
-        }
-        item {
-            listOf(
-                "win" to localizedString(Res.string.win),
-                "loss" to localizedString(Res.string.loss),
-                "draw" to localizedString(Res.string.draw),
-            ).forEach { (key, label) ->
-                FilterChip(
-                    selected = filters.result == key,
-                    onClick = {
-                        viewModel.setResultFilter(if (filters.result == key) null else key)
-                    },
-                    label = { Text(label) },
-                )
-            }
-        }
-        item {
-            FilterChip(
-                selected = filters.rated == true,
-                onClick = { viewModel.setRatedFilter(if (filters.rated == true) null else true) },
-                label = { Text(localizedString(Res.string.rated)) },
-            )
-        }
-    }
-}
-
-// ── History card ──────────────────────────────────────────────────────────────
-
-@Composable
-private fun ProfileHistoryCard(game: GameHistoryDto, onClick: (() -> Unit)? = null) {
-    val (resultText, _) = gameResultDisplay(game.result)
-    val (ratingChangeFmt, ratingChangeColor) = ratingChangeDisplay(game.ratingChange)
-    val dateFmt = remember(game.endedAtMs) { formatGameDate(game.endedAtMs) }
-    val myColor = cobColorByDescription(game.myColor) ?: CobColor.WHITE
-
-    GameCardItem(
-        title = "vs ${game.opponentUsername} (${game.opponentRating})",
-        leadingContent = { CobColorIndicator(myColor, size = 28.dp) },
-        subtitle = "${game.timeControl.toDisplayString()} · ${
-            if (game.rated) localizedString(Res.string.rated_info_card)
-            else localizedString(Res.string.casual_info_card)
-        } · $dateFmt",
-        badge = "$resultText  $ratingChangeFmt",
-        badgeColor = ratingChangeColor,
-        rows = listOf(
-            localizedString(Res.string.result) to resultText,
-            localizedString(Res.string.moves) to "${game.moveCount}",
-            localizedString(Res.string.rating) to "${game.ratingAfter} ($ratingChangeFmt)",
-        ),
-        onClick = onClick,
-    )
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 @Composable
@@ -613,13 +495,7 @@ private fun SectionHeader(text: String) {
  */
 @Composable
 private fun ProfileHistoryHeader(stats: ProfileStatsDto, timeControlFilter: String?) {
-    val tcStats = when (timeControlFilter) {
-        TimeControl.BULLET.key -> stats.bullet
-        TimeControl.BLITZ.key -> stats.blitz
-        TimeControl.RAPID.key -> stats.rapid
-        TimeControl.CLASSICAL.key -> stats.classical
-        else -> stats.total
-    }
+    val tcStats = stats.forTimeControl(timeControlFilter)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -639,7 +515,7 @@ private fun ProfileHistoryHeader(stats: ProfileStatsDto, timeControlFilter: Stri
         ) {
             WdlPart(
                 "${tcStats.wins}${localizedString(Res.string.profile_stat_win_short)}",
-                Color(0xFF4CAF50),
+                PositiveGreen,
             )
             WdlSeparator()
             WdlPart(
@@ -672,71 +548,4 @@ private fun WdlSeparator() {
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-}
-
-@Composable
-private fun ChallengeDialog(
-    targetName: String,
-    forceNonRated: Boolean = false,
-    onConfirm: (timeControl: String, rated: Boolean) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val timeControls = TimeControl.list()
-    var selectedTc by remember { mutableStateOf(TimeControl.BLITZ.key) }
-    var isRated by remember(forceNonRated) { mutableStateOf(!forceNonRated) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                localizedString(Res.string.social_challenge_dialog_title, targetName),
-                style = MaterialTheme.typography.titleMedium,
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(timeControls) { tc ->
-                        FilterChip(
-                            selected = selectedTc == tc,
-                            onClick = { selectedTc = tc },
-                            label = { Text(tc.replaceFirstChar { it.titlecase() }) },
-                            leadingIcon = {
-                                Icon(timeControlIcon(tc), null, Modifier.size(16.dp))
-                            },
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(localizedString(Res.string.rated), style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = isRated,
-                        onCheckedChange = { isRated = it },
-                        enabled = !forceNonRated,
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(selectedTc, isRated) }) {
-                Text(localizedString(Res.string.social_challenge))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(localizedString(Res.string.cancel))
-            }
-        },
-    )
-}
-
-private fun formatJoinDate(instant: Instant): String {
-    val date = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-    return date.format(LocalDate.Format {
-        day(padding = Padding.ZERO); char('/'); monthNumber(); char('/'); year()
-    })
 }

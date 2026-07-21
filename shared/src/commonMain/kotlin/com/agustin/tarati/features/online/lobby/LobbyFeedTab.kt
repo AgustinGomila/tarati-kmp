@@ -13,9 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,7 +26,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,29 +33,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.agustin.tarati.core.domain.game.pieces.CobColor
-import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
 import com.agustin.tarati.core.domain.game.time.TimeControl
-import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
-import com.agustin.tarati.shared.generated.resources.casual_info_card
 import com.agustin.tarati.shared.generated.resources.clear_filters
 import com.agustin.tarati.shared.generated.resources.draw
 import com.agustin.tarati.shared.generated.resources.error
 import com.agustin.tarati.shared.generated.resources.lobby_filter_all
 import com.agustin.tarati.shared.generated.resources.loss
-import com.agustin.tarati.shared.generated.resources.moves
 import com.agustin.tarati.shared.generated.resources.no_tournaments_match_filters
-import com.agustin.tarati.shared.generated.resources.rated_info_card
-import com.agustin.tarati.shared.generated.resources.rating
-import com.agustin.tarati.shared.generated.resources.result
 import com.agustin.tarati.shared.generated.resources.social_feed_player_context
 import com.agustin.tarati.shared.generated.resources.social_no_feed_games
 import com.agustin.tarati.shared.generated.resources.time_control
 import com.agustin.tarati.shared.generated.resources.win
-import com.agustin.tarati.ui.components.carditem.GameCardItem
-import com.agustin.tarati.ui.components.game.CobColorIndicator
+import com.agustin.tarati.ui.components.InfiniteScrollEffect
+import com.agustin.tarati.ui.components.loadingMoreIndicator
 import com.agustin.tarati.ui.theme.TaratiIcons
 
 // ── Tab: Feed de seguidos ──────────────────────────────────────────────────────
@@ -85,16 +75,7 @@ internal fun FeedTab(
         if (state.games.isEmpty() && !state.isLoading) viewModel.loadFeed()
     }
 
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val total = listState.layoutInfo.totalItemsCount
-            total > 0 && lastVisible >= total - 3
-        }
-    }
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore) viewModel.loadMoreFeed()
-    }
+    InfiniteScrollEffect(listState) { viewModel.loadMoreFeed() }
 
     Column(modifier = Modifier.fillMaxSize()) {
         FeedFilterBar(
@@ -136,22 +117,17 @@ internal fun FeedTab(
                     state = listState,
                     contentPadding = PaddingValues(vertical = 8.dp),
                 ) {
-                    itemsIndexed(displayGames, key = { _, g -> g.gameId }) { _, game ->
-                        FeedGameCard(
+                    items(displayGames, key = { it.gameId }) { game ->
+                        GameHistoryCard(
                             game = game,
+                            titlePrefix = localizedString(
+                                Res.string.social_feed_player_context,
+                                game.playerUsername ?: "?",
+                            ) + " ",
                             onClick = onNavigateToGameDetails?.let { cb -> { cb(game.gameId) } },
                         )
                     }
-                    if (state.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            }
-                        }
-                    }
+                    loadingMoreIndicator(state.isLoadingMore)
                 }
             }
         }
@@ -232,31 +208,4 @@ private fun FeedFilterBar(
             }
         }
     }
-}
-
-@Composable
-private fun FeedGameCard(game: GameHistoryDto, onClick: (() -> Unit)? = null) {
-    val (resultText, _) = gameResultDisplay(game.result)
-    val (ratingChangeFmt, ratingChangeColor) = ratingChangeDisplay(game.ratingChange)
-    val dateFmt = remember(game.endedAtMs) { formatGameDate(game.endedAtMs) }
-    val feedColor = cobColorByDescription(game.myColor) ?: CobColor.WHITE
-    val playerLabel = game.playerUsername ?: "?"
-
-    GameCardItem(
-        title = localizedString(Res.string.social_feed_player_context, playerLabel) +
-                " vs ${game.opponentUsername} (${game.opponentRating})",
-        subtitle = "${game.timeControl.toDisplayString()} · ${
-            if (game.rated) localizedString(Res.string.rated_info_card)
-            else localizedString(Res.string.casual_info_card)
-        } · $dateFmt",
-        leadingContent = { CobColorIndicator(feedColor, size = 28.dp) },
-        badge = "$resultText  $ratingChangeFmt",
-        badgeColor = ratingChangeColor,
-        rows = listOf(
-            localizedString(Res.string.result) to resultText,
-            localizedString(Res.string.moves) to "${game.moveCount}",
-            localizedString(Res.string.rating) to "${game.ratingAfter} ($ratingChangeFmt)",
-        ),
-        onClick = onClick,
-    )
 }

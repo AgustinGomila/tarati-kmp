@@ -1,6 +1,7 @@
 package com.agustin.tarati.features.online.lobby
 
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,8 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,7 +27,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +48,8 @@ import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNo
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.UserInfo
+import com.agustin.tarati.features.online.ui.LabeledSwitchRow
+import com.agustin.tarati.features.online.ui.TimeControlChips
 import com.agustin.tarati.features.settings.SettingsRepository
 import com.agustin.tarati.network.models.GameTimeControl
 import com.agustin.tarati.network.models.LiveGameDto
@@ -59,7 +61,6 @@ import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.allow_spectators
 import com.agustin.tarati.shared.generated.resources.cancel
-import com.agustin.tarati.shared.generated.resources.casual_info_card
 import com.agustin.tarati.shared.generated.resources.join
 import com.agustin.tarati.shared.generated.resources.lobby_count_live_games
 import com.agustin.tarati.shared.generated.resources.lobby_count_searching
@@ -73,7 +74,6 @@ import com.agustin.tarati.shared.generated.resources.lobby_sort_rating
 import com.agustin.tarati.shared.generated.resources.lobby_waiting_time
 import com.agustin.tarati.shared.generated.resources.move
 import com.agustin.tarati.shared.generated.resources.rated
-import com.agustin.tarati.shared.generated.resources.rated_info_card
 import com.agustin.tarati.shared.generated.resources.sort
 import com.agustin.tarati.shared.generated.resources.sort_newest
 import com.agustin.tarati.shared.generated.resources.tournament
@@ -85,7 +85,6 @@ import com.agustin.tarati.ui.components.game.CobColorIndicator
 import com.agustin.tarati.ui.components.library.StaticBoardRenderer
 import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.icon
-import com.agustin.tarati.ui.theme.timeControlIcon
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
@@ -298,10 +297,7 @@ private fun LiveGameCard(game: LiveGameDto, onSpectate: (() -> Unit)? = null) {
 
     GameCardItem(
         title = "${game.whiteUsername} (${game.whiteRating}) vs ${game.blackUsername} (${game.blackRating})",
-        subtitle = "${game.timeControl.toDisplayString()} · ${
-            if (game.rated) localizedString(Res.string.rated_info_card)
-            else localizedString(Res.string.casual_info_card)
-        }",
+        subtitle = gameCardSubtitle(game.timeControl.toDisplayString(), game.rated),
         leadingContent = boardState?.let { state ->
             { StaticBoardRenderer(modifier = Modifier.fillMaxSize(), gameState = state) }
         },
@@ -466,10 +462,7 @@ private fun OpenSearchCard(search: OpenSearchDto, onJoin: (() -> Unit)?) {
                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                 )
                 Text(
-                    text = "${search.timeControl.toDisplayString()} · ${
-                        if (search.rated) localizedString(Res.string.rated_info_card)
-                        else localizedString(Res.string.casual_info_card)
-                    }",
+                    text = gameCardSubtitle(search.timeControl.toDisplayString(), search.rated),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.7f),
                 )
@@ -550,10 +543,7 @@ private fun OwnSearchCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
                 Text(
-                    text = "$tcDisplay · ${
-                        if (ticket.rated) localizedString(Res.string.rated_info_card)
-                        else localizedString(Res.string.casual_info_card)
-                    }",
+                    text = gameCardSubtitle(tcDisplay, ticket.rated),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
                 )
@@ -593,7 +583,6 @@ internal fun NewSearchSheet(
     authViewModel: IAuthViewModel = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
-    val timeControls = TimeControl.list()
     val isGuest = authViewModel.currentUser?.isGuest == true
 
     val savedTc by settings.onlineTimeControl.collectAsState(TimeControl.BLITZ.key)
@@ -614,59 +603,38 @@ internal fun NewSearchSheet(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 // Time control chips
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(timeControls) { tc ->
-                        FilterChip(
-                            selected = selectedTc == tc,
-                            onClick = {
-                                selectedTc = tc
-                                scope.launch { settings.setOnlineTimeControl(tc) }
-                            },
-                            label = { Text(tc.replaceFirstChar { it.titlecase() }) },
-                            leadingIcon = {
-                                Icon(timeControlIcon(tc), null, Modifier.size(16.dp))
-                            },
-                        )
-                    }
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TimeControlChips(
+                        selected = selectedTc,
+                        onSelect = { tc ->
+                            selectedTc = tc
+                            scope.launch { settings.setOnlineTimeControl(tc) }
+                        },
+                    )
                 }
                 // Rated / casual row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LocalizedText(
-                        Res.string.rated,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Switch(
-                        checked = isRated,
-                        onCheckedChange = {
-                            isRated = it
-                            scope.launch { settings.setOnlineRated(it) }
-                        },
-                        enabled = !isGuest,
-                    )
-                }
+                LabeledSwitchRow(
+                    label = localizedString(Res.string.rated),
+                    checked = isRated,
+                    onCheckedChange = {
+                        isRated = it
+                        scope.launch { settings.setOnlineRated(it) }
+                    },
+                    enabled = !isGuest,
+                )
                 // Allow spectators row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    LocalizedText(
-                        Res.string.allow_spectators,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Switch(
-                        checked = spectatingAllowed,
-                        onCheckedChange = {
-                            spectatingAllowed = it
-                            scope.launch { settings.setOnlineSpectatingAllowed(it) }
-                        },
-                        enabled = !isGuest,
-                    )
-                }
+                LabeledSwitchRow(
+                    label = localizedString(Res.string.allow_spectators),
+                    checked = spectatingAllowed,
+                    onCheckedChange = {
+                        spectatingAllowed = it
+                        scope.launch { settings.setOnlineSpectatingAllowed(it) }
+                    },
+                    enabled = !isGuest,
+                )
             }
         },
         confirmButton = {

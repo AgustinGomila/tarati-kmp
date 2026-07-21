@@ -3,6 +3,7 @@ package com.agustin.tarati.features.online.tournament
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.agustin.tarati.features.online.auth.IAuthViewModel
+import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
 import com.agustin.tarati.features.online.game.TournamentEvent
 import com.agustin.tarati.network.models.CreateTournamentRequest
@@ -24,6 +25,10 @@ import kotlin.time.Duration.Companion.seconds
  * Gestiona la lista de torneos y el detalle de un torneo específico.
  * Se suscribe a [IOnlineGameViewModel.tournamentEvents] para recibir actualizaciones
  * en tiempo real (standings, nueva ronda, fin) mientras la pantalla de detalle está activa.
+ *
+ * El token JWT se obtiene con [validToken] en cada petición (renovación proactiva
+ * incluida) — necesario porque el polling y la pantalla pueden quedar abiertos más
+ * de los 15 minutos de vida del access token.
  *
  * Registrado como `viewModel` (no `single`) en Koin: cada pantalla de torneo
  * tiene su propia instancia con su propio estado de carga.
@@ -47,7 +52,6 @@ class TournamentViewModel(
     init {
         onlineGameViewModel.tournamentEvents
             .onEach { event ->
-                val token = authViewModel.accessToken ?: authViewModel.getStoredToken()
                 val targetId = currentDetailId
 
                 when (event) {
@@ -59,25 +63,25 @@ class TournamentViewModel(
                         }
                         // Recarga el detalle completo para capturar el fixture actualizado
                         // (estado ACTIVE → COMPLETED + resultado de la partida)
-                        if (token != null) loadTournament(token, targetId)
+                        loadTournament(event.tournamentId)
                     }
 
                     is TournamentEvent.RoundStarted -> {
                         // Torneo pasó a ACTIVE: refrescar lista + detalle si está abierto.
-                        if (token != null) loadTournaments(token)
-                        if (token != null && event.tournamentId == targetId) loadTournament(token, targetId)
+                        loadTournaments()
+                        if (event.tournamentId == targetId) loadTournament(event.tournamentId)
                     }
 
                     is TournamentEvent.Finished -> {
                         // Torneo terminó: refrescar lista + detalle si está abierto.
-                        if (token != null) loadTournaments(token)
-                        if (token != null && event.tournamentId == targetId) loadTournament(token, targetId)
+                        loadTournaments()
+                        if (event.tournamentId == targetId) loadTournament(event.tournamentId)
                     }
 
                     is TournamentEvent.Cancelled -> {
                         // Torneo cancelado: refrescar lista + detalle si está abierto.
-                        if (token != null) loadTournaments(token)
-                        if (token != null && event.tournamentId == targetId) loadTournament(token, targetId)
+                        loadTournaments()
+                        if (event.tournamentId == targetId) loadTournament(event.tournamentId)
                     }
 
                     is TournamentEvent.GameAssigned -> Unit // Manejado globalmente en AppContent
@@ -92,8 +96,7 @@ class TournamentViewModel(
         if (pollingJob?.isActive == true) return
         pollingJob = viewModelScope.launch {
             while (true) {
-                val token = authViewModel.accessToken ?: authViewModel.getStoredToken()
-                if (token != null) loadTournaments(token)
+                fetchTournaments()
                 delay(POLL_INTERVAL) // cancellation point — CancellationException detiene el loop
             }
         }
@@ -106,28 +109,32 @@ class TournamentViewModel(
 
     // ── Lista ──────────────────────────────────────────────────────────────────
 
-    override fun loadTournaments(token: String) {
-        viewModelScope.launch {
-            _listState.value = _listState.value.copy(isLoading = true, error = null)
-            repository.getTournaments(token)
-                .onSuccess { tournaments ->
-                    _listState.value = TournamentListUiState(
-                        registering = tournaments.filter { it.status == TournamentStatus.REGISTERING },
-                        active = tournaments.filter { it.status == TournamentStatus.ACTIVE },
-                        finished = tournaments.filter { it.status == TournamentStatus.FINISHED },
-                    )
-                }
-                .onFailure { e ->
-                    _listState.value = _listState.value.copy(isLoading = false, error = e.message)
-                }
-        }
+    override fun loadTournaments() {
+        viewModelScope.launch { fetchTournaments() }
+    }
+
+    private suspend fun fetchTournaments() {
+        val token = authViewModel.validToken() ?: return
+        _listState.value = _listState.value.copy(isLoading = true, error = null)
+        repository.getTournaments(token)
+            .onSuccess { tournaments ->
+                _listState.value = TournamentListUiState(
+                    registering = tournaments.filter { it.status == TournamentStatus.REGISTERING },
+                    active = tournaments.filter { it.status == TournamentStatus.ACTIVE },
+                    finished = tournaments.filter { it.status == TournamentStatus.FINISHED },
+                )
+            }
+            .onFailure { e ->
+                _listState.value = _listState.value.copy(isLoading = false, error = e.message)
+            }
     }
 
     // ── Detalle ────────────────────────────────────────────────────────────────
 
-    override fun loadTournament(token: String, id: String) {
+    override fun loadTournament(id: String) {
         currentDetailId = id
         viewModelScope.launch {
+            val token = authViewModel.validToken() ?: return@launch
             _detailState.value = _detailState.value.copy(isLoading = true, error = null)
             repository.getTournament(token, id)
                 .onSuccess { t -> _detailState.value = TournamentDetailUiState(tournament = t) }
@@ -138,27 +145,33 @@ class TournamentViewModel(
     // ── Acciones ───────────────────────────────────────────────────────────────
 
     override suspend fun createTournament(
-        token: String,
         request: CreateTournamentRequest,
     ): Result<TournamentSummaryDto> =
-        repository.createTournament(token, request)
-            .also { if (it.isSuccess) loadTournaments(token) }
+        withToken { token -> repository.createTournament(token, request) }
+            .also { if (it.isSuccess) loadTournaments() }
 
-    override suspend fun register(token: String, id: String): Result<Unit> =
-        repository.register(token, id)
-            .also { if (it.isSuccess) loadTournament(token, id) }
+    override suspend fun register(id: String): Result<Unit> =
+        withToken { token -> repository.register(token, id) }
+            .also { if (it.isSuccess) loadTournament(id) }
 
-    override suspend fun unregister(token: String, id: String): Result<Unit> =
-        repository.unregister(token, id)
-            .also { if (it.isSuccess) loadTournament(token, id) }
+    override suspend fun unregister(id: String): Result<Unit> =
+        withToken { token -> repository.unregister(token, id) }
+            .also { if (it.isSuccess) loadTournament(id) }
 
-    override suspend fun start(token: String, id: String): Result<Unit> =
-        repository.start(token, id)
-            .also { if (it.isSuccess) loadTournament(token, id) }
+    override suspend fun start(id: String): Result<Unit> =
+        withToken { token -> repository.start(token, id) }
+            .also { if (it.isSuccess) loadTournament(id) }
 
-    override suspend fun cancel(token: String, id: String): Result<Unit> =
-        repository.cancel(token, id)
-            .also { if (it.isSuccess) loadTournament(token, id) }
+    override suspend fun cancel(id: String): Result<Unit> =
+        withToken { token -> repository.cancel(token, id) }
+            .also { if (it.isSuccess) loadTournament(id) }
+
+    /** Ejecuta [block] con un token válido, o falla si no hay sesión. */
+    private suspend fun <T> withToken(block: suspend (String) -> Result<T>): Result<T> {
+        val token = authViewModel.validToken()
+            ?: return Result.failure(Exception("Not authenticated"))
+        return block(token)
+    }
 
     companion object {
         private val POLL_INTERVAL = 30.seconds
