@@ -16,10 +16,3 @@ sealed class TutorialState {
 
     object Completed : TutorialState()
 }
-
-data class TutorialProgress(
-    val currentStepIndex: Int,
-    val totalSteps: Int,
-)
-
-fun TutorialProgress.isCompleted(): Boolean = currentStepIndex == totalSteps

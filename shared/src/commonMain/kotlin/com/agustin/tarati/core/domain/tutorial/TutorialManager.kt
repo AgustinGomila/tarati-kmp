@@ -32,39 +32,14 @@ class TutorialManager(
         _tutorialState.update { state }
     }
 
-    private val _steps = MutableStateFlow<List<TutorialStep>>(emptyList())
+    // Navegación por la lista de pasos (índice + topes + progreso 1-based) delegada en el
+    // StepCursor compartido con el tutorial multijugador.
+    private val cursor = StepCursor<TutorialStep>()
 
-    private fun setSteps(steps: List<TutorialStep>) {
-        _steps.update { steps }
-    }
-
-    private val _currentStepIndex = MutableStateFlow(0)
-
-    private fun updateCurrentStepIndex(index: Int) {
-        _currentStepIndex.update { index }
-    }
-
-    private fun incrementStepIndex() {
-        updateCurrentStepIndex(_currentStepIndex.value + 1)
-    }
-
-    private fun decrementStepIndex() {
-        updateCurrentStepIndex(_currentStepIndex.value - 1)
-    }
-
-    private fun resetStepIndex() {
-        updateCurrentStepIndex(0)
-    }
-
-    val progress: TutorialProgress
-        get() =
-            TutorialProgress(
-                currentStepIndex = _currentStepIndex.value + 1,
-                totalSteps = _steps.value.size,
-            )
+    val progress: TutorialProgress get() = cursor.progress
 
     fun loadRulesTutorial(onStep: () -> Unit) {
-        setSteps(
+        cursor.load(
             listOf(
                 IntroductionStep(),
                 CenterStep(),
@@ -82,13 +57,12 @@ class TutorialManager(
                 CompletedStep(),
             ),
         )
-        resetStepIndex()
         startTutorial(onStep)
     }
 
     private fun startTutorial(onStep: () -> Unit) {
-        if (_steps.value.isEmpty()) return
-        showStep(_steps.value[_currentStepIndex.value], onStep)
+        val step = cursor.current ?: return
+        showStep(step, onStep)
     }
 
     fun nextStep(onStep: () -> Unit) {
@@ -99,9 +73,8 @@ class TutorialManager(
             stopCurrentAnimations()
             autoAdvanceJob?.cancel()
 
-            if (_currentStepIndex.value < _steps.value.size - 1) {
-                incrementStepIndex()
-                showStep(_steps.value[_currentStepIndex.value], onStep)
+            if (cursor.advance()) {
+                cursor.current?.let { showStep(it, onStep) }
             } else {
                 endTutorial()
             }
@@ -116,9 +89,8 @@ class TutorialManager(
             stopCurrentAnimations()
             autoAdvanceJob?.cancel()
 
-            if (_currentStepIndex.value > 0) {
-                decrementStepIndex()
-                showStep(_steps.value[_currentStepIndex.value], onStep)
+            if (cursor.back()) {
+                cursor.current?.let { showStep(it, onStep) }
             }
         }
     }
@@ -133,7 +105,7 @@ class TutorialManager(
         // Pequeño delay para asegurar que la cola se limpió
         coroutineScope.launch {
             delay(50.milliseconds)
-            showStep(_steps.value[_currentStepIndex.value], onStep)
+            cursor.current?.let { showStep(it, onStep) }
         }
     }
 
@@ -160,7 +132,7 @@ class TutorialManager(
         }
     }
 
-    private fun getCurrentStep(): TutorialStep? = _steps.value.getOrNull(_currentStepIndex.value)
+    private fun getCurrentStep(): TutorialStep? = cursor.current
 
     fun getCurrentGameState(): GameState? = getCurrentStep()?.gameState
 
@@ -250,7 +222,6 @@ class TutorialManager(
 
     fun reset() {
         closeTutorial()
-        resetStepIndex()
-        setSteps(emptyList())
+        cursor.reset()
     }
 }

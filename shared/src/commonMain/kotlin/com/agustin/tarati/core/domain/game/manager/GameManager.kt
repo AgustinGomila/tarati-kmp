@@ -6,6 +6,7 @@ import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.domain.game.play.HistoryEntry
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.domain.game.play.StableHistoryList
+import com.agustin.tarati.core.domain.history.LinearHistory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,11 +23,15 @@ import kotlinx.coroutines.flow.update
  * Con cuatro flujos independientes, cada flujo individual puede ser observado
  * selectivamente cuando solo se necesita una parte del estado.
  *
- * ## Truncado del historial al agregar un movimiento
- * Si [moveIndex] no apunta al último movimiento (el usuario hizo undo y luego
- * jugó), el historial se trunca hasta [moveIndex] antes de agregar la nueva
- * entrada. Esto garantiza que el árbol de variantes no se ramifique: la historia
- * es siempre una línea única, como en los editores de texto con undo/redo.
+ * ## Historial navegable
+ * El historial vive en un [LinearHistory] (estructura compartida con el juego
+ * multijugador), que garantiza el invariante de **línea única**: al agregar un
+ * movimiento con el cursor en el pasado (el usuario hizo undo y luego jugó), la
+ * línea futura se descarta antes de agregar la nueva entrada — no hay árbol de
+ * variantes, como en los editores de texto con undo/redo. Los StateFlows [history]
+ * y [moveIndex] son la proyección observable de esa línea; la navegación
+ * (undo/redo/moveTo) sólo cambia [moveIndex] (y [gameState]) sin re-emitir
+ * [history], preservando su estabilidad para Compose.
  */
 class GameManager(
     uiState: GameManagerState = createInitialUiState(),
@@ -43,6 +48,13 @@ class GameManager(
     private val _moveIndex = MutableStateFlow(uiState.moveIndex)
     val moveIndex: StateFlow<Int> = _moveIndex.asStateFlow()
 
+    // Línea navegable de (movimiento, estado resultante) + la posición inicial. La base arranca en la
+    // apertura estándar (independiente de uiState, como antes) y se rehidrata con las entradas de
+    // uiState si las hubiera (en la práctica createInitialUiState viene vacío).
+    private val line = LinearHistory<GameState, Move>(GameState.initialGameState()).apply {
+        restore(uiState.history.toList().map { it.move to it.gameState }, uiState.moveIndex)
+    }
+
     // Public API
     fun updateGameStatus(newStatus: GameStatus) {
         _gameStatus.update { newStatus }
@@ -56,11 +68,10 @@ class GameManager(
      * navegar a la posición inicial ([undoMove] / [moveToIndex]) y al exportar
      * para reconstruir posiciones intermedias.
      */
-    var initialGameState: GameState = GameState.initialGameState()
-        private set
+    val initialGameState: GameState get() = line.initialState
 
     fun setInitialGameState(state: GameState) {
-        initialGameState = state
+        line.rebase(state)
     }
 
     fun updateGameState(newState: GameState) {
@@ -68,16 +79,8 @@ class GameManager(
     }
 
     fun updateHistory(moves: List<Move>, initialState: GameState = initialGameState) {
-        initialGameState = initialState
-        var currentState = initialState
-
-        val historyEntries = moves.map { move ->
-            currentState = currentState.applyMove(move)
-            HistoryEntry(move, currentState)
-        }
-
-        _history.update { StableHistoryList(historyEntries) }
-        _moveIndex.update { historyEntries.lastIndex }
+        line.replay(initialState, moves) { state, move -> state.applyMove(move) }
+        publishLine()
     }
 
     fun getCurrentState(): GameManagerState =
@@ -93,51 +96,31 @@ class GameManager(
         nextState: GameState,
         onMoveRecord: () -> Unit = {},
     ) {
-        val newEntry = move to nextState
-        val currentHistory = _history.value.toList()
-        val currentMoveIndex = _moveIndex.value
-
-        val truncatedHistory =
-            if (currentMoveIndex < currentHistory.lastIndex) {
-                currentHistory.take(currentMoveIndex + 1)
-            } else {
-                currentHistory
-            }
-
-        val updatedHistory = truncatedHistory + HistoryEntry.fromPair(newEntry)
-
-        _history.update { StableHistoryList(updatedHistory) }
-        _moveIndex.update { updatedHistory.lastIndex }
+        line.append(move, nextState)
+        publishLine()
 
         onMoveRecord()
         updateGameState(nextState)
     }
 
     fun undoMove() {
-        if (!canUndo()) return
+        if (!line.canUndo) return
 
         updateGameStatus(GameStatus.NO_PLAYING)
 
-        val targetIndex = (_moveIndex.value - 1).coerceAtLeast(-1)
-
-        _moveIndex.update { targetIndex }
-        val targetState =
-            if (targetIndex >= 0) {
-                _history.value[targetIndex].gameState
-            } else {
-                initialGameState
-            }
-        updateGameState(targetState)
+        line.undo()
+        _moveIndex.update { line.cursor }
+        updateGameState(line.currentState())
     }
 
     fun redoMove() {
-        if (!canRedo()) return
+        if (!line.canRedo) return
 
         updateGameStatus(GameStatus.NO_PLAYING)
 
-        val targetIndex = _moveIndex.value + 1
-        _moveIndex.update { targetIndex }
-        updateGameState(_history.value[targetIndex].gameState)
+        line.redo()
+        _moveIndex.update { line.cursor }
+        updateGameState(line.currentState())
     }
 
     /**
@@ -147,32 +130,31 @@ class GameManager(
      * Equivalente a llamar [undoMove]/[redoMove] repetidamente, pero en O(1).
      */
     fun moveToIndex(index: Int) {
-        if (index !in -1 until _history.value.size) return
+        if (!line.moveTo(index)) return
         updateGameStatus(GameStatus.NO_PLAYING)
-        _moveIndex.update { index }
-        val targetState = if (index >= 0) _history.value[index].gameState
-        else initialGameState
-        updateGameState(targetState)
+        _moveIndex.update { line.cursor }
+        updateGameState(line.currentState())
     }
 
     fun moveToCurrentState() {
         updateGameStatus(GameStatus.NO_PLAYING)
 
-        _history.value.toList().lastOrNull()?.let { lastEntry ->
-            _moveIndex.update { _history.value.toList().lastIndex }
-            updateGameState(lastEntry.gameState)
+        if (line.size > 0) {
+            line.moveToTip()
+            _moveIndex.update { line.cursor }
+            updateGameState(line.currentState())
         }
     }
 
     fun clearHistory(gameState: GameState = GameState.initialGameState()) {
-        initialGameState = gameState
-        _history.update { StableHistoryList(emptyList()) }
-        _moveIndex.update { -1 }
+        line.reset(gameState)
+        publishLine()
         updateGameState(gameState)
     }
 
-    // Private helpers
-    private fun canUndo() = _moveIndex.value >= 0 && _history.value.toList().isNotEmpty()
-
-    private fun canRedo() = _moveIndex.value + 1 < _history.value.size
+    /** Proyecta la línea navegable en los StateFlows observables [history] y [moveIndex]. */
+    private fun publishLine() {
+        _history.update { StableHistoryList(line.entries.map { (move, state) -> HistoryEntry(move, state) }) }
+        _moveIndex.update { line.cursor }
+    }
 }

@@ -17,6 +17,7 @@ import com.agustin.tarati.core.domain.game6.rules.MpPreMove
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.core.domain.game6.rules.MpTransforms
+import com.agustin.tarati.core.domain.history.LinearHistory
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -93,14 +94,14 @@ class MpLocalGameViewModel(
 
     // ── Historial navegable (undo/redo) ──────────────────────────────────────────
     //
-    // [states] guarda un snapshot por ply (states[0] = inicial; states[i] = tras i jugadas), y
-    // [_moveIndex] marca la posición **visualizada** (−1 = inicial; history.size−1 = tip/actual). El
-    // [match] se mantiene siempre en el tip; aplicar una jugada estando en el pasado descarta la línea
-    // futura (branch) y reconstruye el runner. La navegación (undo/redo/moveToIndex) sólo cambia la
-    // vista, sin mover el runner.
+    // [line] guarda la línea de jugadas + un snapshot por ply (LinearHistory, compartido con el
+    // GameManager de single). [_moveIndex] refleja el cursor de [line] (−1 = inicial;
+    // history.size−1 = tip/actual). El [match] runner se mantiene en la posición visualizada; aplicar
+    // una jugada estando en el pasado descarta la línea futura (branch) y reconstruye el runner. La
+    // navegación (undo/redo/moveToIndex) sólo mueve el cursor, sin tocar el runner.
 
-    /** Snapshots del estado tras cada jugada (states[0] = inicial). Tamaño = history.size + 1. */
-    private val states = mutableListOf(match.state)
+    /** Línea navegable de jugadas + snapshots (undo/redo con truncado de rama). */
+    private val line = LinearHistory<MpGameState, PlayerMove>(match.state)
 
     /** Índice del movimiento visualizado: −1 = posición inicial; `history.size − 1` = tip (actual). */
     private val _moveIndex = MutableStateFlow(-1)
@@ -160,7 +161,7 @@ class MpLocalGameViewModel(
     //
     // Modo edición análogo al `BoardEditor` de single: se colocan/quitan piezas por color sobre el
     // tablero `25`. Mientras [isEditing] es `true`, [onVertexTap] rutea a [editPiece] y los bots no
-    // juegan. Se edita directamente sobre [_state] (buffer de trabajo) sin tocar [states]/[history]:
+    // juegan. Se edita directamente sobre [_state] (buffer de trabajo) sin tocar [line]/[history]:
     // **Cancelar** (re-toque del botón) restaura la posición del tip; **Iniciar** reconstruye el
     // [MpMatch] desde la posición editada (historial/undo reseteados). Los colores editables son los
     // de los asientos de la partida (según [config], 2–6).
@@ -216,42 +217,55 @@ class MpLocalGameViewModel(
     // ── Navegación del historial (undo/redo) ─────────────────────────────────────
 
     /** `true` si la posición visualizada es la actual (el tip); sólo ahí juegan los bots. */
-    fun isAtTip(): Boolean = cursor() == tip()
+    fun isAtTip(): Boolean = line.isAtTip
 
     /** Retrocede una jugada (no-op si ya está en la posición inicial). */
-    fun undo(): Unit = navigateTo(cursor() - 1)
+    fun undo() {
+        if (line.undo()) syncToCursor()
+    }
 
     /** Avanza una jugada (no-op si ya está en el tip). */
-    fun redo(): Unit = navigateTo(cursor() + 1)
+    fun redo() {
+        if (line.redo()) syncToCursor()
+    }
 
     /** Salta a la posición **tras** la jugada lineal [index] (−1 = inicial). */
-    fun moveToIndex(index: Int): Unit = navigateTo(index + 1)
+    fun moveToIndex(index: Int) {
+        if (line.moveTo(index)) syncToCursor()
+    }
 
     /** Salta a la posición actual (tip). */
-    fun moveToCurrent(): Unit = navigateTo(tip())
-
-    private fun tip(): Int = _history.value.size
-    private fun cursor(): Int = _moveIndex.value + 1
+    fun moveToCurrent() {
+        if (!line.isAtTip) {
+            line.moveToTip()
+            syncToCursor()
+        }
+    }
 
     /**
-     * Cambia la posición visualizada a [target] (0..tip) sin alterar la línea: restaura el snapshot,
-     * limpia selección/pre-move y no anima (las piezas hacen snap). Los bots no juegan fuera del tip.
+     * Refleja la posición visualizada (cursor de [line]) en la UI sin alterar la línea: restaura el
+     * snapshot, limpia selección/pre-move y no anima (las piezas hacen snap). Los bots no juegan fuera
+     * del tip.
      */
-    private fun navigateTo(target: Int) {
-        val c = target.coerceIn(0, tip())
-        if (c == cursor()) return
-        _moveIndex.value = c - 1
-        _state.value = states[c]
+    private fun syncToCursor() {
+        _moveIndex.value = line.cursor
+        _state.value = line.currentState()
         _lastMove.value = null
         _converted.value = emptyMap()
         clearSelection()
         clearPreMove()
     }
 
-    /** Reconstruye el runner desde el estado base (`states[0]`) replayando las primeras [plies] jugadas. */
+    /** Refleja la línea ([line]) en los StateFlows observables `history` y `moveIndex`. */
+    private fun publishLine() {
+        _history.value = line.movesList
+        _moveIndex.value = line.cursor
+    }
+
+    /** Reconstruye el runner desde el estado base ([LinearHistory.initialState]) replayando las primeras [plies] jugadas. */
     private fun rebuildMatch(plies: Int) {
-        match = MpMatch(states[0], cut = cut)
-        _history.value.take(plies).forEach { match.applyMove(it.move) }
+        match = MpMatch(line.initialState, cut = cut)
+        line.movesList.take(plies).forEach { match.applyMove(it.move) }
     }
 
     /**
@@ -261,17 +275,18 @@ class MpLocalGameViewModel(
      * contador. Limpia la selección y el último movimiento para no animar posiciones viejas.
      */
     fun rotate() {
-        // Rota TODA la línea (snapshots + jugadas) para que el undo/redo siga siendo consistente tras el
-        // cambio de perspectiva: rotar sólo la vista dejaría las posiciones anteriores en la orientación
-        // vieja. Rotación = automorfismo del grafo → las jugadas rotadas siguen siendo legales.
-        val rotated = states.map { MpTransforms.rotate60(it) }
-        states.clear()
-        states.addAll(rotated)
-        _history.value = _history.value.map { pm ->
-            PlayerMove(pm.color, MpMove(Board25.rotate60(pm.move.from), Board25.rotate60(pm.move.to)))
-        }
-        rebuildMatch(tip())
-        _state.value = states[cursor()]
+        // Rota TODA la línea (base + snapshots + jugadas) para que el undo/redo siga siendo consistente
+        // tras el cambio de perspectiva: rotar sólo la vista dejaría las posiciones anteriores en la
+        // orientación vieja. Rotación = automorfismo del grafo → las jugadas rotadas siguen siendo legales.
+        line.transform(
+            mapState = { MpTransforms.rotate60(it) },
+            mapMove = { pm ->
+                PlayerMove(pm.color, MpMove(Board25.rotate60(pm.move.from), Board25.rotate60(pm.move.to)))
+            },
+        )
+        rebuildMatch(line.size)
+        publishLine()
+        _state.value = line.currentState()
         _lastMove.value = null
         _converted.value = emptyMap()
         clearSelection()
@@ -291,11 +306,9 @@ class MpLocalGameViewModel(
      * [startGameFromEdit].
      */
     private fun resetLineTo(base: MpGameState) {
+        line.reset(base)
         match = MpMatch(base, cut = cut)
-        states.clear()
-        states.add(base)
-        _history.value = emptyList()
-        _moveIndex.value = -1
+        publishLine()
         _lastMove.value = null
         _converted.value = emptyMap()
         _state.value = base
@@ -423,12 +436,12 @@ class MpLocalGameViewModel(
     /**
      * Entra/sale del modo edición. Al entrar edita desde la posición actual (tip). Al salir por este
      * mismo botón (**cancelar**) descarta las ediciones y restaura la posición visualizada — como
-     * [states]/[history] no se tocaron durante la edición, basta releer el snapshot del cursor.
+     * [line]/[history] no se tocaron durante la edición, basta releer el snapshot del cursor.
      */
     fun toggleEditing() {
         if (_isEditing.value) {
             _isEditing.value = false
-            _state.value = states[cursor()]
+            _state.value = line.currentState()
             clearSelection()
         } else {
             moveToCurrent()
@@ -520,14 +533,10 @@ class MpLocalGameViewModel(
     }
 
     private fun applyAndClear(move: MpMove) {
-        // Si se está viendo una posición anterior (tras un undo), aplicar una jugada nueva **descarta la
-        // línea futura** y continúa desde aquí (paridad con single): se truncan snapshots + historial y
-        // se reconstruye el runner en la posición visualizada.
-        val c = cursor()
-        if (c < tip()) {
-            _history.value = _history.value.take(c)
-            while (states.size > c + 1) states.removeAt(states.size - 1)
-            rebuildMatch(c)
+        // Si se está viendo una posición anterior (tras un undo), reconstruir el runner en la posición
+        // visualizada antes de aplicar; [line.append] descarta la línea futura (paridad con single).
+        if (!line.isAtTip) {
+            rebuildMatch(line.cursor + 1)
         }
         val before = _state.value
         val color = before.currentSeat.color
@@ -536,10 +545,9 @@ class MpLocalGameViewModel(
             .associateWith { before.pieces.getValue(it).owner }
         _converted.value = conversions
         val after = match.applyMove(move)
-        states.add(after)
+        line.append(PlayerMove(color, move), after)
         _state.value = after
-        _history.value += PlayerMove(color, move)
-        _moveIndex.value = _history.value.size - 1
+        publishLine()
         _lastMove.value = move
         clearSelection()
         // Paridad con single: una pre-selección sin confirmar se descarta al cambiar el estado; un

@@ -25,12 +25,3 @@ sealed interface MpTutorialState {
 /** `true` mientras hay un paso visible (guiado o interactivo). */
 val MpTutorialState.isActive: Boolean
     get() = this is MpTutorialState.ShowingStep || this is MpTutorialState.WaitingForMove
-
-/** Progreso del recorrido, 1-based, para la barra y el contador de la burbuja. */
-data class MpTutorialProgress(
-    val currentStepIndex: Int,
-    val totalSteps: Int,
-)
-
-/** `true` si el progreso alcanzó el último paso. */
-fun MpTutorialProgress.isCompleted(): Boolean = totalSteps in 1..currentStepIndex

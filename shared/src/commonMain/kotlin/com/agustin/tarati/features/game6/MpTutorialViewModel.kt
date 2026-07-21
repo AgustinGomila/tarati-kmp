@@ -9,10 +9,10 @@ import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.tutorial.MpInteractiveTutorialStep
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialManager
-import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialProgress
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialState
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialStep
-import com.agustin.tarati.core.domain.game6.tutorial.isCompleted
+import com.agustin.tarati.core.domain.tutorial.TutorialProgress
+import com.agustin.tarati.core.domain.tutorial.isCompleted
 import com.agustin.tarati.services.sound.ISoundService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -37,7 +37,7 @@ class MpTutorialViewModel(
     private val manager = MpTutorialManager()
 
     override val tutorialState: StateFlow<MpTutorialState> = manager.state
-    override val progress: MpTutorialProgress get() = manager.progress
+    override val progress: TutorialProgress get() = manager.progress
 
     private val _displayState = MutableStateFlow<MpGameState?>(null)
     override val displayState: StateFlow<MpGameState?> = _displayState.asStateFlow()

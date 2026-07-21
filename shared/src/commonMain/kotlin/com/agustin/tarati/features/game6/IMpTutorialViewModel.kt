@@ -4,8 +4,8 @@ import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
-import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialProgress
 import com.agustin.tarati.core.domain.game6.tutorial.MpTutorialState
+import com.agustin.tarati.core.domain.tutorial.TutorialProgress
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -19,7 +19,7 @@ interface IMpTutorialViewModel {
     val tutorialState: StateFlow<MpTutorialState>
 
     /** Progreso 1-based (para la barra y el contador de la burbuja). */
-    val progress: MpTutorialProgress
+    val progress: TutorialProgress
 
     /** Posición a dibujar en el tablero durante el paso actual (`null` fuera del recorrido). */
     val displayState: StateFlow<MpGameState?>
