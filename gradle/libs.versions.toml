@@ -54,9 +54,6 @@ playServicesGamesV2 = "21.0.0"
 # Ktor
 ktor = "3.5.1"
 
-# Quality
-detekt = "1.23.8"
-
 # Server
 exposed = "1.3.1"
 hikaricp = "7.1.0"
@@ -205,7 +202,6 @@ kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", versi
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
-detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 
 # Compose
 compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
