@@ -141,22 +141,42 @@ val skipHeavyTests = if (project.hasProperty("skipHeavyTests")) {
     true  // Por defecto EXCLUIR
 }
 
+// Tests pesados de AI/torneo. Se excluyen por defecto en la corrida completa (CI, `./gradlew test`),
+// pero se **habilitan cuando se pide un test puntual**: tanto `--tests` por consola como el clic del
+// gutter de la IDE (vía Tooling API) pueblan `filter.commandLineIncludePatterns` de la task, así que
+// se levanta la exclusión en ese caso. `-PskipHeavyTests=false` fuerza correr todo siempre.
+val heavyTestPatterns = setOf(
+    "**/*RegressionTest*.class",
+    "**/*RoundRobinTest*.class",
+    "**/*DifficultyDiagnosticTest*.class",
+    "**/*OpeningBookAbTest*.class",
+)
+
 if (skipHeavyTests) {
-    println("⏭️  Skipping heavy AI tests")
+    println("⏭️  Skipping heavy AI tests (lifted when a test filter is present)")
 } else {
     println("🔬 Running ALL tests")
 }
 
 tasks.withType<Test>().configureEach {
     if (skipHeavyTests) {
-        exclude(
-            "**/*RegressionTest*.class",
-            "**/*RoundRobinTest*.class",
-            "**/*DifficultyDiagnosticTest*.class",
-            "**/*OpeningBookAbTest*.class"
-        )
+        exclude(heavyTestPatterns)
+        val testTask = this
         doFirst {
-            logger.lifecycle("⏭️  SKIPPING heavy AI tests")
+            // `--tests` (consola) y el gutter de la IDE (Tooling API) pueblan los
+            // `commandLineIncludePatterns` de la task; no están en la interfaz pública `TestFilter`,
+            // así que se leen de la impl interna `DefaultTestFilter`.
+            val explicitFilter =
+                (testTask.filter as org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter)
+                    .commandLineIncludePatterns
+                    .isNotEmpty()
+            if (explicitFilter) {
+                // Corrida puntual: levantar la exclusión de pesados para que sean candidatos.
+                testTask.setExcludes(testTask.excludes - heavyTestPatterns)
+                logger.lifecycle("🔬 Explicit test filter — heavy AI test exclusion lifted")
+            } else {
+                logger.lifecycle("⏭️  SKIPPING heavy AI tests")
+            }
         }
     }
 }
