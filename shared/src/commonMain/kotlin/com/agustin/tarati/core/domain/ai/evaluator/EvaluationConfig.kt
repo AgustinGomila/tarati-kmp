@@ -31,8 +31,11 @@ data class EvaluationConfig(
     val behavior: BehaviorConfig = BehaviorConfig(),
     /**
      * Si el motor consulta el opening book antes de buscar (ver
-     * [com.agustin.tarati.core.domain.ai.book.OpeningBook]). Gateable; por defecto activo solo en
-     * HARD y CHAMPION — EASY/MEDIUM conservan su juego más débil y variado.
+     * [com.agustin.tarati.core.domain.ai.book.OpeningBook]). Gateable por dificultad;
+     * actualmente **off en todos los niveles**. El book es una muleta que rinde más a la búsqueda
+     * superficial (depth 5) que a la profunda (depth 7): con él activo, Champion no se separa de
+     * Hard en el round-robin. La infra del book (miner, corpus, CI) queda intacta para reactivarlo
+     * por-tier a futuro. Ver docs/internal/plans/engine_strength_plan.md.
      */
     val openingBookEnabled: Boolean = false,
 ) {
@@ -130,7 +133,6 @@ data class EvaluationConfig(
         // No explota piezas aisladas ni oportunidades de promoción forzada.
         val HARD: EvaluationConfig = EvaluationConfig(
             difficulty = Difficulty.HARD,
-            openingBookEnabled = true,
             material = MaterialWeights(
                 cobScore = 206.0,
                 rocScore = 414.0,
@@ -155,7 +157,6 @@ data class EvaluationConfig(
         // sobre-pesar el material; ver docs/internal/plans/engine_strength_plan.md, Fase A).
         val CHAMPION: EvaluationConfig = EvaluationConfig(
             difficulty = Difficulty.CHAMPION,
-            openingBookEnabled = true,
             material = MaterialWeights(
                 cobScore = 216.0,
                 rocScore = 454.0,

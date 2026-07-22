@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.cache.HybridEvaluationCache
 import com.agustin.tarati.core.domain.ai.engine.BoardEvaluator
 import com.agustin.tarati.core.domain.ai.engine.MoveEvaluator
@@ -87,9 +88,9 @@ class DifficultyDiagnosticTest {
     fun diagnoseChampionLosingSequence() {
         setEvaluationConfig(EvaluationConfig.CHAMPION)
 
-        println("=" * 80)
-        println("DIAGNOSTIC: CHAMPION Losing Sequence Analysis")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("DIAGNOSTIC: CHAMPION Losing Sequence Analysis")
+        TestLog.info("=" * 80)
 
         val championLosingMoves =
             listOf(
@@ -119,12 +120,12 @@ class DifficultyDiagnosticTest {
             val currentPlayer = gameState.currentTurn
             val isAIMove = currentPlayer == BLACK
 
-            println("\n" + "-" * 80)
-            println("Move $moveNumber: ${currentPlayer.name} (${move.from} -> ${move.to})")
-            println("-" * 80)
+            TestLog.info("\n" + "-" * 80)
+            TestLog.info("Move $moveNumber: ${currentPlayer.name} (${move.from} -> ${move.to})")
+            TestLog.info("-" * 80)
 
             if (!GameBoard.isValidMove(gameState, move)) {
-                println("ERROR: Invalid move in sequence!")
+                TestLog.info("ERROR: Invalid move in sequence!")
                 printBoardState(gameState)
                 return
             }
@@ -143,19 +144,19 @@ class DifficultyDiagnosticTest {
             printEvaluation(gameState)
 
             if (gameState.isGameOver(engine.positionHistory)) {
-                println("\nGAME OVER")
+                TestLog.info("\nGAME OVER")
                 val winner = gameState.getWinner(engine.positionHistory)
-                println("Winner: ${winner?.name ?: "DRAW"}")
+                TestLog.info("Winner: ${winner?.name ?: "DRAW"}")
                 break
             }
 
             if (currentPlayer == BLACK) moveNumber++
         }
 
-        println("\n" + "=" * 80)
-        println("DIAGNOSIS COMPLETE")
-        println("Critical divergences found: $criticalMovesFound")
-        println("=" * 80)
+        TestLog.info("\n" + "=" * 80)
+        TestLog.info("DIAGNOSIS COMPLETE")
+        TestLog.info("Critical divergences found: $criticalMovesFound")
+        TestLog.info("=" * 80)
     }
 
     /**
@@ -163,39 +164,39 @@ class DifficultyDiagnosticTest {
      */
     @Test
     fun analyzeCriticalMove2() {
-        println("=" * 80)
-        println("DEEP ANALYSIS: Move 2 Black (C8 -> B4)")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("DEEP ANALYSIS: Move 2 Black (C8 -> B4)")
+        TestLog.info("=" * 80)
 
         val gameState = buildStateBeforeMove2Black()
 
-        println("\nBoard state before C8 -> B4:")
+        TestLog.info("\nBoard state before C8 -> B4:")
         printDetailedState(gameState)
 
         // Analizar con diferentes profundidades
-        println("\n" + "-" * 80)
-        println("DEPTH ANALYSIS:")
-        println("-" * 80)
+        TestLog.info("\n" + "-" * 80)
+        TestLog.info("DEPTH ANALYSIS:")
+        TestLog.info("-" * 80)
 
         for (depth in 2..8 step 2) {
             val tempDifficulty = Difficulty.entries.firstOrNull { it.depth == depth } ?: Difficulty.CHAMPION
             val result = getNextBestMove(gameState, tempDifficulty)
 
-            println("\nDepth $depth:")
-            println("  Best move: ${result.move?.from} -> ${result.move?.to}")
-            println("  Score: ${result.score}")
+            TestLog.info("\nDepth $depth:")
+            TestLog.info("  Best move: ${result.move?.from} -> ${result.move?.to}")
+            TestLog.info("  Score: ${result.score}")
 
             if (result.move?.from == C8 && result.move?.to == B4) {
-                println("  Status: AI chose the losing move")
+                TestLog.info("  Status: AI chose the losing move")
             } else {
-                println("  Status: AI found different move")
+                TestLog.info("  Status: AI found different move")
             }
         }
 
         // Evaluar todas las alternativas
-        println("\n" + "-" * 80)
-        println("ALL POSSIBLE MOVES EVALUATION:")
-        println("-" * 80)
+        TestLog.info("\n" + "-" * 80)
+        TestLog.info("ALL POSSIBLE MOVES EVALUATION:")
+        TestLog.info("-" * 80)
 
         val allMoves = gameState.allMovesForTurn()
         val evaluations =
@@ -219,10 +220,10 @@ class DifficultyDiagnosticTest {
 
         evaluations.forEachIndexed { index, eval ->
             val marker = if (eval.move.from == C8 && eval.move.to == B4) ">>>" else "   "
-            println("$marker ${index + 1}. ${eval.move.from} -> ${eval.move.to}")
-            println("       Immediate eval: ${eval.immediateEval}")
-            println("       White response: ${eval.whiteResponseMove?.from} -> ${eval.whiteResponseMove?.to}")
-            println("       After response: ${eval.whiteResponseScore}")
+            TestLog.info("$marker ${index + 1}. ${eval.move.from} -> ${eval.move.to}")
+            TestLog.info("       Immediate eval: ${eval.immediateEval}")
+            TestLog.info("       White response: ${eval.whiteResponseMove?.from} -> ${eval.whiteResponseMove?.to}")
+            TestLog.info("       After response: ${eval.whiteResponseScore}")
         }
     }
 
@@ -231,24 +232,24 @@ class DifficultyDiagnosticTest {
      */
     @Test
     fun analyzeCriticalMove4() {
-        println("=" * 80)
-        println("DEEP ANALYSIS: Move 4 Black (B4 -> A1)")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("DEEP ANALYSIS: Move 4 Black (B4 -> A1)")
+        TestLog.info("=" * 80)
 
         val gameState = buildStateBeforeMove4Black()
 
-        println("\nBoard state before B4 -> A1:")
+        TestLog.info("\nBoard state before B4 -> A1:")
         printDetailedState(gameState)
 
         // Evaluar todas las alternativas con simulación de respuesta
-        println("\n" + "-" * 80)
-        println("MOVE COMPARISON WITH WHITE RESPONSES:")
-        println("-" * 80)
+        TestLog.info("\n" + "-" * 80)
+        TestLog.info("MOVE COMPARISON WITH WHITE RESPONSES:")
+        TestLog.info("-" * 80)
 
         val allMoves = gameState.allMovesForTurn()
 
         allMoves.forEach { move ->
-            println("\n${move.from} -> ${move.to}:")
+            TestLog.info("\n${move.from} -> ${move.to}:")
 
             val afterMove =
                 gameState
@@ -258,12 +259,12 @@ class DifficultyDiagnosticTest {
             printMoveDetails(gameState, move)
 
             val evalAfterMove = boardEvaluator.evaluate(afterMove, evalConfig)
-            println("  Eval after move: $evalAfterMove")
+            TestLog.info("  Eval after move: $evalAfterMove")
 
             // Simular respuesta de blancas
             val whiteResponse = getNextBestMove(afterMove, Difficulty.CHAMPION)
             if (whiteResponse.move != null) {
-                println("  White responds: ${whiteResponse.move?.from} -> ${whiteResponse.move?.to}")
+                TestLog.info("  White responds: ${whiteResponse.move?.from} -> ${whiteResponse.move?.to}")
 
                 val afterWhiteResponse =
                     afterMove
@@ -272,12 +273,12 @@ class DifficultyDiagnosticTest {
                         ).copy(currentTurn = afterMove.currentTurn.opponent)
 
                 val finalEval = boardEvaluator.evaluate(afterWhiteResponse, evalConfig)
-                println("  Eval after response: $finalEval")
-                println("  Net change: ${finalEval - evalAfterMove}")
+                TestLog.info("  Eval after response: $finalEval")
+                TestLog.info("  Net change: ${finalEval - evalAfterMove}")
 
                 if (afterWhiteResponse.isGameOver(engine.positionHistory)) {
                     val winner = afterWhiteResponse.getWinner(engine.positionHistory)
-                    println("  WARNING: Game ends! Winner: ${winner?.name}")
+                    TestLog.info("  WARNING: Game ends! Winner: ${winner?.name}")
                 }
             }
         }
@@ -288,9 +289,9 @@ class DifficultyDiagnosticTest {
      */
     @Test
     fun compareEvaluationComponents() {
-        println("=" * 80)
-        println("EVALUATION COMPONENTS BREAKDOWN")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("EVALUATION COMPONENTS BREAKDOWN")
+        TestLog.info("=" * 80)
 
         val gameState = buildStateBeforeMove2Black()
 
@@ -303,9 +304,9 @@ class DifficultyDiagnosticTest {
             )
 
         testMoves.forEach { move ->
-            println("\n" + "=" * 60)
-            println("Move: ${move.from} -> ${move.to}")
-            println("=" * 60)
+            TestLog.info("\n" + "=" * 60)
+            TestLog.info("Move: ${move.from} -> ${move.to}")
+            TestLog.info("=" * 60)
 
             val newState =
                 gameState
@@ -315,37 +316,37 @@ class DifficultyDiagnosticTest {
             val config = EvaluationConfig.CHAMPION
             val metrics = boardEvaluator.evaluateMetrics(newState, config)
 
-            println("\nMaterial:")
-            println("  White: ${metrics.material.white} | Black: ${metrics.material.black}")
-            println("  Difference: ${metrics.material.difference}")
+            TestLog.info("\nMaterial:")
+            TestLog.info("  White: ${metrics.material.white} | Black: ${metrics.material.black}")
+            TestLog.info("  Difference: ${metrics.material.difference}")
 
-            println("\nCenter Control:")
-            println("  White: ${metrics.centerControl.white} | Black: ${metrics.centerControl.black}")
+            TestLog.info("\nCenter Control:")
+            TestLog.info("  White: ${metrics.centerControl.white} | Black: ${metrics.centerControl.black}")
             val centerScore = metrics.centerControl.difference * config.controlCenterScore
-            println("  Score contribution: $centerScore")
+            TestLog.info("  Score contribution: $centerScore")
 
-            println("\nMobility:")
-            println("  White: ${metrics.mobility.white} | Black: ${metrics.mobility.black}")
+            TestLog.info("\nMobility:")
+            TestLog.info("  White: ${metrics.mobility.white} | Black: ${metrics.mobility.black}")
             val mobilityScore = metrics.mobility.difference * config.mobilityScore
-            println("  Score contribution: $mobilityScore")
+            TestLog.info("  Score contribution: $mobilityScore")
 
-            println("\nOpponent Base Pressure:")
-            println("  White: ${metrics.opponentPressure.white} | Black: ${metrics.opponentPressure.black}")
+            TestLog.info("\nOpponent Base Pressure:")
+            TestLog.info("  White: ${metrics.opponentPressure.white} | Black: ${metrics.opponentPressure.black}")
             val pressureScore = metrics.opponentPressure.difference * config.opponentDomesticPressureScore
-            println("  Score contribution: $pressureScore")
+            TestLog.info("  Score contribution: $pressureScore")
 
-            println("\nHome Base Control:")
-            println("  White: ${metrics.homeControl.white} | Black: ${metrics.homeControl.black}")
+            TestLog.info("\nHome Base Control:")
+            TestLog.info("  White: ${metrics.homeControl.white} | Black: ${metrics.homeControl.black}")
             val homeScore = metrics.homeControl.difference * config.domesticControlScore
-            println("  Score contribution: $homeScore")
+            TestLog.info("  Score contribution: $homeScore")
 
-            println("\nUpgrade Opportunities:")
-            println("  White: ${metrics.upgradeOpportunities.white} | Black: ${metrics.upgradeOpportunities.black}")
+            TestLog.info("\nUpgrade Opportunities:")
+            TestLog.info("  White: ${metrics.upgradeOpportunities.white} | Black: ${metrics.upgradeOpportunities.black}")
             val upgradeScore = metrics.upgradeOpportunities.difference * config.upgradeScore
-            println("  Score contribution: $upgradeScore")
+            TestLog.info("  Score contribution: $upgradeScore")
 
             val totalEval = boardEvaluator.evaluate(newState, config)
-            println("\nTOTAL EVALUATION: $totalEval")
+            TestLog.info("\nTOTAL EVALUATION: $totalEval")
         }
     }
 
@@ -355,22 +356,22 @@ class DifficultyDiagnosticTest {
         gameState: GameState,
         actualMove: Move,
     ): Boolean {
-        println("\nAI DECISION ANALYSIS:")
+        TestLog.info("\nAI DECISION ANALYSIS:")
 
         val allMoves = gameState.allMovesForTurn()
-        println("  Possible moves: ${allMoves.size}")
+        TestLog.info("  Possible moves: ${allMoves.size}")
 
         val result = getNextBestMove(gameState, Difficulty.CHAMPION)
         val aiBestMove = result.move
         val aiScore = result.score
 
-        println("  AI chose: ${aiBestMove?.from} -> ${aiBestMove?.to} (score: $aiScore)")
-        println("  Actual was: ${actualMove.from} -> ${actualMove.to}")
+        TestLog.info("  AI chose: ${aiBestMove?.from} -> ${aiBestMove?.to} (score: $aiScore)")
+        TestLog.info("  Actual was: ${actualMove.from} -> ${actualMove.to}")
 
         val divergence = aiBestMove?.from != actualMove.from || aiBestMove.to != actualMove.to
 
         if (divergence) {
-            println("  STATUS: DIVERGENCE DETECTED")
+            TestLog.info("  STATUS: DIVERGENCE DETECTED")
 
             var aiEval = 0.0
             if (aiBestMove != null) {
@@ -379,9 +380,9 @@ class DifficultyDiagnosticTest {
                         .applyMove(aiBestMove)
                         .copy(currentTurn = gameState.currentTurn.opponent)
                 aiEval = boardEvaluator.evaluate(aiNewState, evalConfig)
-                println("\n  AI preferred move evaluation:")
-                println("    Move: ${aiBestMove.from} -> ${aiBestMove.to}")
-                println("    Eval: $aiEval")
+                TestLog.info("\n  AI preferred move evaluation:")
+                TestLog.info("    Move: ${aiBestMove.from} -> ${aiBestMove.to}")
+                TestLog.info("    Eval: $aiEval")
                 printMoveDetails(gameState, aiBestMove)
             }
 
@@ -390,14 +391,14 @@ class DifficultyDiagnosticTest {
                     .applyMove(actualMove)
                     .copy(currentTurn = gameState.currentTurn.opponent)
             val actualEval = boardEvaluator.evaluate(actualNewState, evalConfig)
-            println("\n  Actual move evaluation:")
-            println("    Move: ${actualMove.from} -> ${actualMove.to}")
-            println("    Eval: $actualEval")
+            TestLog.info("\n  Actual move evaluation:")
+            TestLog.info("    Move: ${actualMove.from} -> ${actualMove.to}")
+            TestLog.info("    Eval: $actualEval")
             printMoveDetails(gameState, actualMove)
 
-            println("\n  Evaluation difference: ${if (aiBestMove != null) aiEval - actualEval else "N/A"}")
+            TestLog.info("\n  Evaluation difference: ${if (aiBestMove != null) aiEval - actualEval else "N/A"}")
         } else {
-            println("  STATUS: AI chose expected move")
+            TestLog.info("  STATUS: AI chose expected move")
         }
 
         return divergence
@@ -423,27 +424,27 @@ class DifficultyDiagnosticTest {
         val enemyBase = homeBases[movedCob.color.opponent] ?: emptyList()
         val willUpgrade = move.to in enemyBase && !movedCob.isUpgraded
 
-        println("    Captures: $capturedPieces (Upgraded: $upgradedCaptured)")
-        println("    Upgrades: ${if (willUpgrade) "YES" else "NO"}")
-        println("    Center control: ${if (move.to in centerVertices) "YES" else "NO"}")
+        TestLog.info("    Captures: $capturedPieces (Upgraded: $upgradedCaptured)")
+        TestLog.info("    Upgrades: ${if (willUpgrade) "YES" else "NO"}")
+        TestLog.info("    Center control: ${if (move.to in centerVertices) "YES" else "NO"}")
 
         val mobility = newState.copy(currentTurn = movedCob.color).allMovesForTurn().size
-        println("    Resulting mobility: $mobility moves")
+        TestLog.info("    Resulting mobility: $mobility moves")
 
         if (newState.isGameOver(engine.positionHistory)) {
-            println("    WARNING: GAME ENDS - Winner: ${newState.getWinner(engine.positionHistory)?.name}")
+            TestLog.info("    WARNING: GAME ENDS - Winner: ${newState.getWinner(engine.positionHistory)?.name}")
         }
     }
 
     private fun printBoardState(gameState: GameState) {
-        println("\nBoard state:")
+        TestLog.info("\nBoard state:")
         val whiteCobs = gameState.cobs.values.count { it.color == WHITE }
         val blackCobs = gameState.cobs.values.count { it.color == BLACK }
         val whiteUpgraded = gameState.cobs.values.count { it.color == WHITE && it.isUpgraded }
         val blackUpgraded = gameState.cobs.values.count { it.color == BLACK && it.isUpgraded }
 
-        println("  White: $whiteCobs pieces ($whiteUpgraded upgraded)")
-        println("  Black: $blackCobs pieces ($blackUpgraded upgraded)")
+        TestLog.info("  White: $whiteCobs pieces ($whiteUpgraded upgraded)")
+        TestLog.info("  Black: $blackCobs pieces ($blackUpgraded upgraded)")
 
         val whitesInCenter =
             gameState.cobs.entries.count {
@@ -453,19 +454,19 @@ class DifficultyDiagnosticTest {
             gameState.cobs.entries.count {
                 it.key in centerVertices && it.value.color == BLACK
             }
-        println("  Center: W:$whitesInCenter B:$blacksInCenter")
+        TestLog.info("  Center: W:$whitesInCenter B:$blacksInCenter")
     }
 
     private fun printDetailedState(gameState: GameState) {
-        println("Current turn: ${gameState.currentTurn.name}")
-        println("Pieces on board:")
+        TestLog.info("Current turn: ${gameState.currentTurn.name}")
+        TestLog.info("Pieces on board:")
         gameState.cobs.entries
             .sortedBy { it.key.zone.name }
             .sortedBy { it.key.position }
             .forEach { (pos, cob) ->
                 val upgraded = if (cob.isUpgraded) "[U]" else "   "
                 val color = if (cob.color == WHITE) "W" else "B"
-                println("  $pos: $color $upgraded")
+                TestLog.info("  $pos: $color $upgraded")
             }
         printBoardState(gameState)
     }
@@ -473,8 +474,8 @@ class DifficultyDiagnosticTest {
     private fun printEvaluation(gameState: GameState) {
         val eval = boardEvaluator.evaluate(gameState, evalConfig)
         val quickEval = evaluator.quickEvaluate(gameState, evalConfig)
-        println("\nFull evaluation: $eval")
-        println("Quick evaluation: $quickEval")
+        TestLog.info("\nFull evaluation: $eval")
+        TestLog.info("Quick evaluation: $quickEval")
 
         val advantage =
             when {
@@ -486,7 +487,7 @@ class DifficultyDiagnosticTest {
                 eval > -100 -> "Black moderate advantage"
                 else -> "Black significant advantage"
             }
-        println(advantage)
+        TestLog.info(advantage)
     }
 
     private fun buildStateBeforeMove2Black(): GameState {
@@ -553,9 +554,9 @@ class DifficultyDiagnosticTest {
     fun diagnoseMediumLosingSequence() {
         setEvaluationConfig(EvaluationConfig.MEDIUM)
 
-        println("=" * 80)
-        println("DIAGNOSTIC: MEDIUM Losing Sequence Analysis")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("DIAGNOSTIC: MEDIUM Losing Sequence Analysis")
+        TestLog.info("=" * 80)
 
         val mediumLosingMoves =
             listOf(
@@ -589,12 +590,12 @@ class DifficultyDiagnosticTest {
             val currentPlayer = gameState.currentTurn
             val isAIMove = currentPlayer == BLACK
 
-            println("\n" + "-" * 80)
-            println("Move $moveNumber: ${currentPlayer.name} (${move.from} -> ${move.to})")
-            println("-" * 80)
+            TestLog.info("\n" + "-" * 80)
+            TestLog.info("Move $moveNumber: ${currentPlayer.name} (${move.from} -> ${move.to})")
+            TestLog.info("-" * 80)
 
             if (!GameBoard.isValidMove(gameState, move)) {
-                println("ERROR: Invalid move in sequence!")
+                TestLog.info("ERROR: Invalid move in sequence!")
                 printBoardState(gameState)
                 return
             }
@@ -613,26 +614,26 @@ class DifficultyDiagnosticTest {
             printEvaluation(gameState)
 
             if (gameState.isGameOver(engine.positionHistory)) {
-                println("\nGAME OVER")
+                TestLog.info("\nGAME OVER")
                 val winner = gameState.getWinner(engine.positionHistory)
-                println("Winner: ${winner?.name ?: "DRAW"}")
+                TestLog.info("Winner: ${winner?.name ?: "DRAW"}")
                 break
             }
 
             if (currentPlayer == BLACK) moveNumber++
         }
 
-        println("\n" + "=" * 80)
-        println("MEDIUM DIAGNOSIS COMPLETE")
-        println("Critical divergences found: $criticalMovesFound")
-        println("=" * 80)
+        TestLog.info("\n" + "=" * 80)
+        TestLog.info("MEDIUM DIAGNOSIS COMPLETE")
+        TestLog.info("Critical divergences found: $criticalMovesFound")
+        TestLog.info("=" * 80)
     }
 
     @Test
     fun diagnoseRulesErrorSequence() {
-        println("=" * 80)
-        println("DIAGNOSTIC: Rules Error Sequence Analysis")
-        println("=" * 80)
+        TestLog.info("=" * 80)
+        TestLog.info("DIAGNOSTIC: Rules Error Sequence Analysis")
+        TestLog.info("=" * 80)
 
         val errorInRulesMoves =
             listOf(
@@ -665,43 +666,43 @@ class DifficultyDiagnosticTest {
         var gameState = initialGameState()
         var moveNumber = 1
 
-        println("\nSPECIAL ANALYSIS: Rules verification on move 24 (C7 -> C8)")
-        println("Expected captures: D4, C9, B4")
-        println("=" * 60)
+        TestLog.info("\nSPECIAL ANALYSIS: Rules verification on move 24 (C7 -> C8)")
+        TestLog.info("Expected captures: D4, C9, B4")
+        TestLog.info("=" * 60)
 
         for (i in errorInRulesMoves.indices) {
             val move = errorInRulesMoves[i]
             val currentPlayer = gameState.currentTurn
 
-            println("\nMove ${i + 1}: ${currentPlayer.name} (${move.from} -> ${move.to})")
+            TestLog.info("\nMove ${i + 1}: ${currentPlayer.name} (${move.from} -> ${move.to})")
 
             if (!GameBoard.isValidMove(gameState, move)) {
-                println("ERROR: Invalid move in sequence!")
+                TestLog.info("ERROR: Invalid move in sequence!")
                 printBoardState(gameState)
                 return
             }
 
             // Special analysis for the rules error move
             if (i == 23) { // Move 24: C7 -> C8 (índice 23 en la lista)
-                println("\n" + "!" * 60)
-                println("RULES VERIFICATION - Move 24: C7 -> C8")
-                println("!" * 60)
+                TestLog.info("\n" + "!" * 60)
+                TestLog.info("RULES VERIFICATION - Move 24: C7 -> C8")
+                TestLog.info("!" * 60)
 
                 val beforeState = gameState
-                println("Board state BEFORE move:")
+                TestLog.info("Board state BEFORE move:")
                 printDetailedState(beforeState)
 
                 // Analyze expected captures
                 val expectedCaptures = listOf("D4", "C9", "B4")
-                println("\nExpected captures (flips): $expectedCaptures")
+                TestLog.info("\nExpected captures (flips): $expectedCaptures")
 
                 val adjacentVertices = adjacencyMap[C8] ?: emptyList()
-                println("Adjacent vertices to C8: $adjacentVertices")
+                TestLog.info("Adjacent vertices to C8: $adjacentVertices")
 
                 adjacentVertices.forEach { vertex ->
                     val cob = beforeState.cobs[vertex]
                     if (cob != null && cob.color == WHITE) {
-                        println("Should flip $vertex (${cob.color.name} ${if (cob.isUpgraded) "Rok" else "Cob"})")
+                        TestLog.info("Should flip $vertex (${cob.color.name} ${if (cob.isUpgraded) "Rok" else "Cob"})")
                     }
                 }
             }
@@ -714,12 +715,12 @@ class DifficultyDiagnosticTest {
 
             // Check captures after move 24
             if (i == 23) {
-                println("\nBoard state AFTER move:")
+                TestLog.info("\nBoard state AFTER move:")
                 printDetailedState(gameState)
 
                 val expectedCaptures = listOf(D4, C9, B4)
 
-                println("\nCAPTURE RESULTS:")
+                TestLog.info("\nCAPTURE RESULTS:")
 
                 // Check for flipped pieces (changed color)
                 val flippedPieces =
@@ -737,52 +738,52 @@ class DifficultyDiagnosticTest {
                     }
 
                 if (flippedPieces.isNotEmpty()) {
-                    println("SUCCESS: Pieces flipped (captured and converted): $flippedPieces")
+                    TestLog.info("SUCCESS: Pieces flipped (captured and converted): $flippedPieces")
                     flippedPieces.forEach { vertex ->
                         val beforeCob = previousState.cobs[vertex]
                         val afterCob = gameState.cobs[vertex] ?: return@forEach
-                        println("  $vertex: ${beforeCob?.color}->${afterCob.color} (${if (afterCob.isUpgraded) "Rok" else "Cob"})")
+                        TestLog.info("  $vertex: ${beforeCob?.color}->${afterCob.color} (${if (afterCob.isUpgraded) "Rok" else "Cob"})")
                     }
                 }
 
                 if (notFlippedPieces.isNotEmpty()) {
-                    println("ERROR: These pieces should be flipped but aren't: $notFlippedPieces")
+                    TestLog.info("ERROR: These pieces should be flipped but aren't: $notFlippedPieces")
                     notFlippedPieces.forEach { vertex ->
                         val beforeCob = previousState.cobs[vertex]
                         val afterCob = gameState.cobs[vertex]
-                        println("  $vertex: Before=${beforeCob?.color}->After=${afterCob?.color}")
+                        TestLog.info("  $vertex: Before=${beforeCob?.color}->After=${afterCob?.color}")
                     }
                 }
 
                 // Verify the moving piece
                 val movedPiece = gameState.cobs[C8]
-                println("Piece at C8 after move: ${movedPiece?.color?.name} ${if (movedPiece?.isUpgraded == true) "Rok" else "Cob"}")
+                TestLog.info("Piece at C8 after move: ${movedPiece?.color?.name} ${if (movedPiece?.isUpgraded == true) "Rok" else "Cob"}")
 
                 // Count the results
                 val blackPieces = gameState.cobs.values.count { it.color == BLACK }
                 val whitePieces = gameState.cobs.values.count { it.color == WHITE }
-                println("Piece count after move - Black: $blackPieces, White: $whitePieces")
+                TestLog.info("Piece count after move - Black: $blackPieces, White: $whitePieces")
 
                 if (flippedPieces.size == expectedCaptures.size) {
-                    println("SUCCESS: All expected pieces were flipped!")
+                    TestLog.info("SUCCESS: All expected pieces were flipped!")
                 } else {
-                    println("ISSUE: Only ${flippedPieces.size} out of ${expectedCaptures.size} pieces were flipped")
+                    TestLog.info("ISSUE: Only ${flippedPieces.size} out of ${expectedCaptures.size} pieces were flipped")
                 }
             }
 
             if (gameState.isGameOver(engine.positionHistory)) {
-                println("\nGAME OVER at move ${i + 1}")
+                TestLog.info("\nGAME OVER at move ${i + 1}")
                 val winner = gameState.getWinner(engine.positionHistory)
-                println("Winner: ${winner?.name ?: "DRAW"}")
+                TestLog.info("Winner: ${winner?.name ?: "DRAW"}")
 
                 val blackPieces = gameState.cobs.values.count { it.color == BLACK }
                 val whitePieces = gameState.cobs.values.count { it.color == WHITE }
-                println("Final piece count - Black: $blackPieces, White: $whitePieces")
+                TestLog.info("Final piece count - Black: $blackPieces, White: $whitePieces")
 
                 if (winner == BLACK && blackPieces > whitePieces) {
-                    println("Black wins as expected with piece advantage")
+                    TestLog.info("Black wins as expected with piece advantage")
                 } else {
-                    println("UNEXPECTED RESULT")
+                    TestLog.info("UNEXPECTED RESULT")
                 }
                 break
             }
@@ -790,22 +791,22 @@ class DifficultyDiagnosticTest {
             if (currentPlayer == BLACK) moveNumber++
         }
 
-        println("\n" + "=" * 80)
-        println("RULES VERIFICATION COMPLETE")
-        println("Final board state:")
+        TestLog.info("\n" + "=" * 80)
+        TestLog.info("RULES VERIFICATION COMPLETE")
+        TestLog.info("Final board state:")
         printDetailedState(gameState)
 
         // Final analysis
         val blackPieces = gameState.cobs.values.count { it.color == BLACK }
         val whitePieces = gameState.cobs.values.count { it.color == WHITE }
-        println("Final piece count - Black: $blackPieces, White: $whitePieces")
-        println("Black advantage: ${blackPieces - whitePieces} pieces")
+        TestLog.info("Final piece count - Black: $blackPieces, White: $whitePieces")
+        TestLog.info("Black advantage: ${blackPieces - whitePieces} pieces")
 
         if (blackPieces > whitePieces + 2) {
-            println("SUCCESS: Triple capture working correctly!")
+            TestLog.info("SUCCESS: Triple capture working correctly!")
         } else {
-            println("ISSUE: Capture logic may still have problems")
+            TestLog.info("ISSUE: Capture logic may still have problems")
         }
-        println("=" * 80)
+        TestLog.info("=" * 80)
     }
 }

@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai.tournament
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.book.OpeningBook
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
@@ -22,7 +23,7 @@ import org.junit.Test
  */
 class OpeningBookAbTest {
 
-    private fun logInfo(message: String) = println(message)
+    private fun logInfo(message: String) = TestLog.info(message)
 
     private fun withNoise(config: EvaluationConfig, noise: Double): EvaluationConfig =
         config.copy(behavior = config.behavior.copy(evalNoise = noise))

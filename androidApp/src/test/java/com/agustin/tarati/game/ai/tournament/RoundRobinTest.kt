@@ -23,8 +23,10 @@ import com.agustin.tarati.game.ai.tournament.engine.base.positionalEngine
 import com.agustin.tarati.game.ai.tournament.engine.base.randomMoveEngine
 import com.agustin.tarati.game.ai.tournament.engine.base.strategistEngine
 import com.agustin.tarati.game.ai.tournament.engine.base.swarmingEngine
+import com.agustin.tarati.game.ai.tournament.helpers.EnginePerformance
 import com.agustin.tarati.game.ai.tournament.manager.TournamentConfig
 import com.agustin.tarati.game.ai.tournament.manager.TournamentRunner
+import com.agustin.tarati.testutil.TestLog
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -112,7 +114,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_personality_round_robin() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -156,7 +158,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_personality_round_robin_medium_difficulty() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -178,7 +180,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_all_personalities_beat_random() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val enginesWithRandom = personalityEngines + randomMoveEngine
@@ -221,7 +223,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_difficulty_round_robin() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -259,7 +261,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_difficulty_with_tuned_configs() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val tunedConfigs = mapOf(
@@ -309,7 +311,7 @@ class RoundRobinTest {
      * (which are slower) run fewer games while still providing a statistically useful sample.
      */
     private fun runPersonalityMatrix(difficulty: Difficulty, gamesPerMatch: Int) {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val matrixEngines = listOf(
@@ -361,7 +363,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_performance_metrics_across_personalities() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -394,7 +396,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_difficulty_move_time_regression() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -428,7 +430,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_move_ordering_cache_hit_rate_regression() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val results = tournament.runEngineRoundRobin(
@@ -460,7 +462,7 @@ class RoundRobinTest {
      */
     @Test
     fun test_champion_dominates_easy_regression() {
-        fun logInfo(message: String) = println(message)
+        fun logInfo(message: String) = TestLog.info(message)
         val tournament = TournamentRunner()
 
         val championEngine = personalityEngine("champion")
@@ -485,5 +487,72 @@ class RoundRobinTest {
                     "A lower rate suggests a regression in search depth or config propagation.",
             championWinRate >= 0.70,
         )
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // BOOK GATING — el ladder Easy→Champion según el gateo del opening book
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Compara el standings del ladder (easy/medium/hard/champion) bajo tres gateos del opening
+     * book, para vigilar que el book no comprima ni invierta el orden de tiers:
+     *  - A: book ON en hard+champion (el gateo previo a jul-2026).
+     *  - B: book OFF en todos (el gateo **vigente**; ver [EvaluationConfig.openingBookEnabled]).
+     *  - C: book OFF solo en champion; hard conserva su book.
+     *
+     * El book es una muleta que rinde más a la búsqueda superficial (Hard depth-5) que a la
+     * profunda (Champion depth-7): con book ON, Champion no se separa de Hard (head-to-head ~10-10)
+     * y hasta queda debajo por el crutch de Hard vs los débiles bookless. Por eso se mide el
+     * standings completo, no solo el head-to-head. No asevera — el valor está en los números.
+     */
+    @Test
+    fun test_difficulty_round_robin_book_ab() {
+        fun logInfo(message: String) = TestLog.info(message)
+        val gamesPerMatch = 20
+        val cfg = quickConfig.copy(gamesPerMatch = gamesPerMatch)
+
+        val configA = difficultyConfigs
+        val configB = difficultyConfigs.mapValues { (_, c) -> c.copy(openingBookEnabled = false) }
+        val configC = difficultyConfigs.mapValues { (name, c) ->
+            if (name == "champion") c.copy(openingBookEnabled = false) else c
+        }
+
+        fun run(label: String, configs: Map<String, EvaluationConfig>): Map<String, EnginePerformance?> {
+            logInfo("\n${"#".repeat(70)}")
+            logInfo("# $label, $gamesPerMatch games/match")
+            logInfo("#".repeat(70))
+            val results = TournamentRunner().runEngineRoundRobin(
+                engines = difficultyEngines,
+                configs = configs,
+                tournamentConfig = cfg,
+                logInfo = ::logInfo,
+            )
+            return listOf("easy", "medium", "hard", "champion")
+                .associateWith { name -> results.find { it.engine.name == name } }
+        }
+
+        val a = run("CONFIG A — book ON hard+champion (gateo previo)", configA)
+        val b = run("CONFIG B — book OFF all (vigente)", configB)
+        val c = run("CONFIG C — book OFF champion only", configC)
+
+        fun fmt(r: EnginePerformance?) =
+            if (r == null) "—" else "%.1f (%d-%d-%d)".format(r.score, r.wins, r.losses, r.draws)
+
+        fun gap(m: Map<String, EnginePerformance?>) =
+            (m["champion"]?.score ?: 0.0) - (m["hard"]?.score ?: 0.0)
+
+        logInfo("\n${"=".repeat(100)}")
+        logInfo("# STANDINGS (score = wins + 0.5·draws · 60 games c/u)")
+        logInfo("=".repeat(100))
+        logInfo("%-9s | %-21s | %-21s | %s".format("engine", "A book-on h+c", "B off-all (vigente)", "C off-champ"))
+        listOf("champion", "hard", "medium", "easy").forEach { n ->
+            logInfo("%-9s | %-21s | %-21s | %s".format(n, fmt(a[n]), fmt(b[n]), fmt(c[n])))
+        }
+        logInfo("-".repeat(100))
+        logInfo(
+            "# champion − hard:   A=%+.1f    B=%+.1f    C=%+.1f    (positivo = Champion arriba)"
+                .format(gap(a), gap(b), gap(c)),
+        )
+        logInfo("=".repeat(100))
     }
 }

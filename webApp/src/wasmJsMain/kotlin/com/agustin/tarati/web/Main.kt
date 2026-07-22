@@ -87,7 +87,7 @@ fun main() {
  * Oculta el splash HTML inicial (definido en `index.html`) llamando al hook global
  * `__taratiReady`. Se invoca desde la primera composición de Compose.
  */
-@OptIn(kotlin.js.ExperimentalWasmJsInterop::class)
+@OptIn(ExperimentalWasmJsInterop::class)
 private fun signalAppReady() {
     js("if (globalThis.__taratiReady) globalThis.__taratiReady()")
 }

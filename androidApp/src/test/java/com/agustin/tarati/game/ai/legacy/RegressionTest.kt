@@ -9,7 +9,6 @@ import com.agustin.tarati.core.domain.game.board.GameBoard.B3
 import com.agustin.tarati.core.domain.game.board.GameBoard.B4
 import com.agustin.tarati.core.domain.game.board.GameBoard.B5
 import com.agustin.tarati.core.domain.game.board.GameBoard.B6
-import com.agustin.tarati.core.domain.game.board.GameBoard.C1
 import com.agustin.tarati.core.domain.game.board.GameBoard.C12
 import com.agustin.tarati.core.domain.game.board.GameBoard.C3
 import com.agustin.tarati.core.domain.game.board.GameBoard.C8
@@ -21,13 +20,13 @@ import com.agustin.tarati.core.domain.game.pieces.Cob
 import com.agustin.tarati.core.domain.game.pieces.CobColor.BLACK
 import com.agustin.tarati.core.domain.game.pieces.CobColor.WHITE
 import com.agustin.tarati.core.domain.game.play.GameState
-import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.game.ai.legacy.RegressionTest.Companion.NODE_COUNT_TOLERANCE_PCT
 import com.agustin.tarati.game.ai.tournament.engine.base.newEngine
 import com.agustin.tarati.game.ai.tournament.engine.base.personalityEngine
 import com.agustin.tarati.game.ai.tournament.manager.TournamentConfig
 import com.agustin.tarati.game.ai.tournament.manager.TournamentResult
 import com.agustin.tarati.game.ai.tournament.manager.TournamentRunner
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -71,9 +70,6 @@ class RegressionTest {
     )
 
     // ── Fixed positions ───────────────────────────────────────────────────────
-
-    /** Opening: 4+4 cobs on home sides. */
-    private val openingPosition: GameState = initialGameState()
 
     /**
      * Mid-game: both sides advanced into neutral, contesting A1.
@@ -124,8 +120,10 @@ class RegressionTest {
      * Expected moves recorded from [NormalMovesBaselineTest] before this change.
      * Update these values after each accepted optimization.
      */
+    // La apertura se excluye como ancla: sin opening book (ver EvaluationConfig.openingBookEnabled)
+    // CHAMPION la resuelve por búsqueda sobre una posición simétrica con varias mejores jugadas
+    // espejo empatadas que el desempate aleatorio elige distinto en cada corrida — no determinista.
     private val fixedSuite = listOf(
-        FixedPosition("Opening", openingPosition, C1, C12),  // baseline: C1->C12, update if needed
         FixedPosition("Mid-game", midGamePosition, B2, A1),  // stable across all depths
         FixedPosition("Final", finalPosition, C12, B6),  // stable across all depths
     )
@@ -145,7 +143,6 @@ class RegressionTest {
      * A branching reduction lowers them — update after each accepted change.
      */
     private val nodeBaselines = listOf(
-        NodeBaseline("Opening", openingPosition, 5_229L),
         NodeBaseline("Mid-game", midGamePosition, 2_227L),
         NodeBaseline("Final", finalPosition, 52_576L),
     )
@@ -156,19 +153,19 @@ class RegressionTest {
         val total = result.winsA + result.winsB + result.draws
         val winRate = if (total > 0) result.winsA.toDouble() / total * 100 else 0.0
         val line = "─".repeat(70)
-        println("\n$line\n  $tag\n$line")
-        println("  ${result.engineA.name} vs ${result.engineB.name}")
-        println(
+        TestLog.info("\n$line\n  $tag\n$line")
+        TestLog.info("  ${result.engineA.name} vs ${result.engineB.name}")
+        TestLog.info(
             "  ${result.winsA} – ${result.winsB} – ${result.draws}  " +
                     "(W-L-D)  win rate: ${"%.1f".format(winRate)}%"
         )
         result.performanceMetrics?.let { m ->
-            println(
+            TestLog.info(
                 "  Avg move time: ${"%.1f".format(m.averageMoveTimeMs)}ms  " +
                         "Avg nodes: ${"%.0f".format(m.averageNodesPerMove)}"
             )
         }
-        println(line)
+        TestLog.info(line)
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -191,7 +188,7 @@ class RegressionTest {
             configA = EvaluationConfig.CHAMPION,
             configB = EvaluationConfig.CHAMPION,
             tournamentConfig = tournamentConfig,
-            logInfo = ::println,
+            logInfo = TestLog::info,
         )
 
         printMatchSummary(result, "Quality regression — CHAMPION (${tournamentConfig.gamesPerMatch} games)")
@@ -224,7 +221,7 @@ class RegressionTest {
             configA = EvaluationConfig.getByDifficulty(Difficulty.HARD),
             configB = EvaluationConfig.getByDifficulty(Difficulty.HARD),
             tournamentConfig = tournamentConfig,   // 100 games, same as CHAMPION
-            logInfo = ::println,
+            logInfo = TestLog::info,
         )
 
         printMatchSummary(result, "Quality regression — HARD (${tournamentConfig.gamesPerMatch} games)")
@@ -253,20 +250,20 @@ class RegressionTest {
         engine.setConfig(EvaluationConfig.CHAMPION)
 
         val line = "─".repeat(72)
-        println("\n$line\n  Move regression — CHAMPION\n$line")
-        println(
+        TestLog.info("\n$line\n  Move regression — CHAMPION\n$line")
+        TestLog.info(
             "  %-12s | %-10s | %-10s | %s".format(
                 "Position", "Expected", "Actual", "Status"
             )
         )
-        println(line)
+        TestLog.info(line)
 
         fixedSuite.forEach { pos ->
             engine.clearHistory()
             val result = runBlocking { engine.getNextMove(pos.position) }
             val move = result.move
             val ok = move?.from == pos.expectedFrom && move.to == pos.expectedTo
-            println(
+            TestLog.info(
                 "  %-12s | %-10s | %-10s | %s".format(
                     pos.label,
                     "${pos.expectedFrom.name}→${pos.expectedTo.name}",
@@ -287,7 +284,7 @@ class RegressionTest {
                 pos.expectedTo, move?.to,
             )
         }
-        println(line)
+        TestLog.info(line)
     }
 
     /**
@@ -306,13 +303,13 @@ class RegressionTest {
         val engine = newEngine()
 
         val line = "─".repeat(80)
-        println("\n$line\n  Move survey — depth sweep (informational, no assertions)\n$line")
-        println(
+        TestLog.info("\n$line\n  Move survey — depth sweep (informational, no assertions)\n$line")
+        TestLog.info(
             "  %-12s | %-10s | %-12s | %s".format(
                 "Position", "Difficulty", "Best move", "Score"
             )
         )
-        println(line)
+        TestLog.info(line)
 
         fixedSuite.forEach { pos ->
             Difficulty.entries.forEach { difficulty ->
@@ -320,7 +317,7 @@ class RegressionTest {
                 engine.setConfig(EvaluationConfig.getByDifficulty(difficulty))
                 val result = runBlocking { engine.getNextMove(pos.position) }
                 val move = result.move
-                println(
+                TestLog.info(
                     "  %-12s | %-10s | %-12s | %.0f".format(
                         pos.label,
                         difficulty.name,
@@ -330,7 +327,7 @@ class RegressionTest {
                 )
             }
         }
-        println(line)
+        TestLog.info(line)
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -369,13 +366,13 @@ class RegressionTest {
         engine.setConfig(EvaluationConfig.CHAMPION)
 
         val line = "─".repeat(80)
-        println("\n$line\n  Performance regression — node count @ CHAMPION (tolerance ±${(NODE_COUNT_TOLERANCE_PCT * 100).toInt()}%)\n$line")
-        println(
+        TestLog.info("\n$line\n  Performance regression — node count @ CHAMPION (tolerance ±${(NODE_COUNT_TOLERANCE_PCT * 100).toInt()}%)\n$line")
+        TestLog.info(
             "  %-12s | %12s | %12s | %10s | %8s | %s".format(
                 "Position", "Baseline", "Actual", "Delta", "Delta%", "Status"
             )
         )
-        println(line)
+        TestLog.info(line)
 
         nodeBaselines.forEach { nb ->
             engine.clearHistory()
@@ -385,7 +382,7 @@ class RegressionTest {
             val deltaPct = delta.toDouble() / nb.maxNodesChampion * 100
             val threshold = (nb.maxNodesChampion * (1 + NODE_COUNT_TOLERANCE_PCT)).toLong()
             val ok = actual <= threshold
-            println(
+            TestLog.info(
                 "  %-12s | %12d | %12d | %+10d | %+7.1f%% | %s".format(
                     nb.label, nb.maxNodesChampion, actual, delta, deltaPct,
                     if (ok) "OK" else "REGRESSION — nodes grew beyond tolerance",
@@ -399,6 +396,6 @@ class RegressionTest {
                 actual <= threshold,
             )
         }
-        println(line)
+        TestLog.info(line)
     }
 }

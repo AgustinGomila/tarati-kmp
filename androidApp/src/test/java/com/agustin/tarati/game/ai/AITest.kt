@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.BoardEvaluator
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
@@ -102,8 +103,8 @@ class AITest {
         val moves = state.allMovesForTurn()
 
         // Debug: imprimir todos los movimientos posibles
-        println("Movimientos posibles para C2:")
-        moves.forEach { println("${it.from} -> ${it.to}") }
+        TestLog.info("Movimientos posibles para C2:")
+        moves.forEach { TestLog.info("${it.from} -> ${it.to}") }
 
         // Verificar que hay al menos un movimiento válido
         assertTrue("Should have at least one valid move", moves.isNotEmpty())
@@ -119,8 +120,8 @@ class AITest {
 
         // Debug: verificar movimientos posibles
         val possibleMoves = gameState.allMovesForTurn()
-        println("Movimientos posibles para BLACK en estado inicial: ${possibleMoves.size}")
-        possibleMoves.forEach { println("${it.from} -> ${it.to}") }
+        TestLog.info("Movimientos posibles para BLACK en estado inicial: ${possibleMoves.size}")
+        possibleMoves.forEach { TestLog.info("${it.from} -> ${it.to}") }
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
         assertNotNull("Result should not be null", result)
@@ -146,8 +147,8 @@ class AITest {
 
         // Debug: verificar movimientos posibles
         val possibleMoves = gameState.allMovesForTurn()
-        println("Movimientos posibles para BLACK en estado inicial: ${possibleMoves.size}")
-        possibleMoves.forEach { println("${it.from} -> ${it.to}") }
+        TestLog.info("Movimientos posibles para BLACK en estado inicial: ${possibleMoves.size}")
+        possibleMoves.forEach { TestLog.info("${it.from} -> ${it.to}") }
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
         assertNotNull("Result should not be null", result)
@@ -546,7 +547,7 @@ class AITest {
         runBlocking { engine.getNextMove(state, Difficulty.DEFAULT) } // Misma profundidad
         val secondRunTime = System.currentTimeMillis() - startTime2
 
-        println("First run: ${firstRunTime}ms, Second run: ${secondRunTime}ms")
+        TestLog.info("First run: ${firstRunTime}ms, Second run: ${secondRunTime}ms")
 
         // Segunda ejecución debería ser más rápida (usa caché)
         assertTrue(
@@ -886,7 +887,7 @@ class AITest {
         assertTrue("Should have high winning score", result.score == -evalConfig.winningScore)
 
         // Imprimir para debug
-        println("Best move found: ${result.move} with score: ${result.score}")
+        TestLog.info("Best move found: ${result.move} with score: ${result.score}")
     }
 
     @Test
@@ -913,6 +914,6 @@ class AITest {
         assertTrue("Should have high winning score", result.score == -evalConfig.winningScore)
 
         // Imprimir para debug
-        println("Best move found: ${result.move} with score: ${result.score}")
+        TestLog.info("Best move found: ${result.move} with score: ${result.score}")
     }
 }

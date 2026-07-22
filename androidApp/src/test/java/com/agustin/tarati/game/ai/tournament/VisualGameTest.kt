@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai.tournament
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.services.Difficulty
@@ -89,11 +90,11 @@ class VisualGameTest {
         var moveCount = 0
         val positionHistory = mutableMapOf<String, Int>()
 
-        println("\n${"═".repeat(50)}")
-        println("  GAME: AI vs AI | Difficulty: ${difficulty.name}")
-        println("═".repeat(50))
-        println("\nInitial position:")
-        println(renderBoard(state))
+        TestLog.info("\n${"═".repeat(50)}")
+        TestLog.info("  GAME: AI vs AI | Difficulty: ${difficulty.name}")
+        TestLog.info("═".repeat(50))
+        TestLog.info("\nInitial position:")
+        TestLog.info(renderBoard(state))
 
         while (moveCount < maxMoves && !state.isGameOver(positionHistory)) {
             val result = runBlocking { engine.getNextMove(state) }
@@ -104,22 +105,22 @@ class VisualGameTest {
             positionHistory[hash] = (positionHistory[hash] ?: 0) + 1
 
             moveCount++
-            println("─".repeat(50))
-            println(
+            TestLog.info("─".repeat(50))
+            TestLog.info(
                 "  Move $moveCount: ${state.currentTurn} ${move.from.name} → ${move.to.name}  [score: ${
                     "%.2f".format(result.score)
                 }]"
             )
-            println("  POS: ${newState.toPositionNotation()}")
-            println()
-            println(renderBoard(newState))
+            TestLog.info("  POS: ${newState.toPositionNotation()}")
+            TestLog.info()
+            TestLog.info(renderBoard(newState))
             state = newState
         }
 
-        println("═".repeat(50))
+        TestLog.info("═".repeat(50))
         val winner = state.getWinner(positionHistory)
-        println("  RESULT: ${winner?.name ?: "DRAW"} after $moveCount moves")
-        println("═".repeat(50))
+        TestLog.info("  RESULT: ${winner?.name ?: "DRAW"} after $moveCount moves")
+        TestLog.info("═".repeat(50))
     }
 
     // ── Tests ─────────────────────────────────────────────────────────────────

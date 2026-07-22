@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.board.GameBoard.C1
 import com.agustin.tarati.core.domain.game.board.GameBoard.C2
@@ -84,7 +85,7 @@ class GameIntegrationTest {
                 isValidMove(state, result.move ?: return@forEach),
             )
 
-            println("Depth $depth took ${endTime - startTime}ms")
+            TestLog.info("Depth $depth took ${endTime - startTime}ms")
         }
     }
 }

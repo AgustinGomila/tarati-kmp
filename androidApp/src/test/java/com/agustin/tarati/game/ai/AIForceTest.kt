@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.cache.HybridEvaluationCache
 import com.agustin.tarati.core.domain.ai.engine.BoardEvaluator
 import com.agustin.tarati.core.domain.ai.engine.MoveEvaluator
@@ -259,7 +260,7 @@ class AIForceTest {
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
 
-        println(result)
+        TestLog.info(result)
 
         assertTrue(result.move != null)
         assertTrue(
@@ -289,7 +290,7 @@ class AIForceTest {
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
 
-        println(result)
+        TestLog.info(result)
 
         assertTrue(result.move != null)
         assertTrue(
@@ -319,7 +320,7 @@ class AIForceTest {
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
 
-        println(result)
+        TestLog.info(result)
 
         assertTrue(result.move != null)
         assertTrue(
@@ -349,7 +350,7 @@ class AIForceTest {
 
         val result = runBlocking { engine.getNextMove(gameState, Difficulty.DEFAULT) }
 
-        println(result)
+        TestLog.info(result)
 
         assertTrue(result.move != null)
         assertTrue(
@@ -457,7 +458,7 @@ class AIForceTest {
         // Movimiento 1: Negro juega (debe encontrar C6 -> B3)
         val blackMove1 = runBlocking { engine.getNextMove(initialState, Difficulty.DEFAULT) }
 
-        println("Black move 1: ${blackMove1.move} with score: ${blackMove1.score}")
+        TestLog.info("Black move 1: ${blackMove1.move} with score: ${blackMove1.score}")
 
         assertNotNull("Black should find a move", blackMove1.move)
         assertEquals("Black should move from C6", blackMove1.move?.from, C6)
@@ -472,7 +473,7 @@ class AIForceTest {
         // Movimiento 2: Blanco está forzado (debe jugar C10 -> C9 o perder inmediatamente)
         val whiteMove = runBlocking { engine.getNextMove(stateAfterBlack1, Difficulty.DEFAULT) }
 
-        println("White move (forced): ${whiteMove.move} with score: ${whiteMove.score}")
+        TestLog.info("White move (forced): ${whiteMove.move} with score: ${whiteMove.score}")
 
         assertNotNull("White should find a move", whiteMove.move)
         // Verificar que, blanco juega la única jugada que retrasa el mate
@@ -495,7 +496,7 @@ class AIForceTest {
         assertTrue("Black should move from A1 or B4", blackMove2.move?.from == A1 || blackMove2.move?.from == B4)
         assertEquals("Black should move to B5", blackMove2.move?.to, B5)
 
-        println("Black move: ${blackMove2.move} with score: ${blackMove2.score}")
+        TestLog.info("Black move: ${blackMove2.move} with score: ${blackMove2.score}")
 
         assertNotNull("Black should find mit", blackMove2.move)
 

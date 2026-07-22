@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.ai
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.services.Difficulty
@@ -167,19 +168,19 @@ class NormalMovesBaselineTest {
 
     private fun printHeader(title: String) {
         val line = "─".repeat(90)
-        println("\n$line")
-        println("  $title")
-        println(line)
-        println(
+        TestLog.info("\n$line")
+        TestLog.info("  $title")
+        TestLog.info(line)
+        TestLog.info(
             "%-12s | %-10s | %14s | %12s | %10s | %10s | %s".format(
                 "Position", "Difficulty", "nodesEvaluated", "cutoffs", "cacheHits", "time(ms)", "bestMove"
             )
         )
-        println(line)
+        TestLog.info(line)
     }
 
     private fun printRow(r: SearchResult) {
-        println(
+        TestLog.info(
             "%-12s | %-10s | %14d | %12d | %10d | %10d | %s->%s (%.0f)".format(
                 r.positionLabel,
                 r.difficulty.name,
@@ -214,7 +215,7 @@ class NormalMovesBaselineTest {
                 printRow(measure(label, pos, difficulty))
             }
         }
-        println()
+        TestLog.info()
     }
 
     /**
@@ -226,7 +227,7 @@ class NormalMovesBaselineTest {
         for (difficulty in Difficulty.entries) {
             printRow(measure("Mid-game", midGamePosition, difficulty))
         }
-        println()
+        TestLog.info()
     }
 
     /**
@@ -238,7 +239,7 @@ class NormalMovesBaselineTest {
         for (difficulty in Difficulty.entries) {
             printRow(measure("Final", finalPosition, difficulty))
         }
-        println()
+        TestLog.info()
     }
 
     /**
@@ -247,9 +248,9 @@ class NormalMovesBaselineTest {
     @Test
     fun transpositionHitRateBaseline() {
         val line = "─".repeat(50)
-        println("\n$line")
-        println("  Transposition hit rate — mid-game @ CHAMPION")
-        println(line)
+        TestLog.info("\n$line")
+        TestLog.info("  Transposition hit rate — mid-game @ CHAMPION")
+        TestLog.info(line)
 
         engine.clearHistory()
         engine.setConfig(EvaluationConfig.CHAMPION)
@@ -261,12 +262,12 @@ class NormalMovesBaselineTest {
             diag.cacheHits.toDouble() / diag.nodesEvaluated * 100.0
         else 0.0
 
-        println("Nodes evaluated   : ${diag.nodesEvaluated}")
-        println("Transposition hits: ${diag.cacheHits}")
-        println("Hit rate          : %.1f%%".format(hitRate))
-        println("Alpha-beta cutoffs: ${diag.cutoffs}")
-        println("Best move         : ${result.move?.from?.name} -> ${result.move?.to?.name}")
-        println(line)
-        println()
+        TestLog.info("Nodes evaluated   : ${diag.nodesEvaluated}")
+        TestLog.info("Transposition hits: ${diag.cacheHits}")
+        TestLog.info("Hit rate          : %.1f%%".format(hitRate))
+        TestLog.info("Alpha-beta cutoffs: ${diag.cutoffs}")
+        TestLog.info("Best move         : ${result.move?.from?.name} -> ${result.move?.to?.name}")
+        TestLog.info(line)
+        TestLog.info()
     }
 }

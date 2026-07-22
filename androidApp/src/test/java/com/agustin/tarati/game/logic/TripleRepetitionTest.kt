@@ -1,5 +1,6 @@
 package com.agustin.tarati.game.logic
 
+import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.board.GameBoard.B1
@@ -231,27 +232,27 @@ class TripleRepetitionTest {
         var moves = 0
         val maxMoves = 6 // Reducido para debug
 
-        println("Initial state: ${gameState.hashBoard()}")
+        TestLog.info("Initial state: ${gameState.hashBoard()}")
 
         // Simular solo 2 ciclos completos (4 movimientos)
         while (moves < maxMoves) {
             val from = if (gameState.currentTurn == WHITE) C1 else C7
             val to = if (gameState.currentTurn == WHITE) B2 else B6
 
-            println("Move $moves: ${gameState.currentTurn} moves $from -> $to")
+            TestLog.info("Move $moves: ${gameState.currentTurn} moves $from -> $to")
 
             val newState = gameState.applyMove(Move(from to to))
             val nextState = newState.copy(currentTurn = gameState.currentTurn.opponent)
 
-            println("State after move: ${nextState.hashBoard()}")
+            TestLog.info("State after move: ${nextState.hashBoard()}")
 
             // Registrar y verificar
             val loser = engine.putState(nextState, gameState.currentTurn)
             val currentCount = engine.getRepetitionCount(nextState)
-            println("Repetition count: $currentCount")
+            TestLog.info("Repetition count: $currentCount")
 
             if (loser != null) {
-                println("Triple repetition detected at move $moves! $loser loses")
+                TestLog.info("Triple repetition detected at move $moves! $loser loses")
                 break
             }
 
@@ -259,7 +260,7 @@ class TripleRepetitionTest {
             moves++
         }
 
-        println("Finished after $moves moves")
+        TestLog.info("Finished after $moves moves")
         // No hacemos asserts aquí, solo queremos ver el output
     }
 
@@ -366,7 +367,7 @@ class TripleRepetitionTest {
             val loser = engine.putState(nextState, gameState.currentTurn)
             if (loser != null) {
                 repetitionDetected = true
-                println("Triple repetition detected at move $moves! $loser loses")
+                TestLog.info("Triple repetition detected at move $moves! $loser loses")
                 break
             }
 
@@ -381,7 +382,7 @@ class TripleRepetitionTest {
             val winner = gameState.getWinner(engine.positionHistory)
             assertNotNull("There should be a winner when repetition occurs", winner)
         } else {
-            println("No triple repetition detected in $moves moves")
+            TestLog.info("No triple repetition detected in $moves moves")
         }
     }
 
@@ -474,9 +475,9 @@ class TripleRepetitionTest {
         var gameState = initialState
         var moves = 0
 
-        println("=== Step by Step Debug ===")
-        println("Initial state hash: ${initialState.hashBoard()}")
-        println("Initial engine.positionHistory size: ${engine.positionHistory.size}")
+        TestLog.info("=== Step by Step Debug ===")
+        TestLog.info("Initial state hash: ${initialState.hashBoard()}")
+        TestLog.info("Initial engine.positionHistory size: ${engine.positionHistory.size}")
 
         // Primer movimiento: WHITE C1 -> B2
         val move1From = C1
@@ -484,13 +485,13 @@ class TripleRepetitionTest {
         val stateAfterMove1 = gameState.applyMove(Move(move1From to move1To))
         val stateAfterMove1WithTurn = stateAfterMove1.copy(currentTurn = BLACK)
 
-        println("\nMove 1: WHITE $move1From -> $move1To")
-        println("State after move 1 hash: ${stateAfterMove1WithTurn.hashBoard()}")
+        TestLog.info("\nMove 1: WHITE $move1From -> $move1To")
+        TestLog.info("State after move 1 hash: ${stateAfterMove1WithTurn.hashBoard()}")
 
         engine.putState(stateAfterMove1WithTurn, WHITE)
-        println("engine.positionHistory after move 1: ${engine.positionHistory.size} entries")
+        TestLog.info("engine.positionHistory after move 1: ${engine.positionHistory.size} entries")
         engine.positionHistory.forEach { (hash, count) ->
-            println("  Hash: $hash, Count: $count")
+            TestLog.info("  Hash: $hash, Count: $count")
         }
 
         gameState = stateAfterMove1WithTurn
@@ -502,13 +503,13 @@ class TripleRepetitionTest {
         val stateAfterMove2 = gameState.applyMove(Move(move2From to move2To))
         val stateAfterMove2WithTurn = stateAfterMove2.copy(currentTurn = WHITE)
 
-        println("\nMove 2: BLACK $move2From -> $move2To")
-        println("State after move 2 hash: ${stateAfterMove2WithTurn.hashBoard()}")
+        TestLog.info("\nMove 2: BLACK $move2From -> $move2To")
+        TestLog.info("State after move 2 hash: ${stateAfterMove2WithTurn.hashBoard()}")
 
         engine.putState(stateAfterMove2WithTurn, BLACK)
-        println("engine.positionHistory after move 2: ${engine.positionHistory.size} entries")
+        TestLog.info("engine.positionHistory after move 2: ${engine.positionHistory.size} entries")
         engine.positionHistory.forEach { (hash, count) ->
-            println("  Hash: $hash, Count: $count")
+            TestLog.info("  Hash: $hash, Count: $count")
         }
 
         gameState = stateAfterMove2WithTurn
@@ -520,13 +521,13 @@ class TripleRepetitionTest {
         val stateAfterMove3 = gameState.applyMove(Move(move3From to move3To))
         val stateAfterMove3WithTurn = stateAfterMove3.copy(currentTurn = BLACK)
 
-        println("\nMove 3: WHITE $move3From -> $move3To")
-        println("State after move 3 hash: ${stateAfterMove3WithTurn.hashBoard()}")
+        TestLog.info("\nMove 3: WHITE $move3From -> $move3To")
+        TestLog.info("State after move 3 hash: ${stateAfterMove3WithTurn.hashBoard()}")
 
         engine.putState(stateAfterMove3WithTurn, WHITE)
-        println("engine.positionHistory after move 3: ${engine.positionHistory.size} entries")
+        TestLog.info("engine.positionHistory after move 3: ${engine.positionHistory.size} entries")
         engine.positionHistory.forEach { (hash, count) ->
-            println("  Hash: $hash, Count: $count")
+            TestLog.info("  Hash: $hash, Count: $count")
         }
 
         gameState = stateAfterMove3WithTurn
@@ -538,30 +539,30 @@ class TripleRepetitionTest {
         val stateAfterMove4 = gameState.applyMove(Move(move4From to move4To))
         val stateAfterMove4WithTurn = stateAfterMove4.copy(currentTurn = WHITE)
 
-        println("\nMove 4: BLACK $move4From -> $move4To")
-        println("State after move 4 hash: ${stateAfterMove4WithTurn.hashBoard()}")
-        println("Initial state hash: ${initialState.hashBoard()}")
-        println("Are they equal? ${stateAfterMove4WithTurn.hashBoard() == initialState.hashBoard()}")
+        TestLog.info("\nMove 4: BLACK $move4From -> $move4To")
+        TestLog.info("State after move 4 hash: ${stateAfterMove4WithTurn.hashBoard()}")
+        TestLog.info("Initial state hash: ${initialState.hashBoard()}")
+        TestLog.info("Are they equal? ${stateAfterMove4WithTurn.hashBoard() == initialState.hashBoard()}")
 
         val loser4 = engine.putState(stateAfterMove4WithTurn, BLACK)
-        println("engine.positionHistory after move 4: ${engine.positionHistory.size} entries")
+        TestLog.info("engine.positionHistory after move 4: ${engine.positionHistory.size} entries")
         engine.positionHistory.forEach { (hash, count) ->
-            println("  Hash: $hash, Count: $count")
+            TestLog.info("  Hash: $hash, Count: $count")
         }
 
         // Verificar si debería haber triple repetición
         val currentHash = stateAfterMove4WithTurn.hashBoard()
         val count = engine.positionHistory[currentHash] ?: 0
-        println("Current state count: $count")
+        TestLog.info("Current state count: $count")
 
         if (loser4 != null) {
-            println("Triple repetition detected at move 4! $loser4 loses")
+            TestLog.info("Triple repetition detected at move 4! $loser4 loses")
         }
 
         // Verificar el estado del juego
-        println("isGameOver: ${stateAfterMove4WithTurn.isGameOver(engine.positionHistory)}")
-        println("Winner: ${stateAfterMove4WithTurn.getWinner(engine.positionHistory)}")
-        println("After moves: $moves")
+        TestLog.info("isGameOver: ${stateAfterMove4WithTurn.isGameOver(engine.positionHistory)}")
+        TestLog.info("Winner: ${stateAfterMove4WithTurn.getWinner(engine.positionHistory)}")
+        TestLog.info("After moves: $moves")
 
         // No hacemos asserts aquí - solo queremos el output para debug
     }
