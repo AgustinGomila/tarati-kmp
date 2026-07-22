@@ -160,22 +160,27 @@ if (skipHeavyTests) {
 
 tasks.withType<Test>().configureEach {
     if (skipHeavyTests) {
+        // La exclusión se levanta cuando hay un filtro de test explícito, detectado **en runtime** desde
+        // `commandLineIncludePatterns`: lo pueblan tanto `--tests` por consola como el **gutter de la IDE**
+        // (vía Tooling API, que NO pasa `--tests` por CLI). Eso usa la API interna `DefaultTestFilter`, que
+        // no es serializable en el configuration cache; por eso se marca el task como incompatible: degrada
+        // limpio (el resto del build sí cachea, este task no — su configuración es barata) en vez de fallar.
+        // `-PskipHeavyTests=false` fuerza correr todo siempre.
+        notCompatibleWithConfigurationCache(
+            "La exclusión de tests pesados inspecciona el filtro de test en runtime (incluye el gutter de la IDE)"
+        )
         exclude(heavyTestPatterns)
-        val testTask = this
         doFirst {
-            // `--tests` (consola) y el gutter de la IDE (Tooling API) pueblan los
-            // `commandLineIncludePatterns` de la task; no están en la interfaz pública `TestFilter`,
-            // así que se leen de la impl interna `DefaultTestFilter`.
+            val test = this as Test
             val explicitFilter =
-                (testTask.filter as org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter)
+                (test.filter as org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter)
                     .commandLineIncludePatterns
                     .isNotEmpty()
             if (explicitFilter) {
-                // Corrida puntual: levantar la exclusión de pesados para que sean candidatos.
-                testTask.setExcludes(testTask.excludes - heavyTestPatterns)
-                logger.lifecycle("🔬 Explicit test filter — heavy AI test exclusion lifted")
+                test.setExcludes(test.excludes - heavyTestPatterns)
+                test.logger.lifecycle("🔬 Explicit test filter — heavy AI test exclusion lifted")
             } else {
-                logger.lifecycle("⏭️  SKIPPING heavy AI tests")
+                test.logger.lifecycle("⏭️  SKIPPING heavy AI tests")
             }
         }
     }
