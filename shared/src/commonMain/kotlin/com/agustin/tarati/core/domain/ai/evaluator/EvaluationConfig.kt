@@ -55,6 +55,7 @@ data class EvaluationConfig(
     val upgradeBonusMultiplier: Double get() = positional.upgradeBonusMultiplier
     val forcedPromotionScore: Double get() = positional.forcedPromotionScore
     val isolationPenalty: Double get() = positional.isolationPenalty
+    val conversionPotentialScore: Double get() = positional.conversionPotentialScore
 
     // ── SearchWeights accessors ──────────────────────────────────────────────
     val killerMoveBaseBonus: Double get() = search.killerMoveBaseBonus
@@ -148,6 +149,10 @@ data class EvaluationConfig(
         // CHAMPION: hereda la base calibrada de HARD y la extiende con conocimiento
         // táctico más profundo. Los pesos posicionales se escalan moderadamente sobre
         // HARD en lugar de introducir valores desconectados que distorsionen la búsqueda.
+        // Único tier con el potencial de conversión de Rok activo: modela que un Rok móvil
+        // domina un grupo enemigo ("1 Rok convierte todo"), donde el conteo de material es
+        // ciego. Peso 40 (empírico: pico de fuerza vs HARD en juego diverso/off-book, sin
+        // sobre-pesar el material; ver docs/internal/plans/engine_strength_plan.md, Fase A).
         val CHAMPION: EvaluationConfig = EvaluationConfig(
             difficulty = Difficulty.CHAMPION,
             openingBookEnabled = true,
@@ -165,6 +170,7 @@ data class EvaluationConfig(
                 upgradeScore = 175.0,
                 forcedPromotionScore = 175.0,
                 isolationPenalty = 100.0,
+                conversionPotentialScore = 40.0,
             ),
             behavior = BehaviorConfig(
                 stallingPenalty = 8.0,
