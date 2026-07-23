@@ -19,6 +19,7 @@ import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.Move
+import com.agustin.tarati.core.utils.logging.LoggingFactory
 import com.agustin.tarati.features.settings.BoardVisualState
 import com.agustin.tarati.ui.components.editor.BottomControls
 import com.agustin.tarati.ui.components.editor.CreateEditControls
@@ -251,13 +252,15 @@ fun BottomControlsPreview() {
     }
 }
 
+private val previewLog = LoggingFactory.getLogger("EditorPreview")
+
 fun createPreviewBoardEvents(): BoardEvents =
     object : BoardEvents {
-        override fun onMove(move: Move) = println("Move from ${move.from} to ${move.to}")
+        override fun onMove(move: Move) = previewLog.debug("Move from ${move.from} to ${move.to}")
 
-        override fun onEditPiece(from: Vertex) = println("Edit piece at $from")
+        override fun onEditPiece(from: Vertex) = previewLog.debug("Edit piece at $from")
 
-        override fun onResetCompleted() = println("Reset completed")
+        override fun onResetCompleted() = previewLog.debug("Reset completed")
     }
 
 val tapEventsEmpty: TapEvents =

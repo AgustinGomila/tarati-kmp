@@ -31,6 +31,7 @@ import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.domain.game.play.StableHistoryList
+import com.agustin.tarati.core.utils.logging.LoggingFactory
 import com.agustin.tarati.features.library.previews.exampleMoveHistory
 import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
@@ -753,6 +754,8 @@ fun GameScreenPreview_DrawerClosed_Landscape_AuroraPalette(): Unit = GameScreenP
 
 // ── Helpers de eventos ────────────────────────────────────────────────────────
 
+private val previewLog = LoggingFactory.getLogger("GameScreenPreview")
+
 @Composable
 private fun createPreviewSidebarEvents(
     currentIsEditing: Boolean,
@@ -762,13 +765,13 @@ private fun createPreviewSidebarEvents(
 ): SidebarEvents =
     object : SidebarEvents {
         override fun onMoveToCurrent() = onGameStateUpdate(initialGameState())
-        override fun onMoveToIndex(moveIndex: Int) = println("Move to index: $moveIndex")
+        override fun onMoveToIndex(moveIndex: Int) = previewLog.debug("Move to index: $moveIndex")
         override fun onUndo() {}
         override fun onRedo() {}
-        override fun onDifficultyChangeWhite(difficulty: Difficulty) = println("White difficulty: $difficulty")
-        override fun onDifficultyChangeBlack(difficulty: Difficulty) = println("Black difficulty: $difficulty")
-        override fun onSetPlayerIsAI(color: CobColor, isAI: Boolean) = println("AI toggled")
-        override fun onSettings() = println("Settings clicked")
+        override fun onDifficultyChangeWhite(difficulty: Difficulty) = previewLog.debug("White difficulty: $difficulty")
+        override fun onDifficultyChangeBlack(difficulty: Difficulty) = previewLog.debug("Black difficulty: $difficulty")
+        override fun onSetPlayerIsAI(color: CobColor, isAI: Boolean) = previewLog.debug("AI toggled")
+        override fun onSettings() = previewLog.debug("Settings clicked")
         override fun onNewGame(color: CobColor) {
             onPlayerSideUpdate(color)
             onGameStateUpdate(initialGameState())
@@ -778,16 +781,16 @@ private fun createPreviewSidebarEvents(
             onEditingUpdate(!currentIsEditing)
         }
 
-        override fun onRotateBoard() = println("Board rotation clicked")
-        override fun onGamesLibrary() = println("Games library clicked")
-        override fun onOnlineLobby() = println("Online lobby clicked")
-        override fun onSaveGame() = println("Save game clicked")
-        override fun onAboutClick() = println("About clicked")
-        override fun onCopyMoveHistory(moves: List<Move>) = println("History copied")
-        override fun onShowAchievements() = println("Achievements clicked")
+        override fun onRotateBoard() = previewLog.debug("Board rotation clicked")
+        override fun onGamesLibrary() = previewLog.debug("Games library clicked")
+        override fun onOnlineLobby() = previewLog.debug("Online lobby clicked")
+        override fun onSaveGame() = previewLog.debug("Save game clicked")
+        override fun onAboutClick() = previewLog.debug("About clicked")
+        override fun onCopyMoveHistory(moves: List<Move>) = previewLog.debug("History copied")
+        override fun onShowAchievements() = previewLog.debug("Achievements clicked")
     }
 
 private fun createPreviewIndicatorEvents(): IndicatorEvents =
     object : IndicatorEvents {
-        override fun onTouch() = println("Indicator touched")
+        override fun onTouch() = previewLog.debug("Indicator touched")
     }

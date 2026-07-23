@@ -20,7 +20,9 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor.WHITE
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
 import com.agustin.tarati.core.domain.game.play.GameEndReason
 import com.agustin.tarati.core.domain.game.play.GameResult
+import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
+import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.domain.game.time.TimeControlMode
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.IAuthViewModel
@@ -568,15 +570,24 @@ fun OnlineGameSideEffects(
     // startGame() inicializó el tablero. El updateGameState() en InProgress ya
     // aplica el estado completo del servidor; este efecto maneja solo los movimientos
     // incrementales posteriores durante la partida.
+    //
+    // Reconciliación en tres vías (ver [resolveOpponentMoveSync]): si el tablero local
+    // quedó desincronizado del servidor (una actualización previa se conflacionó en el
+    // StateFlow, o applyMove la descartó por lag de recomposición), el movimiento del
+    // oponente no es legal desde el estado local — en ese caso se hace snap al estado
+    // completo del servidor en lugar de intentar un applyMove incremental que se
+    // descartaría en silencio y dejaría el tablero congelado (derrota por tiempo).
     LaunchedEffect(currentOnlineGame?.gameState, onlinePlayerSideState.value) {
         val game = currentOnlineGame ?: return@LaunchedEffect
         val move = game.lastMove ?: return@LaunchedEffect
         if (game.status != OnlineGameStatus.InProgress) return@LaunchedEffect
         val serverState = game.gameState ?: return@LaunchedEffect
         if (onlinePlayerSide == null) return@LaunchedEffect
-        // Skip si el estado local ya coincide con el servidor.
-        if (gameManagerState.gameState.hashBoard() == serverState.hashBoard()) return@LaunchedEffect
-        events.applyMove(move, gameManagerState.gameState)
+        when (val sync = resolveOpponentMoveSync(gameManagerState.gameState, serverState, move)) {
+            OpponentMoveSync.InSync -> Unit
+            is OpponentMoveSync.Animate -> events.applyMove(sync.move, gameManagerState.gameState)
+            is OpponentMoveSync.Snap -> viewModel.updateGameState(sync.serverState)
+        }
     }
 
     // ── Reloj de la partida propia ────────────────────────────────────────────
@@ -599,6 +610,46 @@ fun OnlineGameSideEffects(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Resultado de la reconciliación del tablero del jugador ante un `GameStateUpdate` del oponente.
+ */
+internal sealed interface OpponentMoveSync {
+    /** El tablero local ya coincide con el servidor — no hacer nada. */
+    data object InSync : OpponentMoveSync
+
+    /** El movimiento del oponente es legal desde el estado local — aplicarlo con animación. */
+    data class Animate(val move: Move) : OpponentMoveSync
+
+    /** El local quedó desincronizado — reemplazar por el estado completo del servidor. */
+    data class Snap(val serverState: GameState) : OpponentMoveSync
+}
+
+/**
+ * Decide cómo llevar el tablero local [localState] al estado del servidor [serverState] tras el
+ * movimiento [lastMove] del oponente.
+ *
+ * - **InSync**: los hashes de tablero coinciden (el eco del propio movimiento o un update ya
+ *   aplicado) — nada que hacer.
+ * - **Animate**: [lastMove] es legal desde [localState] — se aplica incrementalmente para animar
+ *   la pieza (el caso normal de un único movimiento del oponente).
+ * - **Snap**: el local está desincronizado (más de un movimiento atrás, o el turno no coincide
+ *   porque un update previo se perdió) y [lastMove] **no** es legal desde él. Intentar un
+ *   applyMove incremental lo descartaría en silencio (guard de estado stale) y el tablero
+ *   quedaría congelado — por eso se hace snap al estado completo del servidor.
+ *
+ * Función pura: sin dependencias de Compose ni de ViewModels, para poder testear la lógica de
+ * reconciliación de forma aislada.
+ */
+internal fun resolveOpponentMoveSync(
+    localState: GameState,
+    serverState: GameState,
+    lastMove: Move,
+): OpponentMoveSync = when {
+    localState.hashBoard() == serverState.hashBoard() -> OpponentMoveSync.InSync
+    localState.allMovesForTurn().contains(lastMove) -> OpponentMoveSync.Animate(lastMove)
+    else -> OpponentMoveSync.Snap(serverState)
+}
 
 /**
  * Construye el mensaje de notificación del resultado de la partida, relativo al jugador local.
