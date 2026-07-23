@@ -84,7 +84,7 @@ sealed class MpServerMessage {
         val state: MpGameState,
         val players: List<MpPlayerDto>,
         val turnTimeoutMs: Long = 0,
-        /** Jugadas ya realizadas (serializadas `A:D1-C1`) — para poblar la lista al unirse/reconectar. */
+        /** Jugadas ya realizadas (serializadas `a:D1-C1`) — para poblar la lista al unirse/reconectar. */
         val moves: List<String> = emptyList(),
         /** `true` si el receptor es **espectador** (partida read-only, sin jugar). */
         val spectating: Boolean = false,

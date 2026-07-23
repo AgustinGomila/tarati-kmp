@@ -13,13 +13,16 @@ import com.agustin.tarati.core.domain.game6.play.MpNotation.serializeMove
  * Diseñada para preservar la **esencia** de la notación de Tarati (juego 1), adaptándola a
  * 2–6 jugadores sin colores binarios `w`/`b` ni promoción (roks):
  *
- * - **Jugador**: letra `A..F` (`P1 → A … P6 → F`).
+ * - **Jugador**: letra minúscula `a..f` (`P1 → a … P6 → f`), igual que single usa `w`/`b` para los
+ *   cobs. (La etiqueta de UI del jugador sigue en mayúscula vía `PlayerColor.letter`; la minúscula
+ *   es solo del texto de la notación.)
  * - **Movimiento**: `from-to` (p.ej. `D1-C1`). En la lista de la UI el jugador lo da la columna,
- *   así que el token va sin prefijo; en la serialización se antepone el jugador (`A:D1-C1`).
+ *   así que el token va sin prefijo; en la serialización se antepone el jugador (`a:D1-C1`).
  * - **Posición (FEN)**: piezas `vértice+letraJugador` unidas por `/`, luego ` ` + letra de turno.
- *   El **casing** de la letra del jugador codifica `hasLeftBase` (igual que single codifica
- *   cob/rok con el casing): **MAYÚSCULA = aún en base** (restringida), **minúscula = ya salió**
- *   (libre).
+ *   La letra del jugador va en **minúscula** como nombre canónico (igual que single usa `w`/`b`),
+ *   y el **casing** codifica un estado de la pieza (igual que single lo usa para cob/rok): **MAYÚSCULA
+ *   = aún en base** (movimiento restringido), **minúscula = ya salió de base** (libre). La letra de
+ *   turno va siempre en minúscula (identidad del jugador, sin estado).
  *
  * Orden canónico de las piezas en la FEN: por **jugador** (`A..F`), luego **zona** del vértice
  * (`A < B < C < D < E`), luego **índice** del vértice — cada jugador queda en un bloque contiguo.
@@ -35,7 +38,7 @@ object MpNotation {
     // ── Posición (FEN) ──────────────────────────────────────────────────────────
 
     /**
-     * FEN de [state]: bloques por jugador (`A..F`), dentro de cada uno por zona e índice de
+     * FEN de [state]: bloques por jugador (`a..f`), dentro de cada uno por zona e índice de
      * vértice, con el casing de la letra codificando `hasLeftBase`; al final ` ` + letra de turno.
      */
     fun toPositionNotation(state: MpGameState): String =
@@ -47,11 +50,11 @@ object MpNotation {
                 .forEachIndexed { i, (vertex, piece) ->
                     if (i > 0) append(PIECE_DELIMITER)
                     append(vertex.name)
-                    val letter = piece.owner.letter
-                    append(if (piece.hasLeftBase) letter.lowercaseChar() else letter)
+                    val letter = piece.owner.letter.lowercaseChar()
+                    append(if (piece.hasLeftBase) letter else letter.uppercaseChar())
                 }
             append(TURN_DELIMITER)
-            append(state.currentSeat.color.letter)
+            append(state.currentSeat.color.letter.lowercaseChar())
         }
 
     /**
@@ -84,9 +87,9 @@ object MpNotation {
 
     // ── Movimientos ─────────────────────────────────────────────────────────────
 
-    /** Serializa un movimiento con el jugador que lo hace: `A:D1-C1`. */
+    /** Serializa un movimiento con el jugador que lo hace: `a:D1-C1`. */
     fun serializeMove(color: PlayerColor, move: MpMove): String =
-        "${color.letter}$MOVE_PLAYER_SEPARATOR${move.from.name}$MOVE_SEPARATOR${move.to.name}"
+        "${color.letter.lowercaseChar()}$MOVE_PLAYER_SEPARATOR${move.from.name}$MOVE_SEPARATOR${move.to.name}"
 
     /** Inverso de [serializeMove]. */
     fun parseMove(token: String): PlayerMove {

@@ -52,21 +52,21 @@ class MpNotationTest {
                 "D7C/D8C/E5C/E6C/" +
                 "D10D/D11D/E7D/E8D/" +
                 "D13E/D14E/E9E/E10E/" +
-                "D16F/D17F/E11F/E12F A"
+                "D16F/D17F/E11F/E12F a"
         assertEquals(expected, MpSetup.initialState(6).toPositionNotation())
     }
 
     @Test
     fun twoPlayerInitialPosition_matchesExpectedFen() {
-        val expected = "D1A/D2A/E1A/E2A/D10B/D11B/E7B/E8B A"
+        val expected = "D1A/D2A/E1A/E2A/D10B/D11B/E7B/E8B a"
         assertEquals(expected, MpSetup.initialState(2).toPositionNotation())
     }
 
     @Test
     fun ordering_isByPlayerThenZoneThenIndex_andCasingEncodesHasLeftBase() {
-        // Jugador A con piezas en zonas A/C/E (mezcladas), B con una en zona B.
-        // El bloque de A va completo antes que el de B, aunque B1 (zona B) sea "menor"
-        // que C1/E1 de A. Dentro de A: zona A < C < E.
+        // Jugador a con piezas en zonas A/C/E (mezcladas), b con una en zona B.
+        // El bloque de a va completo antes que el de b, aunque B1 (zona B) sea "menor"
+        // que C1/E1 de a. Dentro de a: zona A < C < E.
         val state = MpGameState(
             pieces = mapOf(
                 v('E', 1) to Piece(PlayerColor.P1), // en base → 'A'
@@ -77,13 +77,13 @@ class MpNotationTest {
             seats = listOf(Seat(PlayerColor.P1, baseId = 17), Seat(PlayerColor.P2, baseId = 20)),
             currentSeatIndex = 0,
         )
-        assertEquals("A1a/C1a/E1A/B1b A", state.toPositionNotation())
+        assertEquals("A1a/C1a/E1A/B1b a", state.toPositionNotation())
     }
 
     @Test
     fun turnLetter_reflectsCurrentSeat() {
-        val state = MpSetup.initialState(3).copy(currentSeatIndex = 2) // seat 2 = P3 = C
-        assertTrue("Turno de C", state.toPositionNotation().endsWith(" C"))
+        val state = MpSetup.initialState(3).copy(currentSeatIndex = 2) // seat 2 = P3 = c
+        assertTrue("Turno de c", state.toPositionNotation().endsWith(" c"))
     }
 
     @Test
@@ -96,7 +96,8 @@ class MpNotationTest {
 
     @Test
     fun parsePosition_readsCasingAsHasLeftBase() {
-        val parsed = MpNotation.parsePosition("C1a/E1A B")
+        // C1a = jugador a (P1), minúscula → salió de base; E1A = jugador a, MAYÚSCULA → aún en base.
+        val parsed = MpNotation.parsePosition("C1a/E1A b")
         assertEquals(true, parsed.pieces[v('C', 1)]?.hasLeftBase)
         assertEquals(false, parsed.pieces[v('E', 1)]?.hasLeftBase)
         assertEquals(PlayerColor.P1, parsed.pieces[v('C', 1)]?.owner)
@@ -112,8 +113,8 @@ class MpNotationTest {
 
     @Test
     fun serializeMove_prefixesPlayer() {
-        assertEquals("A:D1-C1", MpNotation.serializeMove(PlayerColor.P1, MpMove(v('D', 1), v('C', 1))))
-        assertEquals("D:C7-B4", MpNotation.serializeMove(PlayerColor.P4, MpMove(v('C', 7), v('B', 4))))
+        assertEquals("a:D1-C1", MpNotation.serializeMove(PlayerColor.P1, MpMove(v('D', 1), v('C', 1))))
+        assertEquals("d:C7-B4", MpNotation.serializeMove(PlayerColor.P4, MpMove(v('C', 7), v('B', 4))))
     }
 
     @Test
@@ -130,7 +131,7 @@ class MpNotationTest {
             PlayerMove(PlayerColor.P6, MpMove(v('D', 16), v('C', 11))),
         )
         val serialized = MpNotation.serializeHistory(history)
-        assertEquals("A:D1-C1,D:C7-B4,F:D16-C11", serialized)
+        assertEquals("a:D1-C1,d:C7-B4,f:D16-C11", serialized)
         assertEquals(history, MpNotation.parseHistory(serialized))
     }
 
