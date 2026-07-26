@@ -281,7 +281,10 @@ private fun DrawScope.drawMpRestingPiece(
  * @param seatIsAI tipo (IA = `true`) de cada asiento, alineado por índice con `state.seats`.
  * @param lastMove último movimiento aplicado, cuya pieza se anima de origen a destino.
  * @param moveCount contador de jugadas — dispara la animación al incrementarse.
- * @param animate si `false`, sin animación (respeta "animar efectos" de Settings).
+ * @param animate "animar efectos" de Settings. Si `false`, se apagan sólo los **efectos decorativos**
+ *   de conversión (arcos de fuerza, rayo eléctrico, estallido de impacto). La animación del
+ *   movimiento, el morph de conversión, el resalte de amenazas, el anillo del selector y las guías
+ *   del tutorial animan **siempre** (paridad con single, que no las liga a este flag).
  * @param suppressMoveAnimation si `true`, el último movimiento se dibuja ya en destino sin animarlo
  *   (p. ej. al **re-entrar** a una partida online tras cambiar de modo: la jugada ya fue presentada y
  *   no debe "rehacerse"). No afecta a jugadas nuevas.
@@ -327,7 +330,9 @@ fun Board25View(
     // Progreso del último movimiento (0→1): primero desliza la pieza, luego voltea las capturadas
     // (misma lógica que single). `remember(moveCount)` inicializa el valor de forma SÍNCRONA al
     // detectar la jugada, evitando el frame en que la pieza aparecía ya en destino antes de animar.
-    val shouldAnimateMove = animate && lastMove != null && moveCount > 0 && !suppressMoveAnimation
+    // El deslizamiento y el morph de conversión NO dependen de [animate] (paridad con single, donde
+    // "animar efectos" sólo apaga los efectos decorativos, no la animación del movimiento).
+    val shouldAnimateMove = lastMove != null && moveCount > 0 && !suppressMoveAnimation
     val moveProgress = remember(moveCount) { Animatable(if (shouldAnimateMove) 0f else 1f) }
     LaunchedEffect(moveCount) {
         if (shouldAnimateMove) moveProgress.animateTo(1f, animationSpec = tween(ANIMATION_MS))
@@ -341,13 +346,15 @@ fun Board25View(
 
     // Tick a ~60fps mientras haya una pieza seleccionada, un pre-movimiento activo o flechas guía
     // del tutorial, para animar el selector (anillo rotatorio), el pulso de los vértices
-    // alcanzables/amenazados, el halo del pre-move y el parpadeo de las flechas.
+    // alcanzables/amenazados, el halo del pre-move y el parpadeo de las flechas. Independiente de
+    // [animate]: el selector, las amenazas y las guías del tutorial animan siempre (aunque "animar
+    // efectos" esté apagado — ese flag sólo controla los efectos decorativos de conversión).
     var animTick by remember { mutableLongStateOf(0L) }
     val hasSelection = selection != null
     val preMoveActive = preMoveFrom != null || pendingPreMove != null
     val tickActive = hasSelection || preMoveActive || guideArrows.isNotEmpty()
-    LaunchedEffect(tickActive, animate) {
-        while (tickActive && animate) {
+    LaunchedEffect(tickActive) {
+        while (tickActive) {
             animTick = Clock.System.now().toEpochMilliseconds()
             delay(16L.milliseconds)
         }
@@ -391,10 +398,10 @@ fun Board25View(
             val slide = (moveP / SLIDE_FRACTION).coerceIn(0f, 1f)
             val conversion = ((moveP - SLIDE_FRACTION) / (1f - SLIDE_FRACTION)).coerceIn(0f, 1f)
 
-            // Factor de pulso (0.7–1.0) compartido con los highlights de single. Estático si las
-            // animaciones están desactivadas.
+            // Factor de pulso (0.7–1.0) compartido con los highlights de single. Anima siempre: el
+            // resalte de amenazas es parte de la ayuda de juego, no un efecto decorativo.
             val tick = animTick
-            val pulse = if (animate) pulseFactor(tick) else 1f
+            val pulse = pulseFactor(tick)
 
             // Superficie del tablero (Settings): base + perímetro + áreas con paleta + grano,
             // con la misma estratificación que single (drawBoardBackground).
@@ -456,7 +463,8 @@ fun Board25View(
                     pieceRadius = pieceRadius,
                     strokeWidth = pieceRadius * 0.75f,
                     colors = boardColors,
-                    pulse = animate,
+                    // La guía del tutorial parpadea siempre — "animar efectos" no aplica a tutoriales.
+                    pulse = true,
                 )
             }
 
@@ -625,7 +633,8 @@ fun Board25View(
             selection?.let { vertex ->
                 val piece = state.pieces[vertex] ?: return@let
                 screen[vertex]?.let { center ->
-                    val selTime = if (animate) tick else 0L
+                    // El anillo del selector gira siempre (ayuda de juego, no efecto decorativo).
+                    val selTime = tick
                     if (isPolygon) {
                         drawPolygonSelection(
                             position = center - polyCentroidOffset,

@@ -1,6 +1,10 @@
 package com.agustin.tarati.features.online.social
 
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.time.TimeControl
@@ -165,6 +170,9 @@ private fun ProfileContent(
 ) {
     val listState = rememberLazyListState()
     var showChallengeDialog by remember { mutableStateOf(false) }
+    // Secciones colapsables de logros e historial (por defecto expandidas).
+    var achievementsExpanded by remember { mutableStateOf(true) }
+    var historyExpanded by remember { mutableStateOf(true) }
 
     if (showChallengeDialog) {
         ChallengeDialog(
@@ -205,29 +213,37 @@ private fun ProfileContent(
             Spacer(Modifier.height(8.dp))
         }
 
-        // Achievements
+        // Achievements (sección colapsable)
         item {
             val achievementsList by viewModel.achievements.collectAsState()
-            ProfileAchievementsSection(achievements = achievementsList)
+            ProfileAchievementsSection(
+                achievements = achievementsList,
+                expanded = achievementsExpanded,
+                onToggleExpanded = { achievementsExpanded = !achievementsExpanded },
+            )
             Spacer(Modifier.height(8.dp))
         }
 
-        // History header (con W/D/L del control de tiempo seleccionado) + filters
+        // History header (con W/D/L del control de tiempo seleccionado) + filters (colapsable)
         item {
             ProfileHistoryHeader(
                 stats = profile.stats,
                 timeControlFilter = historyState.filters.timeControl,
+                expanded = historyExpanded,
+                onToggle = { historyExpanded = !historyExpanded },
             )
-            GameHistoryFilterRow(
-                filters = historyState.filters,
-                onTimeControlFilter = viewModel::setTimeControlFilter,
-                onResultFilter = viewModel::setResultFilter,
-                onRatedFilter = viewModel::setRatedFilter,
-            )
+            AnimatedVisibility(visible = historyExpanded) {
+                GameHistoryFilterRow(
+                    filters = historyState.filters,
+                    onTimeControlFilter = viewModel::setTimeControlFilter,
+                    onResultFilter = viewModel::setResultFilter,
+                    onRatedFilter = viewModel::setRatedFilter,
+                )
+            }
         }
 
-        // History items
-        when {
+        // History items (ocultos cuando la sección está colapsada)
+        if (historyExpanded) when {
             historyState.isLoading && historyState.games.isEmpty() -> item {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -494,11 +510,22 @@ private fun SectionHeader(text: String) {
  * resultado (Victorias/Derrotas/Tablas).
  */
 @Composable
-private fun ProfileHistoryHeader(stats: ProfileStatsDto, timeControlFilter: String?) {
+private fun ProfileHistoryHeader(
+    stats: ProfileStatsDto,
+    timeControlFilter: String?,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
     val tcStats = stats.forTimeControl(timeControlFilter)
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "history_chevron",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onToggle() }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -526,6 +553,14 @@ private fun ProfileHistoryHeader(stats: ProfileStatsDto, timeControlFilter: Stri
             WdlPart(
                 "${tcStats.losses}${localizedString(Res.string.profile_stat_loss_short)}",
                 MaterialTheme.colorScheme.error,
+            )
+            Icon(
+                imageVector = TaratiIcons.ExpandMore,
+                contentDescription = localizedString(Res.string.profile_history_section),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .graphicsLayer { rotationZ = chevronRotation },
             )
         }
     }

@@ -102,7 +102,6 @@ import com.agustin.tarati.shared.generated.resources.copy_move_history
 import com.agustin.tarati.shared.generated.resources.edit
 import com.agustin.tarati.shared.generated.resources.jump_to_current_position
 import com.agustin.tarati.shared.generated.resources.move_controls
-import com.agustin.tarati.shared.generated.resources.move_history
 import com.agustin.tarati.shared.generated.resources.new_game
 import com.agustin.tarati.shared.generated.resources.online_lobby
 import com.agustin.tarati.shared.generated.resources.player_ai
@@ -930,8 +929,7 @@ private fun MoveHistorySection(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = if (isLandscape) localizedString(Res.string.move_controls).uppercase()
-                else localizedString(Res.string.move_history).uppercase(),
+                text = localizedString(Res.string.move_controls).uppercase(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Medium,

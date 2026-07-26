@@ -629,7 +629,12 @@ fun GameScreen(
                 tutorialViewModel = tutorialViewModel,
                 onTouchIndicator = {
                     when {
-                        gameManagerState.gameStatus == GameStatus.GAME_OVER ->
+                        // Partida terminada: por status o porque el tablero es terminal por reglas
+                        // (cubre el caso en que el diálogo de fin se descartó → status NO_PLAYING pero
+                        // la posición sigue siendo final; sin este segundo check el tap caía en
+                        // resumeGame() y "no hacía nada").
+                        gameManagerState.gameStatus == GameStatus.GAME_OVER ||
+                                gameManagerState.gameState.isGameOver(aiEngine.positionHistory) ->
                             events.showNewGameDialog(playerSide)
 
                         else -> events.resumeGame()
