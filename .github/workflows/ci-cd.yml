@@ -424,7 +424,7 @@ jobs:
       # Download TODOS los artifacts
       # ═══════════════════════════════════════════════════════════
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
 
@@ -582,7 +582,7 @@ jobs:
       # Descargar todos los artifacts (APK, .msi, .dmg, .deb)
       # ═══════════════════════════════════════════════════════════
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
 
@@ -645,7 +645,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download Android artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: android-v*
           path: ./android-artifacts
