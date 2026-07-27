@@ -516,14 +516,26 @@ data class GameState(
      *
      * For forced promotion candidates: includes [from] itself, signalling to the UI that
      * the user should tap this vertex again to confirm the in-place promotion.
+     *
+     * When [allowOccupiedTargets] is `true`, adjacent vertices occupied by an **enemy** piece are
+     * also included (own-occupied vertices are still excluded). This is used by the pre-move flow:
+     * a player may aim at a square that is currently occupied but that they expect to be vacated by
+     * the time it is their turn. The move's real legality is re-checked when the pre-move executes.
      */
     fun getValidVertex(
         from: Vertex,
         cob: Cob,
+        allowOccupiedTargets: Boolean = false,
     ): List<Vertex> {
         val forwardMoves =
             adjacencyMap[from]?.filter { to ->
-                !this.cobs.containsKey(to) &&
+                val destinationFree = if (allowOccupiedTargets) {
+                    // Vacío o con pieza enemiga; nunca una pieza propia (esas son re-selección).
+                    this.cobs[to]?.color != cob.color
+                } else {
+                    !this.cobs.containsKey(to)
+                }
+                destinationFree &&
                         (cob.isUpgraded || isForwardMove(cob.color, Move(from to to)))
             } ?: emptyList()
 

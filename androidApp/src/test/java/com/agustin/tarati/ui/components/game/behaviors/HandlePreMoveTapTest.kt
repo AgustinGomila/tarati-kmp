@@ -40,12 +40,13 @@ import org.junit.Test
  *     → tap en casilla vacía         → onPreMoveCancel
  *
  *   preMoveFrom != null
- *     → tap en preMoveFrom (mismo)   → onPreMoveCancel
- *     → tap en otra pieza humana     → onPreMoveSelected (cambia selección)
- *     → tap en pieza AI              → onPreMoveCancel
- *     → tap en target válido         → onPreMoveSet
- *     → tap en target no-válido      → onPreMoveCancel
- *     → tap en pieza "fantasma"      → onPreMoveCancel (la pieza fue capturada)
+ *     → tap en preMoveFrom (mismo)        → onPreMoveCancel
+ *     → tap en otra pieza humana          → onPreMoveSelected (cambia selección)
+ *     → tap en pieza AI no-adyacente      → onPreMoveCancel
+ *     → tap en pieza AI en destino legal  → onPreMoveSet (casilla ocupada permitida)
+ *     → tap en target válido              → onPreMoveSet
+ *     → tap en target no-válido           → onPreMoveCancel
+ *     → tap en pieza "fantasma"           → onPreMoveCancel (la pieza fue capturada)
  */
 class HandlePreMoveTapTest {
 
@@ -82,7 +83,8 @@ class HandlePreMoveTapTest {
             logger = logger,
         )
 
-        val expectedTargets = state.getValidVertex(humanPiece, state.cobs[humanPiece] ?: return)
+        val expectedTargets =
+            state.getValidVertex(humanPiece, state.cobs[humanPiece] ?: return, allowOccupiedTargets = true)
         verify(exactly = 1) { tapEvents.onPreMoveSelected(humanPiece, expectedTargets) }
         verify(exactly = 0) { tapEvents.onPreMoveSet(any()) }
         verify(exactly = 0) { tapEvents.onPreMoveCancel() }
@@ -159,16 +161,17 @@ class HandlePreMoveTapTest {
             logger = logger,
         )
 
-        val expectedTargets = state.getValidVertex(secondSelected, state.cobs[secondSelected] ?: return)
+        val expectedTargets =
+            state.getValidVertex(secondSelected, state.cobs[secondSelected] ?: return, allowOccupiedTargets = true)
         verify(exactly = 1) { tapEvents.onPreMoveSelected(secondSelected, expectedTargets) }
         verify(exactly = 0) { tapEvents.onPreMoveSet(any()) }
         verify(exactly = 0) { tapEvents.onPreMoveCancel() }
     }
 
     @Test
-    fun `preselected - tap on AI piece triggers onPreMoveCancel`() {
+    fun `preselected - tap on non-adjacent AI piece triggers onPreMoveCancel`() {
         val preSelected = C1
-        val aiPiece = C7
+        val aiPiece = C7  // BLACK, no adyacente a C1 → no es destino de forma legal
         val ctx = context.copy(preMoveFrom = preSelected)
 
         handlePreMoveTap(
@@ -182,6 +185,30 @@ class HandlePreMoveTapTest {
         verify(exactly = 0) { tapEvents.onPreMoveSelected(any(), any()) }
         verify(exactly = 0) { tapEvents.onPreMoveSet(any()) }
         verify(exactly = 1) { tapEvents.onPreMoveCancel() }
+    }
+
+    @Test
+    fun `preselected - tap on enemy piece on a legal target sets the pre-move`() {
+        // Se permite fijar un pre-move a una casilla OCUPADA por el rival, previendo que se desocupe
+        // en nuestro turno. Se coloca una pieza enemiga en un destino de forma legal (vacío) de C1.
+        val preSelected = C1
+        val cob = state.cobs[preSelected] ?: return
+        val target = state.getValidVertex(preSelected, cob)
+            .firstOrNull { it != preSelected && state.cobs[it] == null }
+        assertNotNull_(target, "WHITE at C1 must have at least one empty valid target")
+        val occupied = state.copy(cobs = state.cobs + ((target ?: return) to Cob(BLACK)))
+        val ctx = context.copy(preMoveFrom = preSelected)
+
+        handlePreMoveTap(
+            gameState = occupied,
+            context = ctx,
+            to = target,
+            tapEvents = tapEvents,
+            logger = logger,
+        )
+
+        verify(exactly = 1) { tapEvents.onPreMoveSet(Move(preSelected to target)) }
+        verify(exactly = 0) { tapEvents.onPreMoveCancel() }
     }
 
     @Test
@@ -322,7 +349,7 @@ class HandlePreMoveTapTest {
     fun `sequence - select then confirm emits onPreMoveSelected then onPreMoveSet`() {
         val preSelected = C1
         val cob = state.cobs[preSelected] ?: return
-        val validTargets = state.getValidVertex(preSelected, cob)
+        val validTargets = state.getValidVertex(preSelected, cob, allowOccupiedTargets = true)
         val target = validTargets.firstOrNull { it != preSelected && state.cobs[it] == null }
         assertNotNull_(target, "Need a valid empty target from C1")
 

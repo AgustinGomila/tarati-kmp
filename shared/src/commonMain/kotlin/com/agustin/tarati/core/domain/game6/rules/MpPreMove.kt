@@ -45,8 +45,9 @@ object MpPreMove {
      *
      * - Sin pre-selección: tap en pieza propia → [TapResult.PreSelect]; en otra cosa → [TapResult.Ignore].
      * - Con pre-selección: tap en la misma pieza → [TapResult.Clear]; en otra pieza propia →
-     *   [TapResult.PreSelect] (cambia de selección); en pieza ajena → [TapResult.Clear]; en casilla
-     *   libre → [TapResult.SetPending] si el movimiento es legal para el asiento, si no [TapResult.Clear].
+     *   [TapResult.PreSelect] (cambia de selección); en cualquier otro destino (casilla libre o con
+     *   pieza ajena) → [TapResult.SetPending] si es un destino de forma legal ([MpRules.preMoveTargetsFor],
+     *   que admite casillas ocupadas por rivales), si no [TapResult.Clear].
      */
     fun onTap(
         state: MpGameState,
@@ -79,18 +80,14 @@ object MpPreMove {
             toPiece != null && toPiece.owner == humanColor ->
                 TapResult.PreSelect(to, targetsOf(state, seat, to, board))
 
-            // Pieza ajena: no es un destino válido → cancelar.
-            toPiece != null -> TapResult.Clear
+            // Cualquier otro destino (casilla libre o con pieza ajena): candidato a pre-move. Se
+            // permite apuntar a una casilla ocupada por un rival — puede desocuparse cuando llegue
+            // nuestro turno; la legalidad real se revalida en [isReady] al ejecutar y, si sigue
+            // ocupada/ilegal, se descarta.
+            to in MpRules.preMoveTargetsFor(state, seat, preMoveFrom, board) ->
+                TapResult.SetPending(MpMove(preMoveFrom, to))
 
-            // Casilla libre: fijar si es un destino legal del asiento; si no, cancelar.
-            else -> {
-                val move = MpMove(preMoveFrom, to)
-                if (move in MpRules.legalMovesFor(state, seat, board)) {
-                    TapResult.SetPending(move)
-                } else {
-                    TapResult.Clear
-                }
-            }
+            else -> TapResult.Clear
         }
     }
 
@@ -114,8 +111,5 @@ object MpPreMove {
         from: Vertex,
         board: BoardGraph,
     ): Set<Vertex> =
-        MpRules.legalMovesFor(state, seat, board)
-            .filter { it.from == from }
-            .map { it.to }
-            .toSet()
+        MpRules.preMoveTargetsFor(state, seat, from, board)
 }

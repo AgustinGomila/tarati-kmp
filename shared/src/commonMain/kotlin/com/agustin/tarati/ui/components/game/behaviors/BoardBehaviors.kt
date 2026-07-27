@@ -208,23 +208,16 @@ fun handlePreMoveTap(
                 logger = logger,
             )
 
-        // Tap en pieza enemiga: inválido (no se pueden capturar directamente,
-        // el target debe ser una casilla vacía adyacente válida)
-        toColor != null -> {
-            logger.debug("Pre-move cancelled (tap on opponent piece)")
-            tapEvents.onPreMoveCancel()
-        }
-
-        // Casilla libre: verificar si es target válido del from pre-seleccionado.
-        // getValidVertex incluye forzadas + home-base, cubre los mismos casos que el tap normal.
+        // Cualquier otro destino (casilla libre o con pieza enemiga): candidato a pre-move.
+        // Se permite apuntar a una casilla ocupada por el rival — podemos prever que se desocupe
+        // cuando llegue nuestro turno. La forma del movimiento se valida ignorando la ocupación
+        // (allowOccupiedTargets); la legalidad real se re-chequea al ejecutar y, si sigue ilegal,
+        // el pre-move se descarta en silencio.
         else -> {
             val move = Move(preMoveFrom to to)
-            val isValid = isValidMove(gameState, move) ||
-                    // getValidVertex incluye forzadas + home base — permitimos cualquier
-                    // target que el usuario tocaría como válido en modo normal.
-                    gameState.cobs[preMoveFrom]?.let { cob ->
-                        to in gameState.getValidVertex(preMoveFrom, cob)
-                    } == true
+            val isValid = gameState.cobs[preMoveFrom]?.let { cob ->
+                to in gameState.getValidVertex(preMoveFrom, cob, allowOccupiedTargets = true)
+            } == true
 
             if (isValid) {
                 logger.debug("Pre-move SET: $preMoveFrom → $to")
@@ -321,7 +314,9 @@ private fun preSelectPiece(
         return
     }
 
-    val validTargets = gameState.getValidVertex(from, cob)
+    // allowOccupiedTargets: los hints del pre-move incluyen casillas ocupadas por el rival
+    // (destinos que podrían desocuparse en nuestro turno), no solo las vacías.
+    val validTargets = gameState.getValidVertex(from, cob, allowOccupiedTargets = true)
     logger.debug("Pre-selected $from — targets: $validTargets")
     onPreSelected(from, validTargets)
 }

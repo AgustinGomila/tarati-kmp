@@ -120,6 +120,32 @@ object MpRules {
         movesForSeat(state.pieces, seat, board)
 
     /**
+     * Destinos "de forma legal" para la pieza en [from] del asiento [seat], **ignorando la ocupación
+     * del destino** salvo por piezas propias. Respeta la geometría y la restricción de salida de base.
+     *
+     * Lo usa el pre-movimiento: un jugador puede apuntar a una casilla ocupada por un rival previendo
+     * que se desocupe cuando llegue su turno. La legalidad real se revalida al ejecutar
+     * ([MpPreMove.isReady]); si el destino sigue ocupado o el movimiento dejó de ser legal, se descarta.
+     */
+    fun preMoveTargetsFor(
+        state: MpGameState,
+        seat: Seat,
+        from: Vertex,
+        board: BoardGraph = Board25,
+    ): Set<Vertex> {
+        val piece = state.pieces[from]?.takeIf { it.owner == seat.color } ?: return emptySet()
+        val base = Board25.baseById(seat.baseId)
+        val baseSquare = base.startSquare.toSet()
+        val cExit = base.cExit.toSet()
+        return board.neighborsOf(from).filter { to ->
+            // Excluir destinos ocupados por piezas PROPIAS (esas son re-selección, no destino).
+            state.pieces[to]?.owner != seat.color &&
+                    // Salida de base: si aún no salió, solo dentro del cuadrado o por la radial D → C.
+                    (piece.hasLeftBase || to in baseSquare || to in cExit)
+        }.toSet()
+    }
+
+    /**
      * Vértices que [move] convertiría a su color aplicando la regla de captura con pre-adyacencia,
      * según el dueño de la pieza en `move.from`. Lista vacía si no hay pieza en el origen. No muta
      * el estado (es una predicción para heurísticas).

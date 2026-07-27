@@ -45,9 +45,8 @@ class MpPreMoveTest {
         assertTrue(result is MpPreMove.TapResult.PreSelect)
         result as MpPreMove.TapResult.PreSelect
         assertEquals(v("C1"), result.from)
-        // Los destinos son los del movimiento legal del asiento humano desde C1 (proyectados al estado).
-        val expected = MpRules.legalMovesFor(state(), state().seats.first { it.color == P1 })
-            .filter { it.from == v("C1") }.map { it.to }.toSet()
+        // Los destinos son los del pre-movimiento desde C1 (forma legal, admite casillas ocupadas por rivales).
+        val expected = MpRules.preMoveTargetsFor(state(), state().seats.first { it.color == P1 }, v("C1"))
         assertEquals(expected, result.targets)
         assertTrue("C1 tiene destinos legales", result.targets.isNotEmpty())
     }
@@ -74,8 +73,25 @@ class MpPreMoveTest {
     }
 
     @Test
-    fun tapEnemyPiece_clears() {
+    fun tapNonAdjacentEnemyPiece_clears() {
+        // C7 (rival) no es adyacente a C1 → no es un destino de forma legal → cancelar.
         assertEquals(MpPreMove.TapResult.Clear, MpPreMove.onTap(state(), P1, preMoveFrom = v("C1"), to = v("C7")))
+    }
+
+    @Test
+    fun tapAdjacentEnemyPiece_setsPending() {
+        // Un rival ocupa C12, que es un destino de forma legal desde C1. Se permite fijar el pre-move
+        // a esa casilla ocupada, previendo que se desocupe cuando llegue nuestro turno; la legalidad
+        // real se revalida al ejecutar.
+        val occupied = state().copy(
+            pieces = mapOf(
+                v("C1") to Piece(P1, hasLeftBase = true),
+                v("C12") to Piece(P2, hasLeftBase = true),
+            ),
+        )
+        val result = MpPreMove.onTap(occupied, P1, preMoveFrom = v("C1"), to = v("C12"))
+        assertTrue(result is MpPreMove.TapResult.SetPending)
+        assertEquals(MpMove(v("C1"), v("C12")), (result as MpPreMove.TapResult.SetPending).move)
     }
 
     @Test
