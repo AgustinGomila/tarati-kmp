@@ -178,7 +178,7 @@ jobs:
       # Upload Android artifacts
       # ═══════════════════════════════════════════════════════════
       - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-v${{ steps.version.outputs.version_name }}
           path: |
@@ -297,7 +297,7 @@ jobs:
       # Upload Desktop artifacts
       # ═══════════════════════════════════════════════════════════
       - name: Upload Desktop artifacts (${{ matrix.platform }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.platform }}-v${{ steps.version.outputs.version_name }}
           path: ${{ matrix.artifact_pattern }}
