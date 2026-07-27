@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game6.tutorial.isActive
+import com.agustin.tarati.features.game.closeIfOpen
 import com.agustin.tarati.features.online.auth.AuthState
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.settings.ISettingsViewModel
@@ -139,6 +140,12 @@ fun MpGameScreen(
             settingsViewModel.markMpTutorialSeen()
             mpTutorialViewModel.start()
         }
+    }
+
+    // Al entrar o salir del modo Edición, colapsar el sidebar (drawer) en compacto —
+    // paridad con el juego single (GameEffects). En Expanded no hay drawer → no-op.
+    LaunchedEffect(isEditing) {
+        drawerState.closeIfOpen(scope)
     }
 
     // Hay una partida "en curso" (con jugadas y sin terminar) → "Nueva partida" pide confirmación.
