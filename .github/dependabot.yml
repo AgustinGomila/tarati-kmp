@@ -9,35 +9,11 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
-      # Agrupa minor/patch de las libs "hoja" en un solo PR; el toolchain va en `ignore` (abajo).
+      # Agrupa minor/patch en un solo PR para reducir ruido; los majors van sueltos para revisarlos.
       gradle-minor-patch:
         update-types:
           - "minor"
           - "patch"
-    # ── Toolchain acoplado a la IDE / migración deliberada ────────────────────────
-    # AGP, Kotlin (↔ compose-compiler ↔ KSP) y Compose Multiplatform se suben A MANO, coordinados con
-    # la versión de Android Studio/IntelliJ y compileSdk. Dependabot NO los propone: CI compila
-    # headless y no detecta la incompatibilidad de IDE, así que un bump verde en CI igual rompería el
-    # sync local. core-ktx 1.19+ y lifecycle 2.11+ están gateados por AGP 9.1 + compileSdk 37 → techo
-    # hasta esa migración (levantar el techo cuando se suba AGP).
-    ignore:
-      # Android Gradle Plugin.
-      - dependency-name: "com.android.application"
-      - dependency-name: "com.android.kotlin.multiplatform.library"
-      # Kotlin (plugins + libs). Nota: kotlinx.* (coroutines, serialization, datetime, atomicfu) NO
-      # matchea estos patrones, así que se sigue actualizando solo.
-      - dependency-name: "org.jetbrains.kotlin.*"
-      - dependency-name: "org.jetbrains.kotlin:*"
-      # KSP — su versión va atada a la de Kotlin (formato <kotlin>-<ksp>).
-      - dependency-name: "com.google.devtools.ksp"
-      # Compose Multiplatform — acoplado al compilador de Compose / Kotlin.
-      - dependency-name: "org.jetbrains.compose"
-      - dependency-name: "org.jetbrains.compose.*"
-      # androidx gateados por AGP 9.1 / compileSdk 37 — quitar el techo al migrar el toolchain.
-      - dependency-name: "androidx.core:core-ktx"
-        versions: [ ">= 1.19.0" ]
-      - dependency-name: "androidx.lifecycle:*"
-        versions: [ ">= 2.11.0" ]
 
   - package-ecosystem: "github-actions"
     directory: "/"

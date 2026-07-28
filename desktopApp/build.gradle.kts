@@ -12,7 +12,19 @@ plugins {
 val appVersionName = project.findProperty("versionName")?.toString() ?: "1.0.0"
 val appVersionCode = project.findProperty("versionCode")?.toString() ?: "1"
 
-println("🖥️  Desktop Version: $appVersionName (build $appVersionCode)")
+// Versión del instalador nativo (MSI/DEB). Windows Installer solo hace upgrade
+// in-place si la ProductVersion (major.minor.build) aumenta entre releases. El
+// versionName es constante (marketing), así que el tercer campo (build) toma el
+// versionCode, que crece de forma monótona en cada release. Deb también exige
+// versión creciente para que apt/dpkg reconozcan la actualización.
+val installerVersion: String = run {
+    val parts = appVersionName.split(".")
+    val major = parts.getOrElse(0) { "1" }
+    val minor = parts.getOrElse(1) { "0" }
+    "$major.$minor.$appVersionCode"
+}
+
+println("🖥️  Desktop Version: $appVersionName (build $appVersionCode) — installer $installerVersion")
 
 dependencies {
     implementation(project(":shared"))
@@ -60,7 +72,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
 
             packageName = "Tarati"
-            packageVersion = appVersionName  // Usa version.properties via -PversionName
+            packageVersion = installerVersion  // major.minor.versionCode — habilita upgrade in-place
             description = "Tarati - A strategic board game by George Spencer-Brown"
             copyright = "© 2026 Agustin Gomila. All rights reserved."
             vendor = "Agustin Gomila"
