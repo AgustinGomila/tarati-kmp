@@ -36,7 +36,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.agustin.tarati.GITHUB_URL
 import com.agustin.tarati.appVersion
 import com.agustin.tarati.core.utils.FeatureFlags
 import com.agustin.tarati.features.online.auth.IAuthViewModel
@@ -48,7 +47,6 @@ import com.agustin.tarati.services.localization.AppLanguage
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.services.pwa.pwaInstall
 import com.agustin.tarati.services.pwa.pwaInstallAvailable
-import com.agustin.tarati.services.url.IUrlLauncher
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.about
 import com.agustin.tarati.shared.generated.resources.animate_effects
@@ -87,7 +85,6 @@ import com.agustin.tarati.shared.generated.resources.settings_online
 import com.agustin.tarati.shared.generated.resources.sound
 import com.agustin.tarati.shared.generated.resources.sound_disabled
 import com.agustin.tarati.shared.generated.resources.sound_effects
-import com.agustin.tarati.shared.generated.resources.source_code
 import com.agustin.tarati.shared.generated.resources.spanish
 import com.agustin.tarati.shared.generated.resources.store_title
 import com.agustin.tarati.shared.generated.resources.supporter_title
@@ -451,7 +448,6 @@ fun SettingsScreen(
 
 @Composable
 private fun AboutSection(
-    urlLauncher: IUrlLauncher = koinInject(),
     achievementsManager: IAchievementsManager = koinInject(),
     onNavigateToAchievements: (() -> Unit)? = null,
 ) {
@@ -506,38 +502,6 @@ private fun AboutSection(
         icon = TaratiIcons.Info,
         title = "Tarati",
         subtitle = localizedString(Res.string.app_version).replace($$"%1$s", appVersion),
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { urlLauncher.openUrl(GITHUB_URL) }
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = TaratiIcons.Public,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp),
-        )
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = localizedString(Res.string.source_code),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        Icon(
-            imageVector = TaratiIcons.KeyboardArrowRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 56.dp, end = 16.dp),
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
     )
 
     if (canInstall) {

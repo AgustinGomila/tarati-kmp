@@ -2,10 +2,13 @@ package com.agustin.tarati.services.dialogs
 
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -33,9 +36,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.GITHUB_URL
 import com.agustin.tarati.ITCH_IO_URL
 import com.agustin.tarati.PLAY_STORE_URL
 import com.agustin.tarati.appVersion
@@ -57,10 +63,10 @@ import com.agustin.tarati.shared.generated.resources.about_get_itch
 import com.agustin.tarati.shared.generated.resources.about_rate_app
 import com.agustin.tarati.shared.generated.resources.about_tarati
 import com.agustin.tarati.shared.generated.resources.app_version
+import com.agustin.tarati.shared.generated.resources.are_you_sure_you_want_to_start_a_new_game
 import com.agustin.tarati.shared.generated.resources.badge_google_play_en
 import com.agustin.tarati.shared.generated.resources.badge_google_play_es
 import com.agustin.tarati.shared.generated.resources.badge_itch
-import com.agustin.tarati.shared.generated.resources.are_you_sure_you_want_to_start_a_new_game
 import com.agustin.tarati.shared.generated.resources.black
 import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.close
@@ -76,11 +82,13 @@ import com.agustin.tarati.shared.generated.resources.game_over_timeout
 import com.agustin.tarati.shared.generated.resources.game_over_triple_repetition
 import com.agustin.tarati.shared.generated.resources.game_over_wins
 import com.agustin.tarati.shared.generated.resources.game_rules
+import com.agustin.tarati.shared.generated.resources.logo_github
 import com.agustin.tarati.shared.generated.resources.new_game
 import com.agustin.tarati.shared.generated.resources.original_concept_george_spencer_brown
 import com.agustin.tarati.shared.generated.resources.player_wins
 import com.agustin.tarati.shared.generated.resources.players_2_white_vs_black_objective_control_the_board
 import com.agustin.tarati.shared.generated.resources.show_tutorial
+import com.agustin.tarati.shared.generated.resources.source_code
 import com.agustin.tarati.shared.generated.resources.tarati_is_a_strategic_board_game_created_by_george_spencer_brown
 import com.agustin.tarati.shared.generated.resources.white
 import com.agustin.tarati.shared.generated.resources.wins_by_resignation
@@ -198,29 +206,33 @@ fun AboutContent(onShowTutorial: (() -> Unit)? = null) {
 }
 
 /**
- * Enlaces a las tiendas de la app nativa, al pie del modal "Acerca de".
+ * Enlaces a la fuente y a las tiendas de la app nativa, al pie del modal "Acerca de".
  *
+ * - **GitHub**: badge de código fuente — visible en todas las plataformas.
  * - **Web**: badges oficiales de Google Play (localizado EN/ES según el idioma
  *   de la app) e itch.io — puente browser → app nativa.
  * - **Android**: botón "Calificar en Google Play" (abre la ficha propia; sin
  *   enlace a itch.io por la política de *steering* de Play).
- * - **Desktop/iOS**: no emite nada.
+ * - **Desktop/iOS**: solo el badge de GitHub.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AboutStoreLinks() {
-    if (!storeLinksAvailable() && !rateAppAvailable()) return
-
     // koinInject requiere un grafo Koin activo; en Compose Preview no lo hay, así que
     // se omite la inyección (los enlaces quedan inertes solo en previews).
     val inPreview = LocalInspectionMode.current
     val urlLauncher = if (inPreview) null else koinInject<IUrlLauncher>()
 
-    if (storeLinksAvailable()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-        ) {
+    // Fila de badges: GitHub siempre presente (código fuente, todas las plataformas);
+    // Play + itch.io solo donde storeLinksAvailable() (Web). FlowRow los mantiene en una
+    // sola línea en pantallas anchas y los envuelve en las angostas.
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (storeLinksAvailable()) {
             // Badge oficial de Google Play — artwork localizado según el idioma de la app.
             val playBadge = if (LocalAppLanguage.current == "es") {
                 Res.drawable.badge_google_play_es
@@ -245,6 +257,8 @@ private fun AboutStoreLinks() {
                     .clickable { urlLauncher?.openUrl(ITCH_IO_URL) },
             )
         }
+        // Badge de marca GitHub — enlace al código fuente, en todas las plataformas.
+        GitHubBadge(onClick = { urlLauncher?.openUrl(GITHUB_URL) })
     }
 
     if (rateAppAvailable()) {
@@ -264,6 +278,36 @@ private fun AboutStoreLinks() {
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+    }
+}
+
+/**
+ * Badge de marca GitHub con el mismo look "de tienda" que los de Google Play / itch.io:
+ * pill oscuro fijo (#24292F, no depende del tema), Octocat blanco + texto "GitHub".
+ */
+@Composable
+private fun GitHubBadge(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF24292F))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Image(
+            painter = painterResource(Res.drawable.logo_github),
+            contentDescription = localizedString(Res.string.source_code),
+            modifier = Modifier.size(22.dp),
+        )
+        Text(
+            text = "GitHub",
+            color = Color.White,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 
