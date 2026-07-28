@@ -22,6 +22,7 @@ import com.agustin.tarati.core.domain.game.play.GameEndReason
 import com.agustin.tarati.core.domain.game.play.GameResult
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
+import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.domain.game.time.TimeControlMode
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
@@ -473,6 +474,10 @@ fun OnlineGameSideEffects(
                 }
                 setOnlineFinishedResult(status)
 
+                // Detener el reloj de la partida propia al finalizar: garantiza la parada aunque un
+                // GameStateUpdate tardío haya reactivado el tick loop tras el gameOver local.
+                clockService.stopClock()
+
                 // Disparar logros de fin de partida online.
                 // difficulty = null indica que no hay IA — los logros de dificultad no aplican.
                 val finalMatchState = gameManagerState.gameState.getMatchState()
@@ -599,6 +604,9 @@ fun OnlineGameSideEffects(
         val white = game.whiteTimeMs ?: return@LaunchedEffect
         val black = game.blackTimeMs ?: return@LaunchedEffect
         if (game.status != OnlineGameStatus.InProgress) return@LaunchedEffect
+        // La partida ya terminó localmente (p. ej. un Mit propio ya disparó gameOver): no revivir el
+        // reloj con el GameStateUpdate final que el servidor envía justo antes del GameEnded.
+        if (gameManagerState.gameStatus == GameStatus.GAME_OVER) return@LaunchedEffect
         val serverCurrentTurn = game.gameState?.currentTurn ?: return@LaunchedEffect
         clockService.syncFromServer(
             whiteMs = white,
