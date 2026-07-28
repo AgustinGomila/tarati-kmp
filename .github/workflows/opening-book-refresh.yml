@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # El opening-miner y el corpus son ops/servidor: el repo público (tarati-kmp) no incluye
       # `tools/` ni los secrets del VPS. Se corre solo si AMBOS están presentes; si no (repo
