@@ -554,7 +554,10 @@ private fun MpRatingCard(rating: ProfileRatingDto, stats: MpStatsDto) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     WdlPart("${stats.wins}${localizedString(Res.string.profile_stat_win_short)}", PositiveGreen)
                     WdlSeparator()
                     WdlPart(

@@ -16,4 +16,4 @@ repos:
     hooks:
       - id: ggshield
         name: GitGuardian secret scan
-        stages: [pre-commit]
+        stages: [ pre-commit ]

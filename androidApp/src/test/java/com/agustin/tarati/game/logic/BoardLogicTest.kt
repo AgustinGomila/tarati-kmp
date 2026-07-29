@@ -106,7 +106,10 @@ class BoardLogicTest {
 
         val cob = stateWithWhiteAtD3.cobs[D3]
         assertNotNull("Cob should exist at D3", cob)
-        assertFalse("White cob at D3 should NOT be promoted (D3 is dead, not an upgrade vertex)", (cob ?: return).isUpgraded)
+        assertFalse(
+            "White cob at D3 should NOT be promoted (D3 is dead, not an upgrade vertex)",
+            (cob ?: return).isUpgraded
+        )
     }
 
     @Test
@@ -234,7 +237,11 @@ class BoardLogicTest {
         val newState = initialState.applyMove(Move(D2 to D1))
 
         assertEquals("White should be at D1 after move", WHITE, (newState.cobs[D1] ?: return).color)
-        assertEquals("Black at C1 should flip to white (new adjacent at D1)", WHITE, (newState.cobs[C1] ?: return).color)
+        assertEquals(
+            "Black at C1 should flip to white (new adjacent at D1)",
+            WHITE,
+            (newState.cobs[C1] ?: return).color
+        )
     }
 
     @Test

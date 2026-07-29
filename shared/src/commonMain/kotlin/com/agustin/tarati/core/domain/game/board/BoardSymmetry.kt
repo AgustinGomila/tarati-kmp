@@ -1,5 +1,6 @@
 package com.agustin.tarati.core.domain.game.board
 
+import com.agustin.tarati.core.domain.game.board.BoardSymmetry.mirror
 import kotlin.math.abs
 
 /**

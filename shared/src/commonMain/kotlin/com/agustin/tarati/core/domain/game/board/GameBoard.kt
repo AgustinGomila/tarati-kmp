@@ -1,5 +1,10 @@
 package com.agustin.tarati.core.domain.game.board
 
+import com.agustin.tarati.core.domain.game.board.GameBoard.REFERENCE_BOARD_SIZE
+import com.agustin.tarati.core.domain.game.board.GameBoard.computeIsForwardMove
+import com.agustin.tarati.core.domain.game.board.GameBoard.edges
+import com.agustin.tarati.core.domain.game.board.GameBoard.forwardTargets
+import com.agustin.tarati.core.domain.game.board.GameBoard.logicalPositions
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move

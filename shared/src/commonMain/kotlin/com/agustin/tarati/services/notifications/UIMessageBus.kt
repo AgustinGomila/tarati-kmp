@@ -25,13 +25,12 @@ class UIMessageBus {
 
     // ── Toasts ────────────────────────────────────────────────────────────────
 
-    private val _toasts = Channel<UIMessage.Toast>(capacity = Channel.BUFFERED)
-
     /** Canal de lectura consumido por [ToastHost]. */
-    val toasts: ReceiveChannel<UIMessage.Toast> get() = _toasts
+    val toasts: ReceiveChannel<UIMessage.Toast>
+        field = Channel<UIMessage.Toast>(capacity = Channel.BUFFERED)
 
     fun toast(message: UIMessage.Toast) {
-        _toasts.trySend(message)
+        toasts.trySend(message)
     }
 
     /** Señal para que [ToastHost] descarte el toast actual antes de que expire su duración. */
@@ -45,7 +44,7 @@ class UIMessageBus {
 
     /** Descarta el toast activo y vacía cualquier toast encolado pendiente. */
     fun clearAllToasts() {
-        while (_toasts.tryReceive().isSuccess) { /* drain */
+        while (toasts.tryReceive().isSuccess) { /* drain */
         }
         _dismissRequest.tryEmit(Unit)
     }

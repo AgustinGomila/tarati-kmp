@@ -1,6 +1,5 @@
 package com.agustin.tarati.game.ai.tournament
 
-import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.book.OpeningBook
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
@@ -9,6 +8,7 @@ import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameS
 import com.agustin.tarati.game.ai.tournament.engine.base.personalityEngine
 import com.agustin.tarati.game.ai.tournament.manager.TournamentConfig
 import com.agustin.tarati.game.ai.tournament.manager.TournamentRunner
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test

@@ -2,8 +2,8 @@
 
 package com.agustin.tarati.game6.online
 
-import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
+import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.network.client.MpOnlineClient
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpPlayerDto
@@ -95,7 +95,10 @@ class MpLobbyViewModelTest {
         val live = listOf(
             MpLiveGameDto(
                 gameId = "g1",
-                players = listOf(MpPlayerDto(PlayerColor.P1, "u", "Ana"), MpPlayerDto(PlayerColor.P2, name = "Bot", isBot = true)),
+                players = listOf(
+                    MpPlayerDto(PlayerColor.P1, "u", "Ana"),
+                    MpPlayerDto(PlayerColor.P2, name = "Bot", isBot = true)
+                ),
                 playerCount = 2, moveCount = 3, currentTurn = PlayerColor.P1, positionNotation = "…",
             ),
         )

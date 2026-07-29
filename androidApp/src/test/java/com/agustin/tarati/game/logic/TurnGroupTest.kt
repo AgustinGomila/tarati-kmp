@@ -24,8 +24,8 @@ class TurnGroupTest {
     /** Real game (agustin vs bot_teo). Teo (White) promotes at moves B6=R and B2=R. */
     private val realGame = Move.parseMoveHistory(
         "C2-B1,C7-C6,D2-C2,D3-C7,C1-C12,C8-B4,C12-C11,B4-A1,D1-C1,D4-C8,C11-C10,C8-C9," +
-            "C1-C12,A1-B6,C2-C1,C10-C11,B1-A1,C9-B5,C1-B1,C7-B4,B1-B2,C6-B3," +
-            "B6-B6,B6-B1,B5-B6,B2-B2,B2-C4,B3-B2",
+                "C1-C12,A1-B6,C2-C1,C10-C11,B1-A1,C9-B5,C1-B1,C7-B4,B1-B2,C6-B3," +
+                "B6-B6,B6-B1,B5-B6,B2-B2,B2-C4,B3-B2",
     )
 
     @Test

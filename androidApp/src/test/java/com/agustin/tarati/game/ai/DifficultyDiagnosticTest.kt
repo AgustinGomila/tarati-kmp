@@ -1,6 +1,5 @@
 package com.agustin.tarati.game.ai
 
-import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.cache.HybridEvaluationCache
 import com.agustin.tarati.core.domain.ai.engine.BoardEvaluator
 import com.agustin.tarati.core.domain.ai.engine.MoveEvaluator
@@ -42,6 +41,7 @@ import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.game.ai.tournament.engine.base.standardEngine
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Test

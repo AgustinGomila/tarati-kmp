@@ -378,11 +378,13 @@ fun GameScreenPreview_WithDrawer_Portrait_Light_DarkPalette(): Unit = GameScreen
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Dark_DarkPalette(): Unit = GameScreenPreview_WithDrawer_Portrait_Dark(DarkPalette)
+fun GameScreenPreview_WithDrawer_Portrait_Dark_DarkPalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait_Dark(DarkPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_Drawer_Closed_Portrait_Light_DarkPalette(): Unit = GameScreenPreview_Drawer_Closed_Portrait(DarkPalette)
+fun GameScreenPreview_Drawer_Closed_Portrait_Light_DarkPalette(): Unit =
+    GameScreenPreview_Drawer_Closed_Portrait(DarkPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -391,7 +393,8 @@ fun GameScreenPreview_Drawer_Closed_Portrait_Dark_DarkPalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Portrait_Light_DarkPalette(): Unit = GameScreenPreview_DrawerClosed_Portrait(DarkPalette)
+fun GameScreenPreview_DrawerClosed_Portrait_Light_DarkPalette(): Unit =
+    GameScreenPreview_DrawerClosed_Portrait(DarkPalette)
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
@@ -403,7 +406,8 @@ fun GameScreenPreview_WithDrawer_Landscape_DarkPalette(): Unit = GameScreenPrevi
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Landscape_Dark_DarkPalette(): Unit = GameScreenPreview_WithDrawer_Landscape_Dark(DarkPalette)
+fun GameScreenPreview_WithDrawer_Landscape_Dark_DarkPalette(): Unit =
+    GameScreenPreview_WithDrawer_Landscape_Dark(DarkPalette)
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
@@ -412,7 +416,8 @@ fun GameScreenPreview_DrawerClosed_Landscape_DarkPalette(): Unit = GameScreenPre
 // Nature
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Light_NaturePalette(): Unit = GameScreenPreview_WithDrawer_Portrait(NaturePalette)
+fun GameScreenPreview_WithDrawer_Portrait_Light_NaturePalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait(NaturePalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -449,7 +454,8 @@ fun GameScreenPreview_WithDrawer_Landscape_Dark_NaturePalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Landscape_NaturePalette(): Unit = GameScreenPreview_DrawerClosed_Landscape(NaturePalette)
+fun GameScreenPreview_DrawerClosed_Landscape_NaturePalette(): Unit =
+    GameScreenPreview_DrawerClosed_Landscape(NaturePalette)
 
 // Grayscale
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
@@ -528,7 +534,8 @@ fun GameScreenPreview_GameInProgress_HalloweenPalette(): Unit = GameScreenPrevie
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Landscape_HalloweenPalette(): Unit = GameScreenPreview_WithDrawer_Landscape(HalloweenPalette)
+fun GameScreenPreview_WithDrawer_Landscape_HalloweenPalette(): Unit =
+    GameScreenPreview_WithDrawer_Landscape(HalloweenPalette)
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
@@ -572,7 +579,8 @@ fun GameScreenPreview_GameInProgress_ChristmasPalette(): Unit = GameScreenPrevie
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Landscape_ChristmasPalette(): Unit = GameScreenPreview_WithDrawer_Landscape(ChristmasPalette)
+fun GameScreenPreview_WithDrawer_Landscape_ChristmasPalette(): Unit =
+    GameScreenPreview_WithDrawer_Landscape(ChristmasPalette)
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
@@ -587,7 +595,8 @@ fun GameScreenPreview_DrawerClosed_Landscape_ChristmasPalette(): Unit =
 // Classic
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Light_ClassicPalette(): Unit = GameScreenPreview_WithDrawer_Portrait(ClassicPalette)
+fun GameScreenPreview_WithDrawer_Portrait_Light_ClassicPalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait(ClassicPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -615,7 +624,8 @@ fun GameScreenPreview_GameInProgress_ClassicPalette(): Unit = GameScreenPreview_
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Landscape_ClassicPalette(): Unit = GameScreenPreview_WithDrawer_Landscape(ClassicPalette)
+fun GameScreenPreview_WithDrawer_Landscape_ClassicPalette(): Unit =
+    GameScreenPreview_WithDrawer_Landscape(ClassicPalette)
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
@@ -624,12 +634,14 @@ fun GameScreenPreview_WithDrawer_Landscape_DarkClassicPalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Landscape_ClassicPalette(): Unit = GameScreenPreview_DrawerClosed_Landscape(ClassicPalette)
+fun GameScreenPreview_DrawerClosed_Landscape_ClassicPalette(): Unit =
+    GameScreenPreview_DrawerClosed_Landscape(ClassicPalette)
 
 // Ember
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Light_EmberPalette(): Unit = GameScreenPreview_WithDrawer_Portrait(EmberPalette)
+fun GameScreenPreview_WithDrawer_Portrait_Light_EmberPalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait(EmberPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -666,12 +678,14 @@ fun GameScreenPreview_WithDrawer_Landscape_DarkEmberPalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Landscape_EmberPalette(): Unit = GameScreenPreview_DrawerClosed_Landscape(EmberPalette)
+fun GameScreenPreview_DrawerClosed_Landscape_EmberPalette(): Unit =
+    GameScreenPreview_DrawerClosed_Landscape(EmberPalette)
 
 // Gilded
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Light_GildedPalette(): Unit = GameScreenPreview_WithDrawer_Portrait(GildedPalette)
+fun GameScreenPreview_WithDrawer_Portrait_Light_GildedPalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait(GildedPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -708,12 +722,14 @@ fun GameScreenPreview_WithDrawer_Landscape_DarkGildedPalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Landscape_GildedPalette(): Unit = GameScreenPreview_DrawerClosed_Landscape(GildedPalette)
+fun GameScreenPreview_DrawerClosed_Landscape_GildedPalette(): Unit =
+    GameScreenPreview_DrawerClosed_Landscape(GildedPalette)
 
 // Aurora
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
-fun GameScreenPreview_WithDrawer_Portrait_Light_AuroraPalette(): Unit = GameScreenPreview_WithDrawer_Portrait(AuroraPalette)
+fun GameScreenPreview_WithDrawer_Portrait_Light_AuroraPalette(): Unit =
+    GameScreenPreview_WithDrawer_Portrait(AuroraPalette)
 
 @Preview(showBackground = true, device = "spec:width=411dp,height=891dp")
 @Composable
@@ -750,7 +766,8 @@ fun GameScreenPreview_WithDrawer_Landscape_DarkAuroraPalette(): Unit =
 
 @Preview(showBackground = true, device = "spec:width=891dp,height=411dp")
 @Composable
-fun GameScreenPreview_DrawerClosed_Landscape_AuroraPalette(): Unit = GameScreenPreview_DrawerClosed_Landscape(AuroraPalette)
+fun GameScreenPreview_DrawerClosed_Landscape_AuroraPalette(): Unit =
+    GameScreenPreview_DrawerClosed_Landscape(AuroraPalette)
 
 // ── Helpers de eventos ────────────────────────────────────────────────────────
 

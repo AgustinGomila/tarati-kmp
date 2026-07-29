@@ -1,5 +1,8 @@
 package com.agustin.tarati.testutil
 
+import com.agustin.tarati.testutil.TestLog.info
+
+
 /**
  * Console sink for test diagnostics — tournament tables, regression reports, depth
  * sweeps and the like. The output is human-readable and captured by JUnit in the

@@ -48,11 +48,11 @@ class MpNotationTest {
     fun sixPlayerInitialPosition_matchesExpectedFen() {
         val expected =
             "D1A/D2A/E1A/E2A/" +
-                "D4B/D5B/E3B/E4B/" +
-                "D7C/D8C/E5C/E6C/" +
-                "D10D/D11D/E7D/E8D/" +
-                "D13E/D14E/E9E/E10E/" +
-                "D16F/D17F/E11F/E12F a"
+                    "D4B/D5B/E3B/E4B/" +
+                    "D7C/D8C/E5C/E6C/" +
+                    "D10D/D11D/E7D/E8D/" +
+                    "D13E/D14E/E9E/E10E/" +
+                    "D16F/D17F/E11F/E12F a"
         assertEquals(expected, MpSetup.initialState(6).toPositionNotation())
     }
 

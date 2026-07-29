@@ -1,5 +1,6 @@
 package com.agustin.tarati.services.achievements
 
+import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.google.android.gms.games.AchievementsClient
 import com.google.android.gms.games.GamesSignInClient
 import com.google.android.gms.games.achievement.Achievement
@@ -15,7 +16,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 
 /**
  * Implementación de [IAchievementsRepository] para Android usando Google Play Games Services.

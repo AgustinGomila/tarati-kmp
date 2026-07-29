@@ -1,6 +1,5 @@
 package com.agustin.tarati.game.logic
 
-import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.board.GameBoard.B1
@@ -15,6 +14,7 @@ import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.createGameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.Move
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

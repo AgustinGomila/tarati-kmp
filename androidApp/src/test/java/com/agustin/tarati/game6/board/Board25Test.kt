@@ -248,8 +248,8 @@ class Board25Test {
     fun regions_referenceKnownVertices() {
         val known = Board25.vertices.toSet()
         val all = Board25.centralRegions + Board25.circumferenceRegions +
-            Board25.bandRegions + Board25.baseSquareRegions +
-            Board25.connectorTipRegions + Board25.connectorSideRegions
+                Board25.bandRegions + Board25.baseSquareRegions +
+                Board25.connectorTipRegions + Board25.connectorSideRegions
         all.forEach { region ->
             assertTrue("Región con ≥3 vértices", region.vertices.size >= 3)
             region.vertices.forEach { vertex ->

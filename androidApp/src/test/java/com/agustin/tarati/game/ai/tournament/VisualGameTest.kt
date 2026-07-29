@@ -1,6 +1,5 @@
 package com.agustin.tarati.game.ai.tournament
 
-import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.services.Difficulty
@@ -10,6 +9,7 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor.BLACK
 import com.agustin.tarati.core.domain.game.pieces.CobColor.WHITE
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 

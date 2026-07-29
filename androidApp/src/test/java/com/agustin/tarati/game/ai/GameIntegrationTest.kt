@@ -1,6 +1,5 @@
 package com.agustin.tarati.game.ai
 
-import com.agustin.tarati.testutil.TestLog
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.board.GameBoard.C1
 import com.agustin.tarati.core.domain.game.board.GameBoard.C2
@@ -11,6 +10,7 @@ import com.agustin.tarati.core.domain.game.pieces.Cob
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.game.ai.tournament.engine.base.newEngine
+import com.agustin.tarati.testutil.TestLog
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
