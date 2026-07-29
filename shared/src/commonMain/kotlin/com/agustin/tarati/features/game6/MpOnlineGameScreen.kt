@@ -28,6 +28,7 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.rules.MpPreMove
 import com.agustin.tarati.core.domain.game6.rules.MpRules
+import com.agustin.tarati.core.domain.game6.rules.MpTransforms
 import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.network.models.MpOnlineGame
 import com.agustin.tarati.services.dialogs.AboutDialog
@@ -76,7 +77,15 @@ fun MpOnlineGameScreen(
     onGameOverPresented: (gameId: String) -> Unit,
     bus: UIMessageBus = koinInject(),
 ) {
-    val state = game.state
+    // Perspectiva por-cliente: el jugador local ve **su** base al Sur (abajo). El estado del servidor
+    // es canónico (mismo para todos); acá se rota solo para mostrar —tablero, último movimiento,
+    // conversiones e historial, todo en el mismo marco— y se **des-rota** la jugada saliente antes de
+    // enviarla (`sendMove`). Es estable durante la partida (la base del asiento no cambia). Espectador
+    // (sin color) → sin rotar (marco canónico, host al Sur), igual que hoy.
+    val viewRotation = remember(game.gameId, myColor) {
+        if (spectating) 0 else MpTransforms.rotationToBottom(game.state, myColor)
+    }
+    val state = remember(game.state, viewRotation) { MpTransforms.rotate(game.state, viewRotation) }
     val settings by settingsViewModel.settingsState.collectAsState()
     val boardVisual = settings.boardVisualState
     val soundService = LocalSoundService.current
@@ -114,6 +123,14 @@ fun MpOnlineGameScreen(
     val legalTargets = legalMoves.map { it.to }.toSet()
     val threatened = legalMoves.flatMap { MpRules.captureTargets(state.pieces, it) }.toSet()
 
+    // Envía una jugada des-rotando del marco de display al canónico del servidor.
+    val sendMove: (from: Vertex, to: Vertex) -> Unit = { from, to ->
+        onMove(
+            MpTransforms.rotate(from, -viewRotation).name,
+            MpTransforms.rotate(to, -viewRotation).name,
+        )
+    }
+
     val onVertexTap: (Vertex) -> Unit = tap@{ vertex ->
         // Turno ajeno: ruta de pre-movimiento (si está habilitado).
         if (!myTurn) {
@@ -148,7 +165,7 @@ fun MpOnlineGameScreen(
         }
         val from = selection
         if (from != null && MpRules.isLegal(state, MpMove(from, vertex))) {
-            onMove(from.name, vertex.name)
+            sendMove(from, vertex)
             selection = null
             return@tap
         }
@@ -167,7 +184,7 @@ fun MpOnlineGameScreen(
         }
         delay(200.milliseconds)
         if (pendingPreMove == pending) {
-            onMove(pending.from.name, pending.to.name)
+            sendMove(pending.from, pending.to)
             preMoveFrom = null
             preMoveTargets = emptySet()
             pendingPreMove = null
@@ -220,21 +237,29 @@ fun MpOnlineGameScreen(
         state.seats.map { seat -> game.players.firstOrNull { it.color == seat.color }?.isBot ?: false }
     }
 
-    val lastMove = remember(game.lastMoveFrom, game.lastMoveTo) {
+    // Rotados al marco de display (perspectiva del jugador), como el `state`.
+    val lastMove = remember(game.lastMoveFrom, game.lastMoveTo, viewRotation) {
         val from = game.lastMoveFrom
         val to = game.lastMoveTo
         if (from != null && to != null) {
-            runCatching { MpMove(Vertex.parseVertex(from), Vertex.parseVertex(to)) }.getOrNull()
+            runCatching {
+                MpTransforms.rotate(MpMove(Vertex.parseVertex(from), Vertex.parseVertex(to)), viewRotation)
+            }.getOrNull()
         } else {
             null
         }
     }
 
     // Vértice volteado → dueño previo (para animar el flip de la captura, paridad con local).
-    val convertedMap = remember(game.converted) {
+    val convertedMap = remember(game.converted, viewRotation) {
         game.converted.mapNotNull { (name, owner) ->
-            runCatching { Vertex.parseVertex(name) }.getOrNull()?.let { it to owner }
+            runCatching { MpTransforms.rotate(Vertex.parseVertex(name), viewRotation) }.getOrNull()?.let { it to owner }
         }.toMap()
+    }
+
+    // Historial en el marco de display, para que la lista de movimientos coincida con el tablero rotado.
+    val displayHistory = remember(game.history, viewRotation) {
+        if (viewRotation == 0) game.history else game.history.map { MpTransforms.rotate(it, viewRotation) }
     }
 
     // Countdown del turno (solo si hay timer y el turno es de un humano; los bots no tienen timer).
@@ -276,7 +301,7 @@ fun MpOnlineGameScreen(
                     MpMoveHistorySection(
                         modifier = Modifier.weight(1f),
                         state = state,
-                        history = game.history,
+                        history = displayHistory,
                         onOnlineLobby = onNavigateToOnline,
                         nameByColor = nameByColor,
                     )
