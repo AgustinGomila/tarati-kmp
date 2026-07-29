@@ -25,8 +25,8 @@ import com.agustin.tarati.features.game.IGameModel
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
-import com.agustin.tarati.features.game6.MpGameScreen
 import com.agustin.tarati.features.game6.MpGameDetailScreen
+import com.agustin.tarati.features.game6.MpGameScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.game6.MpLocalGameViewModel
@@ -351,6 +351,7 @@ fun NavGraph(
             MpGameDetailScreen(
                 gameId = gameId,
                 onBack = { navController.popBackStack() },
+                settingsViewModel = settingsViewModel,
             )
         }
 

@@ -454,6 +454,7 @@ private fun CompanionPane(
             MpGameDetailScreen(
                 gameId = dest.gameId,
                 onBack = controller::back,
+                settingsViewModel = settingsViewModel,
             )
         }
 

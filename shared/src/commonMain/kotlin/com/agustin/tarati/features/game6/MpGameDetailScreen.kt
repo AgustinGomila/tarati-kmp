@@ -64,7 +64,10 @@ import org.koin.compose.koinInject
 fun MpGameDetailScreen(
     gameId: String,
     onBack: () -> Unit,
-    settingsViewModel: ISettingsViewModel = koinInject(),
+    // Recibido desde el call site (NavGraph/CompanionPane): la instancia de settings se crea una sola vez
+    // en el entrypoint de cada plataforma (Wasm/Desktop registran su propio VM como `viewModel`, no como
+    // definición root) y se propaga. Resolverlo con `koinInject()` acá rompía en web (`_root_` sin `ISettingsViewModel`).
+    settingsViewModel: ISettingsViewModel,
     viewModel: IMpGameDetailViewModel = koinInject(),
 ) {
     val ui by viewModel.state.collectAsState()
