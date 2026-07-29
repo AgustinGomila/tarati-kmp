@@ -1,11 +1,15 @@
 package com.agustin.tarati.features.game6
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.network.client.MpOnlineClient
+import com.agustin.tarati.network.models.MpFeedGameDto
+import com.agustin.tarati.network.models.MpGameHistoryDto
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpOnlineGame
 import com.agustin.tarati.network.models.MpTableDto
+import com.agustin.tarati.network.models.PagedResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,9 +19,40 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+
+/**
+ * Estado del tab "Mis Partidas" del lobby MP: página acumulada del historial + flags de carga.
+ *
+ * @property endReached true cuando ya se cargaron todas las partidas (no hay más páginas).
+ */
+@Immutable
+data class MpHistoryUiState(
+    val items: List<MpGameHistoryDto> = emptyList(),
+    val isLoading: Boolean = false,
+    val page: Int = 0,
+    val endReached: Boolean = false,
+    val loaded: Boolean = false,
+    val error: String? = null,
+)
+
+/**
+ * Estado del tab "Seguidos" del lobby MP: página acumulada del feed social + flags de carga.
+ *
+ * @property endReached true cuando ya se cargaron todas las entradas (no hay más páginas).
+ */
+@Immutable
+data class MpFeedUiState(
+    val items: List<MpFeedGameDto> = emptyList(),
+    val isLoading: Boolean = false,
+    val page: Int = 0,
+    val endReached: Boolean = false,
+    val loaded: Boolean = false,
+    val error: String? = null,
+)
 
 /**
  * ViewModel del **lobby de mesas** del juego multijugador online (M7.2). Clase plana con scope
@@ -38,6 +73,10 @@ class MpLobbyViewModel(
     private val getToken: suspend () -> String?,
     private val fetchTables: suspend (token: String) -> Result<List<MpTableDto>>,
     private val fetchLiveGames: suspend (token: String) -> Result<List<MpLiveGameDto>>,
+    private val fetchHistory: suspend (token: String, page: Int, limit: Int) -> Result<PagedResponse<MpGameHistoryDto>> =
+        { _, _, _ -> Result.success(PagedResponse(emptyList(), 0, 0, HISTORY_PAGE_SIZE)) },
+    private val fetchFeed: suspend (token: String, page: Int, limit: Int) -> Result<PagedResponse<MpFeedGameDto>> =
+        { _, _, _ -> Result.success(PagedResponse(emptyList(), 0, 0, HISTORY_PAGE_SIZE)) },
     scope: CoroutineScope? = null,
     private val pollIntervalMs: Long = 4_000L,
 ) {
@@ -66,6 +105,16 @@ class MpLobbyViewModel(
     /** Motivo por el que se cerró la mesa actual (`host_left`, …). */
     val tableClosed: SharedFlow<String> = client.tableClosed
 
+    private val _history = MutableStateFlow(MpHistoryUiState())
+
+    /** Historial paginado de partidas MP propias (tab "Mis Partidas"). */
+    val history: StateFlow<MpHistoryUiState> = _history.asStateFlow()
+
+    private val _feed = MutableStateFlow(MpFeedUiState())
+
+    /** Feed social paginado: partidas de jugadores seguidos (tab "Seguidos"). */
+    val feed: StateFlow<MpFeedUiState> = _feed.asStateFlow()
+
     private var pollingJob: Job? = null
 
     /** Arranca el refresco periódico de la lista de mesas (idempotente). */
@@ -87,6 +136,94 @@ class MpLobbyViewModel(
     /** Refresca la lista de mesas una vez (fire-and-forget). */
     fun refresh() {
         _scope.launch { fetchOnce() }
+    }
+
+    // ── Historial ("Mis Partidas") ────────────────────────────────────────────────
+
+    /** Carga la primera página del historial. Idempotente si ya está cargado o cargando. */
+    fun loadHistory() {
+        val st = _history.value
+        if (st.isLoading || st.loaded) return
+        _scope.launch { fetchHistoryPage(0, replace = true) }
+    }
+
+    /** Carga la siguiente página (scroll infinito). No-op si carga en curso o ya no hay más. */
+    fun loadMoreHistory() {
+        val st = _history.value
+        if (st.isLoading || st.endReached) return
+        _scope.launch { fetchHistoryPage(st.page + 1, replace = false) }
+    }
+
+    /** Recarga desde cero (pull-to-refresh o al re-entrar al tab tras jugar). */
+    fun refreshHistory() {
+        _history.value = MpHistoryUiState()
+        loadHistory()
+    }
+
+    private suspend fun fetchHistoryPage(page: Int, replace: Boolean) {
+        val token = getToken() ?: return
+        _history.update { it.copy(isLoading = true, error = null) }
+        fetchHistory(token, page, HISTORY_PAGE_SIZE)
+            .onSuccess { resp ->
+                _history.update { cur ->
+                    val merged = if (replace) resp.items else cur.items + resp.items
+                    cur.copy(
+                        items = merged,
+                        isLoading = false,
+                        page = resp.page,
+                        endReached = merged.size.toLong() >= resp.total,
+                        loaded = true,
+                    )
+                }
+            }
+            .onFailure { e ->
+                logger.debug("getMpHistory failed: ${e.message}")
+                _history.update { it.copy(isLoading = false, error = e.message, loaded = true) }
+            }
+    }
+
+    // ── Feed social ("Seguidos") ──────────────────────────────────────────────────
+
+    /** Carga la primera página del feed. Idempotente si ya está cargado o cargando. */
+    fun loadFeed() {
+        val st = _feed.value
+        if (st.isLoading || st.loaded) return
+        _scope.launch { fetchFeedPage(0, replace = true) }
+    }
+
+    /** Carga la siguiente página del feed (scroll infinito). */
+    fun loadMoreFeed() {
+        val st = _feed.value
+        if (st.isLoading || st.endReached) return
+        _scope.launch { fetchFeedPage(st.page + 1, replace = false) }
+    }
+
+    /** Recarga el feed desde cero. */
+    fun refreshFeed() {
+        _feed.value = MpFeedUiState()
+        loadFeed()
+    }
+
+    private suspend fun fetchFeedPage(page: Int, replace: Boolean) {
+        val token = getToken() ?: return
+        _feed.update { it.copy(isLoading = true, error = null) }
+        fetchFeed(token, page, HISTORY_PAGE_SIZE)
+            .onSuccess { resp ->
+                _feed.update { cur ->
+                    val merged = if (replace) resp.items else cur.items + resp.items
+                    cur.copy(
+                        items = merged,
+                        isLoading = false,
+                        page = resp.page,
+                        endReached = merged.size.toLong() >= resp.total,
+                        loaded = true,
+                    )
+                }
+            }
+            .onFailure { e ->
+                logger.debug("getMpFeed failed: ${e.message}")
+                _feed.update { it.copy(isLoading = false, error = e.message, loaded = true) }
+            }
     }
 
     private suspend fun fetchOnce() {
@@ -136,5 +273,9 @@ class MpLobbyViewModel(
         _scope.launch {
             runCatching { block() }.onFailure { logger.error("MP lobby action failed", it) }
         }
+    }
+
+    companion object {
+        const val HISTORY_PAGE_SIZE: Int = 20
     }
 }

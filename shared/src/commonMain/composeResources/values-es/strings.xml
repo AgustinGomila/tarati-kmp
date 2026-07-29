@@ -528,6 +528,13 @@
     <string name="auth_guest_terms_link_rules">Reglas</string>
     <string name="auth_guest_banner_title">Sesión de invitado</string>
     <string name="lobby_connected_tab">Conectados</string>
+    <string name="lobby_coming_soon">Próximamente</string>
+    <string name="mp_history_empty">Todavía no jugaste partidas multijugador.</string>
+    <string name="mp_result_shared">Compartida</string>
+    <string name="mp_feed_empty">Sin partidas recientes de jugadores que seguís.</string>
+    <string name="mp_leaderboard_title">Clasificación multijugador</string>
+    <string name="profile_mp_section">Multijugador</string>
+    <string name="profile_stat_shared_short">C</string>
     <string name="lobby_no_players_match_filters">Sin jugadores con estos filtros</string>
     <string name="lobby_online_users_section">En línea</string>
     <string name="lobby_status_playing">Jugando</string>

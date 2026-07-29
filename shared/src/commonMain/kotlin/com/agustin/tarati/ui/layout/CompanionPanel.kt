@@ -25,6 +25,7 @@ sealed interface CompanionPanelDestination {
     data object Store : CompanionPanelDestination
     data object Library : CompanionPanelDestination
     data object Leaderboard : CompanionPanelDestination
+    data object MpLeaderboard : CompanionPanelDestination
     data class Profile(val userId: String) : CompanionPanelDestination
     data class GameDetails(val gameId: String) : CompanionPanelDestination
     data class TournamentDetail(val tournamentId: String) : CompanionPanelDestination

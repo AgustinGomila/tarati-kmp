@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,16 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -31,15 +27,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,6 +48,12 @@ import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.connection.ConnectionState
 import com.agustin.tarati.features.online.connection.IConnectionViewModel
 import com.agustin.tarati.features.online.devServerUrl
+import com.agustin.tarati.features.online.lobby.ConnectedUsersTab
+import com.agustin.tarati.features.online.lobby.IOnlineLobbyViewModel
+import com.agustin.tarati.features.online.lobby.LobbyShell
+import com.agustin.tarati.features.online.lobby.LobbyTabSpec
+import com.agustin.tarati.features.online.lobby.OnlineLobbyViewModel
+import com.agustin.tarati.features.settings.SettingsRepository
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpSeatDto
 import com.agustin.tarati.network.models.MpTableDto
@@ -58,6 +61,11 @@ import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.services.notifications.UIMessage
 import com.agustin.tarati.services.notifications.UIMessageBus
 import com.agustin.tarati.shared.generated.resources.Res
+import com.agustin.tarati.shared.generated.resources.auth_logout
+import com.agustin.tarati.shared.generated.resources.auth_logout_confirm
+import com.agustin.tarati.shared.generated.resources.auth_sign_in
+import com.agustin.tarati.shared.generated.resources.cancel
+import com.agustin.tarati.shared.generated.resources.confirm
 import com.agustin.tarati.shared.generated.resources.game6_lobby_action_error
 import com.agustin.tarati.shared.generated.resources.game6_lobby_add_bot
 import com.agustin.tarati.shared.generated.resources.game6_lobby_create
@@ -77,24 +85,37 @@ import com.agustin.tarati.shared.generated.resources.game6_lobby_table_closed
 import com.agustin.tarati.shared.generated.resources.game6_lobby_title
 import com.agustin.tarati.shared.generated.resources.game6_lobby_waiting_host
 import com.agustin.tarati.shared.generated.resources.game6_lobby_watch
-import com.agustin.tarati.ui.components.topbar.TaratiTopBar
-import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
-import com.agustin.tarati.ui.layout.CompanionPanelHeader
+import com.agustin.tarati.shared.generated.resources.lobby_connected_tab
+import com.agustin.tarati.shared.generated.resources.lobby_in_live
+import com.agustin.tarati.shared.generated.resources.lobby_my_games
+import com.agustin.tarati.shared.generated.resources.profile_leaderboard
+import com.agustin.tarati.shared.generated.resources.social_feed
+import com.agustin.tarati.shared.generated.resources.supporter_title
+import com.agustin.tarati.shared.generated.resources.tournaments
+import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.layout.DisplayMode
 import com.agustin.tarati.ui.theme.TaratiIcons
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
 /**
- * Pantalla del **lobby de mesas** del juego multijugador online.
+ * Pantalla del **lobby online** del juego multijugador (Tarati Six, mesas 2–6, tablero `25`).
+ *
+ * Comparte el chrome con el lobby clásico vía [LobbyShell]: los mismos **5 tabs** (Conectados ·
+ * En Vivo · Torneos · Mis Partidas · Seguidos) y las acciones de TopBar (Login/Logout + Supporter).
+ * En esta fase de la convergencia solo **En Vivo** está implementado (mesas + partidas en vivo
+ * fusionadas); el resto muestra el placeholder "próximamente" hasta sus fases respectivas.
  *
  * Observa el [MpLobbyViewModel]: lista de mesas públicas (con refresco), la mesa propia y la partida
- * arrancada. Autoconecta el WebSocket, arranca/detiene el polling con el ciclo de la pantalla, y
- * muestra toasts de errores/cierre. Sin sesión → abre el login sheet compartido de `AppContent`.
+ * arrancada. Igual que el lobby clásico: auto-loguea como invitado y autoconecta el WebSocket si no
+ * hay sesión (se puede jugar online sin cuenta), arranca/detiene el polling con el ciclo de la
+ * pantalla y muestra toasts de errores/cierre. El login queda disponible desde la TopBar.
  *
  * Es **solo lobby**: al arrancar la partida ([MpLobbyViewModel.currentGame] no-null) invoca
  * [onGameStarted] (cerrar panel / volver al tablero) — el tablero online se renderiza en el panel
- * **primario** (`MpGameScreen`), igual que el juego online de 2 jugadores. En [DisplayMode.CompanionPanel]
- * (Expanded/web) se embebe en el panel lateral; en [DisplayMode.FullScreen] (compacto) ocupa la pantalla.
+ * **primario** (`MpGameScreen`), igual que el juego online de 2 jugadores.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -102,9 +123,19 @@ fun MpLobbyScreen(
     onBack: () -> Unit,
     onGameStarted: () -> Unit,
     displayMode: DisplayMode = DisplayMode.FullScreen,
+    /** Abre el modal de login/registro. */
+    onShowLogin: () -> Unit = {},
+    /** Abre la pantalla Supporter. Null = sin botón ♥ en la TopBar. */
+    onNavigateToSupporter: (() -> Unit)? = null,
+    /** Abre la clasificación multijugador. Null = sin botón 🏅 en la TopBar. */
+    onNavigateToLeaderboard: (() -> Unit)? = null,
+    /** Callback al tocar un perfil de usuario en línea (tab Conectados). Null = sin navegación. */
+    onNavigateToProfile: ((userId: String) -> Unit)? = null,
     viewModel: MpLobbyViewModel = koinInject(),
+    lobbyViewModel: IOnlineLobbyViewModel = koinViewModel<OnlineLobbyViewModel>(),
     connectionViewModel: IConnectionViewModel = koinInject(),
     authViewModel: IAuthViewModel = koinInject(),
+    settings: SettingsRepository = koinInject(),
     bus: UIMessageBus = koinInject(),
 ) {
     val tables by viewModel.tables.collectAsState()
@@ -115,21 +146,35 @@ fun MpLobbyScreen(
     val authState by authViewModel.authState.collectAsState()
     val connectionState by connectionViewModel.connectionState.collectAsState()
     val myUserId = (authState as? AuthState.Authenticated)?.userInfo?.userId
+    val scope = rememberCoroutineScope()
 
-    // El login se resuelve **antes** de entrar (el botón Online del tablero muestra el login sheet
-    // sobre el tablero y solo navega aquí tras el acceso). Por lo tanto el lobby se monta siempre con
-    // sesión; si se pierde (logout / expiración estando dentro), se **sale** — nunca se expone la UI de
-    // mesas ni un prompt de login redundante.
-    LaunchedEffect(myUserId) {
-        if (myUserId == null) onBack()
+    // Paridad con el lobby clásico: si no hay sesión, auto-login como invitado + auto-conexión del WS
+    // (antes MP exigía sesión previa y salía). El nombre preferido sale de settings si es válido.
+    var isAutoConnecting by remember {
+        mutableStateOf(authState !is AuthState.Authenticated)
     }
-
-    // Autoconexión del WebSocket cuando hay sesión (se re-evalúa al loguearse).
-    LaunchedEffect(myUserId) {
+    LaunchedEffect(Unit) {
+        if (authViewModel.authState.value !is AuthState.Authenticated) {
+            val settingsName = settings.userName.first().trim()
+                .takeIf { n -> n.length in 3..20 && n.matches(Regex("[A-Za-z0-9_]+")) }
+            val result = authViewModel.loginAsGuest(settingsName)
+            if (result.isFailure && settingsName != null) {
+                // Nombre tomado o inválido — reintentar con nombre aleatorio
+                authViewModel.loginAsGuest()
+            }
+        }
         val token = authViewModel.accessToken
-        if (myUserId != null && token != null && !connectionViewModel.isConnected && !connectionViewModel.isConnecting) {
+        if (token != null && !connectionViewModel.isConnected && !connectionViewModel.isConnecting) {
             connectionViewModel.connectToServer(devServerUrl, token)
         }
+        isAutoConnecting = false
+    }
+
+    // Al volver a Offline habiendo estado Online (logout / expiración estando dentro) → salir.
+    var hasBeenOnline by remember { mutableStateOf(connectionState is ConnectionState.Online) }
+    LaunchedEffect(connectionState) {
+        if (connectionState is ConnectionState.Online) hasBeenOnline = true
+        if (connectionState is ConnectionState.Offline && hasBeenOnline) onBack()
     }
 
     // Refresco periódico de la lista mientras la pantalla está activa.
@@ -169,116 +214,217 @@ fun MpLobbyScreen(
     }
 
     val activeTable = currentTable
-    val isOnline = connectionState is ConnectionState.Online
+    val isAuthenticated = authState is AuthState.Authenticated
+    val isGuest = authViewModel.currentUser?.isGuest == true
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
-    // Mismo chrome que el lobby single (`OnlineLobbyScreen`): un `Scaffold` con `TaratiTopBar` (que
-    // respeta los insets del sistema → la flecha de navegación queda **debajo** de la barra de estado y
-    // es tocable) en FullScreen, y `CompanionPanelHeader` en el panel lateral. El fondo del juego MP.
-    MultiplayerBackground(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                when (displayMode) {
-                    DisplayMode.FullScreen -> TaratiTopBar(
-                        title = localizedString(Res.string.game6_lobby_title),
-                        navigationType = TopBarNavigationType.Back,
-                        onNavigationClick = onBack,
-                    )
-
-                    DisplayMode.CompanionPanel -> CompanionPanelHeader(
-                        title = localizedString(Res.string.game6_lobby_title),
-                        onClose = onBack,
-                    )
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text(localizedString(Res.string.auth_logout)) },
+            text = { Text(localizedString(Res.string.auth_logout_confirm)) },
+            confirmButton = {
+                Button(onClick = {
+                    showLogoutConfirm = false
+                    scope.launch {
+                        authViewModel.logout()
+                        connectionViewModel.disconnect()
+                    }
+                }) { Text(localizedString(Res.string.confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text(localizedString(Res.string.cancel))
                 }
             },
-        ) { padding ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                when {
-                    // Sin sesión (transitorio: se está saliendo) o autenticado pero aún sin conexión WS:
-                    // loader. La creación/observación de mesas aparece **recién** al conectar (Online),
-                    // nunca antes → no se expone UI del modo online a quien no accedió.
-                    myUserId == null || !isOnline -> MpLobbyConnecting()
+        )
+    }
 
-                    // Conectado: explorador (pestañas Mesas / En Vivo). La mesa propia (si la hay) se
-                    // abre dentro del tab "Mesas", sin reemplazar el panel Online.
-                    else -> MpLobbyBrowser(
-                        tables = tables,
-                        liveGames = liveGames,
-                        activeTable = activeTable,
-                        myUserId = myUserId,
-                        viewModel = viewModel,
-                    )
-                }
+    val topBarActions: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {
+        // Botón Clasificación 🏅 — paridad con el lobby clásico.
+        if (onNavigateToLeaderboard != null) {
+            TooltipIconButton(
+                tooltip = localizedString(Res.string.profile_leaderboard),
+                onClick = onNavigateToLeaderboard,
+            ) {
+                Icon(
+                    imageVector = TaratiIcons.Leaderboard,
+                    contentDescription = localizedString(Res.string.profile_leaderboard),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
+        // Botón Supporter ♥ — solo para usuarios registrados (el checkout requiere sesión).
+        if (onNavigateToSupporter != null && isAuthenticated && !isGuest) {
+            TooltipIconButton(
+                tooltip = localizedString(Res.string.supporter_title),
+                onClick = onNavigateToSupporter,
+            ) {
+                Icon(
+                    imageVector = TaratiIcons.Supporter,
+                    contentDescription = localizedString(Res.string.supporter_title),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        val loginLogoutLabel = localizedString(
+            if (isAuthenticated && !isGuest) Res.string.auth_logout else Res.string.auth_sign_in
+        )
+        TooltipIconButton(
+            tooltip = loginLogoutLabel,
+            onClick = {
+                when {
+                    !isAuthenticated || isGuest -> onShowLogin()
+                    else -> showLogoutConfirm = true
+                }
+            },
+        ) {
+            Icon(
+                imageVector = if (isAuthenticated && !isGuest) TaratiIcons.Logout else TaratiIcons.AccountCircle,
+                contentDescription = loginLogoutLabel,
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+
+    // Default en "Conectados" (índice 0), igual que el lobby clásico.
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+
+    val tabs = listOf(
+        // 0 — Conectados: presencia en tiempo real (endpoint agnóstico del modo). Sin desafío directo
+        // (2 jugadores no aplica a mesas MP) → las filas solo navegan al perfil.
+        LobbyTabSpec(label = Res.string.lobby_connected_tab, icon = TaratiIcons.Group) {
+            ConnectedUsersTab(
+                viewModel = lobbyViewModel,
+                currentUserId = myUserId,
+                isCurrentUserGuest = isGuest,
+                onNavigateToProfile = onNavigateToProfile,
+            )
+        },
+        // 1 — En Vivo: mesas (crear/unirse/detalle) + partidas en curso (observar)
+        LobbyTabSpec(label = Res.string.lobby_in_live, icon = TaratiIcons.Public) {
+            MpLiveTab(
+                tables = tables,
+                liveGames = liveGames,
+                activeTable = activeTable,
+                myUserId = myUserId,
+                viewModel = viewModel,
+            )
+        },
+        // 2 — Torneos (Fase 4) — visible pero deshabilitado
+        LobbyTabSpec(label = Res.string.tournaments, icon = TaratiIcons.EmojiEvents, enabled = false) {},
+        // 3 — Mis Partidas: historial paginado de partidas MP propias (Fase 2)
+        LobbyTabSpec(label = Res.string.lobby_my_games, icon = TaratiIcons.MenuBook) {
+            MpHistoryTab(viewModel = viewModel, myUserId = myUserId)
+        },
+        // 4 — Seguidos: feed social de partidas de jugadores seguidos (Fase 3)
+        LobbyTabSpec(label = Res.string.social_feed, icon = TaratiIcons.Group) {
+            MpFeedTab(viewModel = viewModel)
+        },
+    )
+
+    // Mismo chrome y ciclo de conexión que el lobby clásico (`OnlineLobbyScreen`), con el fondo del
+    // juego MP: loader durante el auto-connect, banner de invitado y gating de `ConnectionState`.
+    MultiplayerBackground(modifier = Modifier.fillMaxSize()) {
+        LobbyShell(
+            title = localizedString(Res.string.game6_lobby_title),
+            displayMode = displayMode,
+            onBack = onBack,
+            connectionState = connectionState,
+            isAutoConnecting = isAutoConnecting,
+            showOfflineMessage = !hasBeenOnline,
+            showGuestBanner = isGuest,
+            onSignIn = onShowLogin,
+            tabs = tabs,
+            selectedTab = selectedTab,
+            onSelectTab = { selectedTab = it },
+            topBarActions = topBarActions,
+        )
     }
 }
 
-/** Loader centrado mientras se establece la conexión WS (antes de mostrar la creación de mesas). */
-@Composable
-private fun MpLobbyConnecting() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
-}
+// ── Tab "En Vivo": mesas + partidas en curso ────────────────────────────────────
 
-// ── Explorador (pestañas Mesas / En Vivo) ──────────────────────────────────────
-
+/**
+ * Contenido del tab "En Vivo" del lobby MP. Si el usuario ya está sentado en una mesa muestra su
+ * detalle (asientos, iniciar, salir); si no, un único scroll con: crear mesa, mesas abiertas
+ * (unirse) y partidas en curso (observar). Fusiona lo que antes eran los tabs "Mesas" y "En Vivo".
+ */
 @Composable
-private fun MpLobbyBrowser(
+private fun MpLiveTab(
     tables: List<MpTableDto>,
     liveGames: List<MpLiveGameDto>,
     activeTable: MpTableDto?,
-    myUserId: String,
+    myUserId: String?,
     viewModel: MpLobbyViewModel,
 ) {
-    var tab by rememberSaveable { mutableStateOf(0) }
-    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        PrimaryTabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = {
-                Text(localizedString(Res.string.game6_lobby_tab_tables))
-            })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = {
-                Text(localizedString(Res.string.game6_lobby_tab_live))
-            })
+    if (activeTable != null) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MpTableDetail(
+                table = activeTable,
+                isHost = activeTable.hostId == myUserId,
+                viewModel = viewModel,
+            )
         }
-        when (tab) {
-            // Tab "Mesas": si ya estoy sentado en una mesa, muestro su detalle aquí (sin ocultar el
-            // header ni las pestañas); si no, la sección de crear + la lista de mesas abiertas.
-            0 -> if (activeTable != null) {
-                MpTableDetail(
-                    table = activeTable,
-                    isHost = activeTable.hostId == myUserId,
-                    viewModel = viewModel,
-                )
-            } else {
-                MpTablesList(tables = tables, viewModel = viewModel)
-            }
+        return
+    }
 
-            else -> MpLiveGamesList(liveGames = liveGames, onWatch = viewModel::spectate)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item { MpCreateTableSection(onCreate = viewModel::createTable) }
+
+        // Mesas abiertas (unirse)
+        item { MpSectionLabel(localizedString(Res.string.game6_lobby_tab_tables)) }
+        if (tables.isEmpty()) {
+            item {
+                Text(
+                    text = localizedString(Res.string.game6_lobby_no_tables),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            items(tables) { table ->
+                MpTableCard(table = table, onJoin = { viewModel.joinTable(table.id) })
+            }
+        }
+
+        // Partidas en curso (observar)
+        item { MpSectionLabel(localizedString(Res.string.game6_lobby_tab_live)) }
+        if (liveGames.isEmpty()) {
+            item {
+                Text(
+                    text = localizedString(Res.string.game6_lobby_no_live),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            items(liveGames) { game ->
+                MpLiveGameCard(game = game, onWatch = { viewModel.spectate(game.gameId) })
+            }
         }
     }
+}
+
+/** Etiqueta discreta de sección dentro del tab "En Vivo" del lobby MP. */
+@Composable
+private fun MpSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp),
+    )
 }
 
 // ── Partidas en vivo (observar) ─────────────────────────────────────────────────
-
-@Composable
-private fun MpLiveGamesList(liveGames: List<MpLiveGameDto>, onWatch: (String) -> Unit) {
-    if (liveGames.isEmpty()) {
-        Text(
-            text = localizedString(Res.string.game6_lobby_no_live),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(liveGames) { game -> MpLiveGameCard(game = game, onWatch = { onWatch(game.gameId) }) }
-    }
-}
 
 @Composable
 private fun MpLiveGameCard(game: MpLiveGameDto, onWatch: () -> Unit) {
@@ -343,33 +489,11 @@ private fun MpTurnDisc(color: PlayerColor) {
     }
 }
 
-// ── Lista de mesas + crear ──────────────────────────────────────────────────────
-
-@Composable
-private fun MpTablesList(tables: List<MpTableDto>, viewModel: MpLobbyViewModel) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        MpCreateTableSection(onCreate = viewModel::createTable)
-
-        if (tables.isEmpty()) {
-            Text(
-                text = localizedString(Res.string.game6_lobby_no_tables),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(tables) { table ->
-                    MpTableCard(table = table, onJoin = { viewModel.joinTable(table.id) })
-                }
-            }
-        }
-    }
-}
+// ── Crear mesa + tarjeta de mesa ─────────────────────────────────────────────────
 
 /**
  * Sección **colapsable** de creación de mesa: una cabecera "Crear mesa" que **se despliega hacia
- * abajo** revelando el selector de tamaño (2–6) + el botón de confirmar, sin dejar de mostrar el
- * resto del lobby (el panel Online nunca se reemplaza ni se cierra).
+ * abajo** revelando el selector de tamaño (2–6) + el botón de confirmar.
  */
 @Composable
 private fun MpCreateTableSection(onCreate: (Int) -> Unit) {

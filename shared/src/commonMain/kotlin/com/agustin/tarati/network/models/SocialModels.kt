@@ -71,6 +71,10 @@ data class PublicProfileDto(
     val bio: String?,
     val ratings: ProfileRatingsDto,
     val stats: ProfileStatsDto,
+    /** Rating multijugador (Tarati Six) — bucket único, sin time control. */
+    val mpRating: ProfileRatingDto = ProfileRatingDto(),
+    /** Estadísticas multijugador (games/wins/shared/losses). */
+    val mpStats: MpStatsDto = MpStatsDto(),
     val createdAt: Instant,
     val isVerified: Boolean,
     val isBot: Boolean = false,
@@ -130,4 +134,19 @@ data class ProfileTimeControlStatsDto(
     val draws: Int = 0,
 ) {
     fun winrate(): Double = if (games > 0) wins.toDouble() / games else 0.0
+}
+
+/**
+ * Estadísticas multijugador (Tarati Six). MP no tiene empates: [shared] = victoria compartida
+ * (varios ganadores por igualdad de piezas). Espeja `MpStats` del servidor.
+ */
+@Immutable
+@Serializable
+data class MpStatsDto(
+    val games: Int = 0,
+    val wins: Int = 0,
+    val shared: Int = 0,
+    val losses: Int = 0,
+) {
+    fun winrate(): Double = if (games > 0) (wins + shared).toDouble() / games else 0.0
 }

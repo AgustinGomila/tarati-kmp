@@ -28,14 +28,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.agustin.tarati.features.online.game.IOnlineGameViewModel
 import com.agustin.tarati.features.online.ui.ChallengeDialog
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OnlineUserStatus
@@ -56,7 +54,6 @@ import com.agustin.tarati.ui.components.SupporterBadge
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.supporterNameColor
 import com.agustin.tarati.ui.theme.TaratiIcons
-import kotlinx.coroutines.launch
 
 // ── Tab: Conectados ───────────────────────────────────────────────────────────
 
@@ -66,12 +63,15 @@ internal fun ConnectedUsersTab(
     viewModel: IOnlineLobbyViewModel,
     currentUserId: String?,
     isCurrentUserGuest: Boolean,
-    onlineGameViewModel: IOnlineGameViewModel,
     onNavigateToProfile: ((String) -> Unit)?,
+    /**
+     * Envía un desafío directo (2 jugadores) a `targetUserId`. Null = sin desafío: las filas solo
+     * navegan al perfil. El lobby multijugador lo pasa null (el desafío 2-jugadores no aplica a mesas).
+     */
+    onSendChallenge: ((targetUserId: String, tc: String, rated: Boolean) -> Unit)? = null,
 ) {
     val users by viewModel.onlineUsers.collectAsState()
     var challengeTarget by remember { mutableStateOf<OnlineUserDto?>(null) }
-    val scope = rememberCoroutineScope()
 
     DisposableEffect(Unit) {
         viewModel.startConnectedPolling()
@@ -92,7 +92,7 @@ internal fun ConnectedUsersTab(
             forceNonRated = isCurrentUserGuest || target.isGuest,
             onConfirm = { tc, rated ->
                 challengeTarget = null
-                scope.launch { onlineGameViewModel.sendChallenge(target.userId, tc, rated) }
+                onSendChallenge?.invoke(target.userId, tc, rated)
             },
             onDismiss = { challengeTarget = null },
         )
@@ -137,7 +137,7 @@ internal fun ConnectedUsersTab(
                             onClick = if (!user.isGuest && onNavigateToProfile != null) {
                                 { onNavigateToProfile(user.userId) }
                             } else null,
-                            onChallenge = if (!user.isGuest && user.userId != currentUserId &&
+                            onChallenge = if (onSendChallenge != null && !user.isGuest && user.userId != currentUserId &&
                                 user.status == OnlineUserStatus.IN_LOBBY && user.acceptsChallenges
                             ) {
                                 { challengeTarget = user }

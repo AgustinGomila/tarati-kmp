@@ -23,6 +23,8 @@ sealed class ScreenDestinations(
 
     object MpLobbyDest : ScreenDestinations(route = "mp_lobby")
 
+    object MpLeaderboardDest : ScreenDestinations(route = "mp_leaderboard")
+
     object LeaderboardDest : ScreenDestinations(route = "leaderboard")
 
     object PublicProfileDest : ScreenDestinations(route = "public_profile/{userId}") {

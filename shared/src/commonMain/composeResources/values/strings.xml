@@ -518,6 +518,13 @@
     <string name="auth_guest_terms_link_rules">Rules</string>
     <string name="auth_guest_banner_title">Guest session</string>
     <string name="lobby_connected_tab">Connected</string>
+    <string name="lobby_coming_soon">Coming soon</string>
+    <string name="mp_history_empty">You have not played any multiplayer games yet.</string>
+    <string name="mp_result_shared">Shared win</string>
+    <string name="mp_feed_empty">No recent games from players you follow.</string>
+    <string name="mp_leaderboard_title">Multiplayer Ranking</string>
+    <string name="profile_mp_section">Multiplayer</string>
+    <string name="profile_stat_shared_short">S</string>
     <string name="lobby_no_players_match_filters">No players match the current filters</string>
     <string name="lobby_online_users_section">Online now</string>
     <string name="lobby_status_playing">Playing</string>

@@ -26,6 +26,7 @@ import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.MpGameScreen
+import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.game6.MpLocalGameViewModel
 import com.agustin.tarati.features.library.GamesLibraryScreen
@@ -56,6 +57,7 @@ import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GameDetail
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GameScreenDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GamesLibraryDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.LeaderboardDest
+import com.agustin.tarati.ui.components.navigation.ScreenDestinations.MpLeaderboardDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.OnlineSettingsDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.PublicProfileDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.SettingsScreenDest
@@ -140,18 +142,14 @@ fun NavGraph(
                         },
                         // En modo Multi, "Online" abre el lobby de **mesas** MP (no el matchmaking 2p):
                         // en Expanded (web/tablet) en el panel lateral; en compacto a pantalla completa.
+                        // Igual que Single: entra directo, sin exigir sesión. El [MpLobbyScreen]
+                        // auto-loguea como invitado si no hay sesión (permite jugar online sin cuenta);
+                        // el login queda disponible desde la TopBar del lobby.
                         onNavigateToOnline = {
-                            val openMpLobby: () -> Unit = {
-                                if (layout == ScreenLayout.Expanded)
-                                    companion.toggle(CompanionPanelDestination.MpLobby)
-                                else
-                                    navController.navigate(ScreenDestinations.MpLobbyDest.route)
-                            }
-                            // El modo online multijugador exige sesión: sin ella, se muestra el login
-                            // sheet **sobre el tablero** (sin pre-acceder a la UI de mesas) y solo tras
-                            // el acceso se abre el lobby. Si se cierra el modal, se queda en el tablero.
-                            if (authViewModel.isAuthenticated) openMpLobby()
-                            else onShowLogin { openMpLobby() }
+                            if (layout == ScreenLayout.Expanded)
+                                companion.toggle(CompanionPanelDestination.MpLobby)
+                            else
+                                navController.navigate(ScreenDestinations.MpLobbyDest.route)
                         },
                         settingsViewModel = settingsViewModel,
                         modifier = Modifier.fillMaxSize(),
@@ -325,6 +323,21 @@ fun NavGraph(
                 onBack = { navController.popBackStack() },
                 // Al arrancar la partida, volver al tablero (GameScreenDest → MpGameScreen la muestra).
                 onGameStarted = { navController.popBackStack() },
+                onShowLogin = { onShowLogin(null) },
+                onNavigateToSupporter = { navController.navigate(SupporterDest.route) },
+                onNavigateToLeaderboard = { navController.navigate(MpLeaderboardDest.route) },
+                onNavigateToProfile = { userId ->
+                    navController.navigate(PublicProfileDest.createRoute(userId))
+                },
+            )
+        }
+
+        composable(MpLeaderboardDest.route) {
+            MpLeaderboardScreen(
+                onBack = { navController.popBackStack() },
+                onNavigateToProfile = { userId ->
+                    navController.navigate(PublicProfileDest.createRoute(userId))
+                },
             )
         }
 
@@ -342,6 +355,9 @@ fun NavGraph(
             PublicProfileScreen(
                 userId = userId,
                 onBack = { navController.popBackStack() },
+                // El desafío directo (2 jugadores) solo aplica en modo single; en MULTI se oculta para
+                // no lanzar una partida que el tablero multijugador no puede mostrar.
+                allowChallenge = LocalGameModeController.current?.mode != GameMode.MULTI,
                 onNavigateToGameDetails = { gameId ->
                     scope.launch {
                         val matchDto = onlineLobbyViewModel.loadAndPreviewGame(gameId)

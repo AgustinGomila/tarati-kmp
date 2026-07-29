@@ -3,6 +3,7 @@ package com.agustin.tarati.network.models
 import androidx.compose.runtime.Immutable
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
+import com.agustin.tarati.core.domain.game6.play.MpResult
 import com.agustin.tarati.core.domain.game6.play.PlayerMove
 import kotlinx.serialization.Serializable
 
@@ -83,6 +84,65 @@ data class MpLiveGameDto(
     val currentTurn: PlayerColor,
     val positionNotation: String = "",
     val startedAtMs: Long = 0,
+)
+
+/**
+ * Una partida multijugador **terminada**, para la pestaña "Mis Partidas" del lobby MP. La lista se
+ * filtra por participación del usuario autenticado (tabla puente `mp_game_participants`).
+ *
+ * El resultado propio (victoria / derrota / victoria compartida) lo computa el cliente cruzando su
+ * `userId` con [players] (para hallar su color) y [MpResult.winners].
+ *
+ * @property players ocupantes por color (humanos y bots), como quedaron al terminar.
+ * @property result resultado final (ganadores, motivo, conteos, corte).
+ * @property endedAtMs epoch millis de fin (para ordenar / mostrar fecha).
+ */
+@Serializable
+data class MpGameHistoryDto(
+    val gameId: String,
+    val playerCount: Int,
+    val players: List<MpPlayerDto>,
+    val result: MpResult,
+    val moveCount: Int,
+    val endedAtMs: Long,
+)
+
+/**
+ * Una entrada del feed social MP: una partida terminada en la que participó un jugador **seguido**
+ * por el usuario autenticado, mostrada desde la perspectiva de ese jugador (el "sujeto").
+ *
+ * @property game datos de la partida.
+ * @property subjectUserId jugador seguido cuya perspectiva se muestra (uno de [MpGameHistoryDto.players]).
+ * @property subjectName nombre visible del jugador seguido.
+ */
+@Serializable
+data class MpFeedGameDto(
+    val game: MpGameHistoryDto,
+    val subjectUserId: String,
+    val subjectName: String,
+)
+
+/**
+ * Una entrada de la tabla de clasificación multijugador (Tarati Six).
+ * Respuesta del endpoint GET /api/mp/leaderboard. Bucket único (sin time control): un solo rating MP.
+ * MP no tiene empates → [shared] (victorias compartidas) en lugar de draws.
+ */
+@Immutable
+@Serializable
+data class MpLeaderboardEntryDto(
+    val rank: Int,
+    val id: String,
+    val username: String,
+    val displayName: String?,
+    val country: String?,
+    val avatarUrl: String?,
+    val rating: Int,
+    val games: Int,
+    val wins: Int,
+    val shared: Int,
+    val losses: Int,
+    /** True si el jugador es supporter — habilita badge + color de nombre (C4). */
+    val isSupporter: Boolean = false,
 )
 
 /**

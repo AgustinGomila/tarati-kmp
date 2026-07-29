@@ -6,6 +6,9 @@ import com.agustin.tarati.network.authGet
 import com.agustin.tarati.network.models.Game
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
+import com.agustin.tarati.network.models.MpFeedGameDto
+import com.agustin.tarati.network.models.MpGameHistoryDto
+import com.agustin.tarati.network.models.MpLeaderboardEntryDto
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpTableDto
 import com.agustin.tarati.network.models.OnlineUserDto
@@ -122,4 +125,52 @@ class OnlineLobbyRepository(
      */
     suspend fun getMpLiveGames(token: String): Result<List<MpLiveGameDto>> =
         httpClient.authGet("$baseUrl/api/mp/games", token)
+
+    /**
+     * Obtiene el historial paginado de partidas multijugador del usuario autenticado.
+     *
+     * @param token JWT del usuario autenticado.
+     * @param page  Página 0-based.
+     * @param limit Tamaño de página.
+     */
+    suspend fun getMpHistory(
+        token: String,
+        page: Int = 0,
+        limit: Int = 20,
+    ): Result<PagedResponse<MpGameHistoryDto>> = httpClient.authGet(
+        "$baseUrl/api/mp/games/history", token,
+        "page" to page,
+        "limit" to limit,
+    )
+
+    /**
+     * Obtiene el feed social MP: partidas recientes de jugadores seguidos por el usuario autenticado.
+     *
+     * @param token JWT del usuario autenticado.
+     * @param page  Página 0-based.
+     * @param limit Tamaño de página.
+     */
+    suspend fun getMpFeed(
+        token: String,
+        page: Int = 0,
+        limit: Int = 20,
+    ): Result<PagedResponse<MpFeedGameDto>> = httpClient.authGet(
+        "$baseUrl/api/mp/feed", token,
+        "page" to page,
+        "limit" to limit,
+    )
+
+    /**
+     * Obtiene la tabla de clasificación multijugador (Tarati Six) — bucket único de rating MP.
+     *
+     * @param token JWT del usuario autenticado.
+     * @param limit Máximo de entradas (acotado por el servidor).
+     */
+    suspend fun getMpLeaderboard(
+        token: String,
+        limit: Int = 100,
+    ): Result<List<MpLeaderboardEntryDto>> = httpClient.authGet(
+        "$baseUrl/api/mp/leaderboard", token,
+        "limit" to limit,
+    )
 }

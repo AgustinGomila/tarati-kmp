@@ -4,6 +4,8 @@ package com.agustin.tarati.features.online
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.achievements.AchievementsViewModel
 import com.agustin.tarati.features.achievements.IAchievementsViewModel
+import com.agustin.tarati.features.game6.IMpLeaderboardViewModel
+import com.agustin.tarati.features.game6.MpLeaderboardViewModel
 import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.features.online.auth.AuthApi
 import com.agustin.tarati.features.online.auth.AuthRepository
@@ -90,6 +92,15 @@ import org.koin.dsl.module
 // Logger del proyecto (PlatformLogger) — el `logger` del Scope de Koin no acepta Throwable,
 // así que se usa este para que los errores lleguen con stack trace al canal estándar.
 private val moduleLogger = getLogger("OnlineModule")
+
+/**
+ * Proveedor de token para los ViewModels MP (clases planas): refresca el JWT si está por expirar y
+ * devuelve el access token vigente. Comparte la lógica entre `MpLobbyViewModel` y `MpLeaderboardViewModel`.
+ */
+private fun tokenProvider(authVm: IAuthViewModel): suspend () -> String? = {
+    if (authVm.isTokenExpiringSoon()) authVm.refreshToken()
+    authVm.accessToken
+}
 
 val onlineModule: Module = module {
 
@@ -262,16 +273,24 @@ val onlineModule: Module = module {
     // Lobby de mesas del juego multijugador (M7.2). Singleton: comparte el refresco/estado con el
     // MpOnlineClient (también single). La pantalla arranca/detiene el polling.
     single {
-        val authVm = get<IAuthViewModel>()
         val repo = get<OnlineLobbyRepository>()
         MpLobbyViewModel(
             client = get(),
-            getToken = {
-                if (authVm.isTokenExpiringSoon()) authVm.refreshToken()
-                authVm.accessToken
-            },
+            getToken = tokenProvider(get()),
             fetchTables = repo::getMpTables,
             fetchLiveGames = repo::getMpLiveGames,
+            fetchHistory = repo::getMpHistory,
+            fetchFeed = repo::getMpFeed,
+        )
+    }
+
+    // Clasificación multijugador (Fase 4a) — clase plana (como MpLobbyViewModel), `factory` para tener
+    // instancia por composición de pantalla (recarga al re-entrar). Se inyecta con `koinInject`.
+    factory<IMpLeaderboardViewModel> {
+        val repo = get<OnlineLobbyRepository>()
+        MpLeaderboardViewModel(
+            getToken = tokenProvider(get()),
+            fetchLeaderboard = { token -> repo.getMpLeaderboard(token) },
         )
     }
 

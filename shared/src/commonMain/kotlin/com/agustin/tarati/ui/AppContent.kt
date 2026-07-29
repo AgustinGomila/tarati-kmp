@@ -52,6 +52,7 @@ import com.agustin.tarati.features.game.IGameModel
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel
@@ -101,6 +102,7 @@ import com.agustin.tarati.ui.layout.CompanionPanelDestination.GameDetails
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Leaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Library
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Lobby
+import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpLeaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpLobby
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.None
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.OnlineSettings
@@ -396,6 +398,10 @@ private fun CompanionPane(
             // panel NO se cierra — el tablero se muestra en el primario y el lobby queda abierto para
             // crear/unirse a otra mesa. Se cierra solo con la X o re-tocando el botón Online (toggle).
             onGameStarted = { },
+            onShowLogin = { onShowLogin(null) },
+            onNavigateToSupporter = { controller.navigate(Supporter) },
+            onNavigateToLeaderboard = { controller.navigate(MpLeaderboard) },
+            onNavigateToProfile = { userId -> controller.navigate(Profile(userId)) },
         )
 
         Lobby -> OnlineLobbyScreen(
@@ -434,10 +440,19 @@ private fun CompanionPane(
             },
         )
 
+        MpLeaderboard -> MpLeaderboardScreen(
+            onBack = controller::back,
+            onNavigateToProfile = { userId ->
+                controller.navigate(Profile(userId))
+            },
+        )
+
         is Profile -> key(dest.userId) {
             PublicProfileScreen(
                 userId = dest.userId,
                 onBack = controller::back,
+                // El desafío 2-jugadores solo aplica en single; en MULTI se oculta (consistencia de modo).
+                allowChallenge = LocalGameModeController.current?.mode != GameMode.MULTI,
                 onNavigateToGameDetails = { gameId ->
                     scope.launch {
                         val matchDto = onlineLobbyViewModel.loadAndPreviewGame(gameId)

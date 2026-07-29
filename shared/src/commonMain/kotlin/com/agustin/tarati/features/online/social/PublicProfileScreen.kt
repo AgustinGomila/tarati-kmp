@@ -53,6 +53,8 @@ import com.agustin.tarati.features.online.lobby.PositiveGreen
 import com.agustin.tarati.features.online.lobby.forTimeControl
 import com.agustin.tarati.features.online.lobby.formatDate
 import com.agustin.tarati.features.online.ui.ChallengeDialog
+import com.agustin.tarati.network.models.MpStatsDto
+import com.agustin.tarati.network.models.ProfileRatingDto
 import com.agustin.tarati.network.models.ProfileRatingsDto
 import com.agustin.tarati.network.models.ProfileStatsDto
 import com.agustin.tarati.network.models.ProfileTimeControlStatsDto
@@ -64,10 +66,12 @@ import com.agustin.tarati.shared.generated.resources.no_games_found
 import com.agustin.tarati.shared.generated.resources.profile_games_played
 import com.agustin.tarati.shared.generated.resources.profile_history_section
 import com.agustin.tarati.shared.generated.resources.profile_member_since
+import com.agustin.tarati.shared.generated.resources.profile_mp_section
 import com.agustin.tarati.shared.generated.resources.profile_peak_rating
 import com.agustin.tarati.shared.generated.resources.profile_ratings_section
 import com.agustin.tarati.shared.generated.resources.profile_stat_draw_short
 import com.agustin.tarati.shared.generated.resources.profile_stat_loss_short
+import com.agustin.tarati.shared.generated.resources.profile_stat_shared_short
 import com.agustin.tarati.shared.generated.resources.profile_stat_win_short
 import com.agustin.tarati.shared.generated.resources.profile_title
 import com.agustin.tarati.shared.generated.resources.social_challenge
@@ -94,6 +98,12 @@ fun PublicProfileScreen(
     userId: String,
     onBack: () -> Unit,
     onNavigateToGameDetails: ((gameId: String) -> Unit)? = null,
+    /**
+     * Habilita el botón "Desafiar" (partida de 2 jugadores). El desafío directo solo tiene sentido en
+     * modo single: desde el lobby multijugador se pasa `false` para no lanzar una partida 2-jugadores
+     * que el tablero MULTI no puede mostrar (mantiene la navegación consistente con el modo actual).
+     */
+    allowChallenge: Boolean = true,
     viewModel: IPublicProfileViewModel = koinViewModel<PublicProfileViewModel>(key = userId) {
         parametersOf(userId)
     },
@@ -145,6 +155,7 @@ fun PublicProfileScreen(
                     onSendChallenge = { tc, rated -> viewModel.sendChallenge(tc, rated) },
                     onNavigateToGameDetails = onNavigateToGameDetails,
                     forceNonRated = isCurrentUserGuest || (profileState.profile ?: return@Scaffold).isGuest,
+                    allowChallenge = allowChallenge,
                     viewModel = viewModel,
                     modifier = Modifier.padding(padding),
                 )
@@ -165,6 +176,7 @@ private fun ProfileContent(
     onSendChallenge: (timeControl: String, rated: Boolean) -> Unit,
     onNavigateToGameDetails: ((gameId: String) -> Unit)? = null,
     forceNonRated: Boolean = false,
+    allowChallenge: Boolean = true,
     viewModel: IPublicProfileViewModel,
     modifier: Modifier = Modifier,
 ) {
@@ -200,7 +212,7 @@ private fun ProfileContent(
                 followStatusState = followStatusState,
                 isOwnProfile = isOwnProfile,
                 onToggleFollow = onToggleFollow,
-                onChallenge = if (profile.acceptsChallenges) {
+                onChallenge = if (allowChallenge && profile.acceptsChallenges) {
                     { showChallengeDialog = true }
                 } else null,
             )
@@ -210,6 +222,12 @@ private fun ProfileContent(
         item {
             SectionHeader(text = localizedString(Res.string.profile_ratings_section))
             RatingsGrid(ratings = profile.ratings, stats = profile.stats)
+            // Rating multijugador (Tarati Six) — solo si el usuario jugó alguna partida MP.
+            if (profile.mpStats.games > 0) {
+                Spacer(Modifier.height(8.dp))
+                SectionHeader(text = localizedString(Res.string.profile_mp_section))
+                MpRatingCard(rating = profile.mpRating, stats = profile.mpStats)
+            }
             Spacer(Modifier.height(8.dp))
         }
 
@@ -486,6 +504,70 @@ private fun RatingCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+// ── Rating multijugador ─────────────────────────────────────────────────────────
+
+/**
+ * Tarjeta del rating multijugador (Tarati Six): bucket único (sin time control) con rating, peak,
+ * partidas y desglose W/S/L (victorias / compartidas / derrotas). MP no tiene empates.
+ */
+@Composable
+private fun MpRatingCard(rating: ProfileRatingDto, stats: MpStatsDto) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = TaratiIcons.Group,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = localizedString(Res.string.profile_peak_rating, rating.peak),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = localizedString(Res.string.profile_games_played, stats.games),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "${rating.rating}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    WdlPart("${stats.wins}${localizedString(Res.string.profile_stat_win_short)}", PositiveGreen)
+                    WdlSeparator()
+                    WdlPart(
+                        "${stats.shared}${localizedString(Res.string.profile_stat_shared_short)}",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    WdlSeparator()
+                    WdlPart(
+                        "${stats.losses}${localizedString(Res.string.profile_stat_loss_short)}",
+                        MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
         }
     }
 }
