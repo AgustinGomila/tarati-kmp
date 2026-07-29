@@ -41,6 +41,8 @@ data class MpGameDetailUiState(
     val state: MpGameState? = null,
     val lastMove: MpMove? = null,
     val converted: Map<Vertex, PlayerColor> = emptyMap(),
+    /** Epoch millis de fin de la partida (para la fecha en la tarjeta de información). */
+    val endedAtMs: Long = 0,
 )
 
 @Stable
@@ -143,6 +145,7 @@ class MpGameDetailViewModel(
                 state = states.last(),
                 lastMove = null,
                 converted = emptyMap(),
+                endedAtMs = detail.endedAtMs,
             )
         }
     }

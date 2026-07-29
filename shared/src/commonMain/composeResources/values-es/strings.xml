@@ -182,10 +182,6 @@
     <string name="board_position_copied_to_clipboard">Posición copiada al portapapeles</string>
     <string name="copy_position">Copiar posición</string>
     <string name="game_details">Detalle</string>
-    <string name="mp_replay_first">Primera jugada</string>
-    <string name="mp_replay_previous">Jugada anterior</string>
-    <string name="mp_replay_next">Jugada siguiente</string>
-    <string name="mp_replay_last">Última jugada</string>
     <string name="load_to_board">Cargar</string>
     <string name="toggle_details">Detalles</string>
     <string name="delete_game">Eliminar partida</string>

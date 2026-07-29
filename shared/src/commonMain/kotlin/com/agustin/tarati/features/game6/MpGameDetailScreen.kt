@@ -2,6 +2,14 @@
 
 package com.agustin.tarati.features.game6
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,54 +19,81 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
+import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.Seat
+import com.agustin.tarati.features.online.lobby.formatGameDate
 import com.agustin.tarati.features.settings.BoardVisualState
 import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
+import com.agustin.tarati.shared.generated.resources.back
+import com.agustin.tarati.shared.generated.resources.date
 import com.agustin.tarati.shared.generated.resources.error
+import com.agustin.tarati.shared.generated.resources.game6_lobby_live_moves
+import com.agustin.tarati.shared.generated.resources.game6_players
 import com.agustin.tarati.shared.generated.resources.game_details
-import com.agustin.tarati.shared.generated.resources.mp_replay_first
-import com.agustin.tarati.shared.generated.resources.mp_replay_last
-import com.agustin.tarati.shared.generated.resources.mp_replay_next
-import com.agustin.tarati.shared.generated.resources.mp_replay_previous
+import com.agustin.tarati.shared.generated.resources.game_information
+import com.agustin.tarati.shared.generated.resources.go_to_begin
+import com.agustin.tarati.shared.generated.resources.go_to_end
+import com.agustin.tarati.shared.generated.resources.move_history
+import com.agustin.tarati.shared.generated.resources.move_n_of_n
+import com.agustin.tarati.shared.generated.resources.next
+import com.agustin.tarati.shared.generated.resources.result
+import com.agustin.tarati.shared.generated.resources.toggle_details
+import com.agustin.tarati.shared.generated.resources.toggle_move_history
+import com.agustin.tarati.shared.generated.resources.total_moves
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.theme.TaratiIcons
 import org.koin.compose.koinInject
 
+private const val EXPAND_DURATION_MS = 300
+private const val FADE_DURATION_MS = 250
+
 /**
  * Visor de **replay** de una partida multijugador terminada (Tarati Six). Reconstruye la partida
  * jugada a jugada desde el historial persistido ([MpGameDetailViewModel]) y la reproduce sobre el
- * mismo renderer del juego ([Board25Pane]), read-only. Navegación completa con [MpReplayControls]
- * (⏮ ◀ slider ▶ ⏭) y la grilla de jugadas ([MpMoveGrid], click-to-jump + resaltado).
+ * mismo renderer del juego ([Board25Pane]), read-only.
  *
- * Layout adaptativo, paridad con `GameDetailsScreen` del single: en pantalla ancha tablero y panel
- * lado a lado; en compacto, apilados.
+ * Cosméticamente converge con el detalle de partida single ([com.agustin.tarati.features.detail.GameDetailsScreen]):
+ * información superior colapsable (con el resultado), tablero con botones de avance/retroceso a los
+ * lados + barra de progreso e inicio/fin debajo, y lista de movimientos colapsable (por defecto
+ * colapsada en compacto) con resaltado + click-to-jump.
  */
 @Composable
 fun MpGameDetailScreen(
@@ -136,166 +171,396 @@ private fun MpGameDetailBody(
     }
 
     val board: @Composable (Modifier) -> Unit = { m ->
-        Board25Pane(
+        MpDetailBoard(
+            modifier = m,
             state = boardState,
             seatIsAI = seatIsAI,
-            selection = null,
-            legalTargets = emptySet(),
-            threatened = emptySet(),
             lastMove = ui.lastMove,
             converted = ui.converted,
             boardVisual = boardVisual,
-            onVertexTap = {},
-            modifier = m.padding(12.dp),
-        )
-    }
-
-    val panel: @Composable (Modifier) -> Unit = { m ->
-        MpReplayPanel(
-            modifier = m,
-            ui = ui,
-            seats = boardState.seats,
-            nameByColor = nameByColor,
-            onMoveToIndex = onMoveToIndex,
-            onFirst = onFirst,
-            onPrev = onPrev,
-            onNext = onNext,
-            onLast = onLast,
-        )
-    }
-
-    // Adaptativo al contenedor real (no al layout global): apaisado → tablero y panel lado a lado;
-    // vertical (p. ej. el companion panel angosto) → apilados. Paridad con `GameDetailsContent` (single).
-    BoxWithConstraints(modifier = modifier) {
-        if (maxWidth > maxHeight) {
-            Row(Modifier.fillMaxSize()) {
-                board(Modifier.weight(1.3f).fillMaxHeight())
-                panel(Modifier.weight(1f).fillMaxHeight().padding(12.dp))
-            }
-        } else {
-            Column(Modifier.fillMaxSize()) {
-                board(Modifier.fillMaxWidth().weight(1.4f))
-                panel(Modifier.fillMaxWidth().weight(1f).padding(12.dp))
-            }
-        }
-    }
-}
-
-/** Panel del replay: resultado final + controles de navegación + grilla de jugadas navegable. */
-@Composable
-private fun MpReplayPanel(
-    modifier: Modifier,
-    ui: MpGameDetailUiState,
-    seats: List<Seat>,
-    nameByColor: Map<PlayerColor, String>,
-    onMoveToIndex: (Int) -> Unit,
-    onFirst: () -> Unit,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onLast: () -> Unit,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ui.result?.let { result ->
-            Text(
-                text = mpResultMessage(result, nameByColor),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-
-        MpReplayControls(
             moveIndex = ui.moveIndex,
             plyCount = ui.history.size,
             onFirst = onFirst,
             onPrev = onPrev,
             onNext = onNext,
             onLast = onLast,
-            onSeek = onMoveToIndex,
         )
+    }
 
-        Card(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            elevation = CardDefaults.cardElevation(1.dp),
-        ) {
-            MpMoveGrid(
-                modifier = Modifier.fillMaxSize(),
-                seats = seats,
-                history = ui.history,
-                currentPly = ui.moveIndex,
-                onCellClick = onMoveToIndex,
-            )
+    BoxWithConstraints(modifier = modifier) {
+        val isLandscape = maxWidth > maxHeight
+        if (isLandscape) {
+            Row(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+                    MpGameInfoCard(ui = ui, nameByColor = nameByColor)
+                }
+                board(Modifier.weight(1.2f).fillMaxHeight())
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+                    MpCollapsibleMoveHistoryCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        seats = boardState.seats,
+                        ui = ui,
+                        initialExpanded = true,
+                        onMoveToIndex = onMoveToIndex,
+                    )
+                }
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MpGameInfoCard(ui = ui, nameByColor = nameByColor)
+                board(Modifier.fillMaxWidth().weight(1f))
+                MpCollapsibleMoveHistoryCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    seats = boardState.seats,
+                    ui = ui,
+                    initialExpanded = false,
+                    onMoveToIndex = onMoveToIndex,
+                )
+            }
         }
     }
 }
 
+// ── Tablero + navegación (paridad con CreateCardBoard de single) ─────────────────
+
 /**
- * Barra de navegación del replay: primera (⏮), anterior (◀), un slider sobre las jugadas, siguiente
- * (▶) y última (⏭). [moveIndex] es el cursor (−1 = inicial; `plyCount − 1` = última jugada). El
- * slider mapea `0..plyCount` (0 = posición inicial).
+ * Tablero del replay con botones de avance/retroceso a los **lados** del tablero, más una barra de
+ * progreso e inicio/fin debajo — mismo esquema de navegación que el detalle single ([CreateCardBoard]).
+ * El tablero ([Board25Pane]) es read-only (sin taps).
  */
 @Composable
-private fun MpReplayControls(
+private fun MpDetailBoard(
+    modifier: Modifier,
+    state: MpGameState,
+    seatIsAI: List<Boolean>,
+    lastMove: MpMove?,
+    converted: Map<Vertex, PlayerColor>,
+    boardVisual: BoardVisualState,
     moveIndex: Int,
     plyCount: Int,
     onFirst: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onLast: () -> Unit,
-    onSeek: (Int) -> Unit,
 ) {
+    val canPrev = moveIndex > -1
+    val canNext = moveIndex < plyCount - 1
+
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            SideNavButton(TaratiIcons.KeyboardArrowLeft, localizedString(Res.string.back), canPrev, onPrev)
+            Board25Pane(
+                state = state,
+                seatIsAI = seatIsAI,
+                selection = null,
+                legalTargets = emptySet(),
+                threatened = emptySet(),
+                lastMove = lastMove,
+                converted = converted,
+                boardVisual = boardVisual,
+                onVertexTap = {},
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            SideNavButton(TaratiIcons.KeyboardArrowRight, localizedString(Res.string.next), canNext, onNext)
+        }
+
+        // Barra de progreso + inicio/contador/fin (mismo bloque que single, debajo del tablero).
+        if (plyCount > 0) {
+            Column(
+                modifier = Modifier.fillMaxWidth(0.85f).padding(top = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                LinearProgressIndicator(
+                    progress = { (moveIndex + 1).toFloat() / plyCount.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    strokeCap = StrokeCap.Round,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    EdgeNavButton(TaratiIcons.SkipPrevious, localizedString(Res.string.go_to_begin), canPrev, onFirst)
+                    Text(
+                        text = localizedString(Res.string.move_n_of_n, moveIndex + 1, plyCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                    )
+                    EdgeNavButton(TaratiIcons.SkipNext, localizedString(Res.string.go_to_end), canNext, onLast)
+                }
+            }
+        }
+    }
+}
+
+/** Botón lateral grande (48dp) de avance/retroceso; espacio reservado cuando no aplica (alineación). */
+@Composable
+private fun SideNavButton(
+    icon: ImageVector,
+    tooltip: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    if (enabled) {
+        TooltipIconButton(tooltip = tooltip, onClick = onClick, modifier = Modifier.size(48.dp)) {
+            Icon(
+                icon,
+                contentDescription = tooltip,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+        }
+    } else {
+        Spacer(Modifier.width(48.dp))
+    }
+}
+
+/** Botón chico (36dp) de inicio/fin bajo la barra de progreso. */
+@Composable
+private fun EdgeNavButton(
+    icon: ImageVector,
+    tooltip: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    TooltipIconButton(tooltip = tooltip, onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
+        Icon(
+            icon,
+            contentDescription = tooltip,
+            tint = if (enabled) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+// ── Información superior colapsable (paridad con GameInfoCard de single) ──────────
+
+/**
+ * Tarjeta de información superior, colapsable (por defecto colapsada): el resultado de la partida
+ * como resumen; expandida agrega jugadores, fecha y jugadas. Mismo chrome que [GameInfoCard].
+ */
+@Composable
+private fun MpGameInfoCard(
+    ui: MpGameDetailUiState,
+    nameByColor: Map<PlayerColor, String>,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val resultText = ui.result?.let { mpResultMessage(it, nameByColor) } ?: ""
+
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(EXPAND_DURATION_MS, easing = FastOutSlowInEasing),
+        label = "mp_info_chevron",
+    )
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = localizedString(Res.string.game_information),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+                    // Resumen compacto (colapsado): el resultado en una línea.
+                    if (!expanded && resultText.isNotEmpty()) {
+                        Text(
+                            text = resultText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(end = 8.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                TooltipIconButton(
+                    tooltip = localizedString(Res.string.toggle_details),
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(24.dp),
+                ) {
+                    Icon(
+                        TaratiIcons.ExpandMore,
+                        contentDescription = localizedString(Res.string.toggle_details),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.graphicsLayer { rotationZ = chevronRotation },
+                    )
+                }
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(
+                    tween(EXPAND_DURATION_MS, easing = FastOutSlowInEasing),
+                    expandFrom = Alignment.Top
+                ) +
+                        fadeIn(tween(FADE_DURATION_MS)),
+                exit = shrinkVertically(
+                    tween(EXPAND_DURATION_MS - 50, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.Top
+                ) +
+                        fadeOut(tween(FADE_DURATION_MS - 50)),
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (resultText.isNotEmpty()) {
+                        MpInfoRow(localizedString(Res.string.result), resultText)
+                    }
+                    MpInfoRow(
+                        localizedString(Res.string.game6_players),
+                        ui.players.joinToString(", ") { it.name },
+                    )
+                    if (ui.endedAtMs > 0) {
+                        MpInfoRow(localizedString(Res.string.date), formatGameDate(ui.endedAtMs))
+                    }
+                    MpInfoRow(
+                        localizedString(Res.string.move_history),
+                        localizedString(Res.string.game6_lobby_live_moves, ui.history.size),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Fila etiqueta/valor del panel de información (paridad con la fila de vista de single). */
+@Composable
+private fun MpInfoRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top,
     ) {
-        TooltipIconButton(
-            tooltip = localizedString(Res.string.mp_replay_first),
-            onClick = onFirst,
-            enabled = moveIndex > -1,
-        ) {
-            Icon(TaratiIcons.SkipPrevious, contentDescription = localizedString(Res.string.mp_replay_first))
-        }
-        TooltipIconButton(
-            tooltip = localizedString(Res.string.mp_replay_previous),
-            onClick = onPrev,
-            enabled = moveIndex > -1,
-        ) {
-            Icon(TaratiIcons.KeyboardArrowLeft, contentDescription = localizedString(Res.string.mp_replay_previous))
-        }
-
-        if (plyCount > 0) {
-            Slider(
-                value = (moveIndex + 1).toFloat(),
-                onValueChange = { onSeek(it.toInt() - 1) },
-                valueRange = 0f..plyCount.toFloat(),
-                steps = (plyCount - 1).coerceAtLeast(0),
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            Spacer(Modifier.weight(1f))
-        }
-
         Text(
-            text = "${moveIndex + 1}/$plyCount",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(44.dp),
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(120.dp),
         )
+        Text(
+            text = value.ifEmpty { "-" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f),
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
 
-        TooltipIconButton(
-            tooltip = localizedString(Res.string.mp_replay_next),
-            onClick = onNext,
-            enabled = moveIndex < plyCount - 1,
-        ) {
-            Icon(TaratiIcons.KeyboardArrowRight, contentDescription = localizedString(Res.string.mp_replay_next))
-        }
-        TooltipIconButton(
-            tooltip = localizedString(Res.string.mp_replay_last),
-            onClick = onLast,
-            enabled = moveIndex < plyCount - 1,
-        ) {
-            Icon(TaratiIcons.SkipNext, contentDescription = localizedString(Res.string.mp_replay_last))
+// ── Lista de movimientos colapsable (paridad con CollapsibleMoveHistoryCard) ──────
+
+/**
+ * Tarjeta de movimientos colapsable ([initialExpanded] = false por defecto en compacto). Reusa
+ * [MpMoveGrid] (columnas por jugador, resaltado del ply actual + click-to-jump). Mismo chrome que
+ * [CollapsibleMoveHistoryCard] de single: cabecera con título, contador de jugadas y chevron animado.
+ */
+@Composable
+private fun MpCollapsibleMoveHistoryCard(
+    modifier: Modifier,
+    seats: List<Seat>,
+    ui: MpGameDetailUiState,
+    initialExpanded: Boolean,
+    onMoveToIndex: (Int) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(initialExpanded) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(EXPAND_DURATION_MS, easing = FastOutSlowInEasing),
+        label = "mp_moves_chevron",
+    )
+
+    Card(
+        modifier = modifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Column(Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = localizedString(Res.string.move_history),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = localizedString(Res.string.total_moves, ui.history.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                    TooltipIconButton(
+                        tooltip = localizedString(Res.string.toggle_move_history),
+                        onClick = { expanded = !expanded },
+                        modifier = Modifier.size(24.dp),
+                    ) {
+                        Icon(
+                            TaratiIcons.ExpandMore,
+                            contentDescription = localizedString(Res.string.toggle_move_history),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.graphicsLayer { rotationZ = chevronRotation },
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(
+                    tween(EXPAND_DURATION_MS, easing = FastOutSlowInEasing),
+                    expandFrom = Alignment.Top
+                ) +
+                        fadeIn(tween(FADE_DURATION_MS)),
+                exit = shrinkVertically(
+                    tween(EXPAND_DURATION_MS - 50, easing = FastOutSlowInEasing),
+                    shrinkTowards = Alignment.Top
+                ) +
+                        fadeOut(tween(FADE_DURATION_MS - 50)),
+            ) {
+                MpMoveGrid(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp).padding(bottom = 8.dp),
+                    seats = seats,
+                    history = ui.history,
+                    currentPly = ui.moveIndex,
+                    onCellClick = onMoveToIndex,
+                )
+            }
         }
     }
 }

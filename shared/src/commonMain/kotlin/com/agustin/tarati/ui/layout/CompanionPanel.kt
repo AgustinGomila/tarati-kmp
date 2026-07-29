@@ -79,6 +79,22 @@ class CompanionPanelController {
         destination = dest
     }
 
+    /**
+     * Alinea los lobbies al modo activo ([multi]) al cambiar single↔multi: reemplaza el lobby del modo
+     * anterior por el del modo actual **tanto en el destino visible como en el back-stack**. Así, con
+     * una sub-pantalla abierta (p. ej. el detalle de una partida), [back] vuelve al lobby del **modo
+     * actual** y no al del anterior. Los demás destinos (Settings, Leaderboard, Perfil…) son compartidos
+     * y no se tocan.
+     */
+    fun syncLobbyMode(multi: Boolean) {
+        val from = if (multi) CompanionPanelDestination.Lobby else CompanionPanelDestination.MpLobby
+        val to = if (multi) CompanionPanelDestination.MpLobby else CompanionPanelDestination.Lobby
+        if (destination == from) destination = to
+        for (i in backStack.indices) {
+            if (backStack[i] == from) backStack[i] = to
+        }
+    }
+
     fun back() {
         destination = backStack.removeLastOrNull() ?: CompanionPanelDestination.None
     }

@@ -209,20 +209,15 @@ fun AppContent(
                     LocalCompanionPanelController provides companion,
                     LocalGameModeController provides gameModeController,
                 ) {
-                    // Al cambiar de modo (single↔multi) con el panel lateral mostrando el lobby online
-                    // del otro modo, intercambiarlo por el lobby del modo nuevo — el board primario ya
-                    // cambia solo, y así el panel online queda en correspondencia. Solo aplica en Expanded
-                    // (el panel solo existe ahí) y solo sobre los dos lobbies de nivel superior; el resto
-                    // de destinos (Settings, Tienda, Leaderboard…) son compartidos y no se mueven.
+                    // Al cambiar de modo (single↔multi), alinear los lobbies del panel lateral al modo
+                    // nuevo — el board primario ya cambia solo. `syncLobbyMode` reescribe el lobby tanto
+                    // en el destino visible como en el back-stack, de modo que con una sub-pantalla abierta
+                    // (p. ej. el detalle de una partida) el `back` vuelve al lobby del modo actual y no al
+                    // del anterior. Solo aplica en Expanded (el panel solo existe ahí); el resto de
+                    // destinos (Settings, Tienda, Leaderboard…) son compartidos y no se mueven.
                     if (layout == ScreenLayout.Expanded) {
                         LaunchedEffect(gameModeController.mode) {
-                            when (gameModeController.mode) {
-                                GameMode.SINGLE ->
-                                    if (companion.destination == MpLobby) companion.replace(Lobby)
-
-                                GameMode.MULTI ->
-                                    if (companion.destination == Lobby) companion.replace(MpLobby)
-                            }
+                            companion.syncLobbyMode(multi = gameModeController.mode == GameMode.MULTI)
                         }
                     }
 
