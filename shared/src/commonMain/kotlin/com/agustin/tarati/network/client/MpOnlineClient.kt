@@ -142,8 +142,15 @@ class MpOnlineClient(
                 }
             }
 
-            // El estado final ya llegó en el StateUpdate previo (state.result != null); confirma el fin.
-            is MpServerMessage.GameEnded -> logger.debug("MP game ${payload.gameId} ended")
+            // El estado final ya llegó en el StateUpdate previo (state.result != null); este mensaje
+            // confirma el fin y trae los deltas de rating (los muestra el popup de resultado).
+            is MpServerMessage.GameEnded -> {
+                val game = _currentGame.value
+                if (game != null && game.gameId == payload.gameId) {
+                    _currentGame.value = game.copy(ratingDeltas = payload.ratingDeltas)
+                }
+                logger.debug("MP game ${payload.gameId} ended")
+            }
         }
     }
 

@@ -131,6 +131,8 @@ fun MpLobbyScreen(
     onNavigateToLeaderboard: (() -> Unit)? = null,
     /** Callback al tocar un perfil de usuario en línea (tab Conectados). Null = sin navegación. */
     onNavigateToProfile: ((userId: String) -> Unit)? = null,
+    /** Abre el visor de replay de una partida MP terminada (tabs Mis Partidas / Seguidos). Null = sin navegación. */
+    onOpenGame: ((gameId: String) -> Unit)? = null,
     viewModel: MpLobbyViewModel = koinInject(),
     lobbyViewModel: IOnlineLobbyViewModel = koinViewModel<OnlineLobbyViewModel>(),
     connectionViewModel: IConnectionViewModel = koinInject(),
@@ -315,11 +317,11 @@ fun MpLobbyScreen(
         LobbyTabSpec(label = Res.string.tournaments, icon = TaratiIcons.EmojiEvents, enabled = false) {},
         // 3 — Mis Partidas: historial paginado de partidas MP propias (Fase 2)
         LobbyTabSpec(label = Res.string.lobby_my_games, icon = TaratiIcons.MenuBook) {
-            MpHistoryTab(viewModel = viewModel, myUserId = myUserId)
+            MpHistoryTab(viewModel = viewModel, myUserId = myUserId, onOpenGame = onOpenGame)
         },
         // 4 — Seguidos: feed social de partidas de jugadores seguidos (Fase 3)
         LobbyTabSpec(label = Res.string.social_feed, icon = TaratiIcons.Group) {
-            MpFeedTab(viewModel = viewModel)
+            MpFeedTab(viewModel = viewModel, onOpenGame = onOpenGame)
         },
     )
 

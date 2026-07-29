@@ -104,7 +104,15 @@ sealed class MpServerMessage {
         val converted: Map<String, PlayerColor> = emptyMap(),
     ) : MpServerMessage()
 
-    /** La partida terminó. [result] trae ganador(es), motivo y conteos finales. */
+    /**
+     * La partida terminó. [result] trae ganador(es), motivo y conteos finales. [ratingDeltas] mapea el
+     * `userId` de cada humano registrado a su cambio de rating MP (vacío si la partida fue casual —
+     * bot/invitado presente— o si el cálculo falló); el cliente lo muestra en el popup de resultado.
+     */
     @Serializable
-    data class GameEnded(val gameId: String, val result: MpResult) : MpServerMessage()
+    data class GameEnded(
+        val gameId: String,
+        val result: MpResult,
+        val ratingDeltas: Map<String, Int> = emptyMap(),
+    ) : MpServerMessage()
 }

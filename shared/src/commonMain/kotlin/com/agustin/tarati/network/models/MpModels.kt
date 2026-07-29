@@ -108,6 +108,30 @@ data class MpGameHistoryDto(
 )
 
 /**
+ * Detalle completo de una partida multijugador **terminada**, para el visor de replay (`GET
+ * /api/mp/games/:id`). A diferencia de [MpGameHistoryDto] (fila de lista), incluye [history] — las
+ * jugadas serializadas (`a:D1-C1,b:...`) — para reconstruir jugada a jugada cada estado del tablero
+ * con `MpSetup.initialState(playerCount)` + `MpNotation.parseHistory(history)`.
+ *
+ * Los retiros por timeout/desconexión no están en [history] (el servidor solo serializa jugadas); las
+ * eliminaciones naturales sí se reproducen al reaplicar. El [result] final siempre es fiel.
+ *
+ * @property history jugadas serializadas separadas por comas (vacío si no hubo jugadas).
+ * @property startedAtMs / endedAtMs epoch millis (inicio / fin).
+ */
+@Serializable
+data class MpGameDetailDto(
+    val gameId: String,
+    val playerCount: Int,
+    val players: List<MpPlayerDto>,
+    val result: MpResult,
+    val history: String,
+    val moveCount: Int,
+    val startedAtMs: Long,
+    val endedAtMs: Long,
+)
+
+/**
  * Una entrada del feed social MP: una partida terminada en la que participó un jugador **seguido**
  * por el usuario autenticado, mostrada desde la perspectiva de ese jugador (el "sujeto").
  *
@@ -168,4 +192,6 @@ data class MpOnlineGame(
     val history: List<PlayerMove> = emptyList(),
     /** `true` si soy **espectador** (partida read-only, sin poder jugar). */
     val spectating: Boolean = false,
+    /** Deltas de rating MP por `userId` al terminar (de `GameEnded`); vacío si casual/en curso. */
+    val ratingDeltas: Map<String, Int> = emptyMap(),
 )

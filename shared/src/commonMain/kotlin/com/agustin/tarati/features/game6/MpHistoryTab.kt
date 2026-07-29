@@ -1,5 +1,6 @@
 package com.agustin.tarati.features.game6
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +53,7 @@ import com.agustin.tarati.shared.generated.resources.win
 internal fun MpHistoryTab(
     viewModel: MpLobbyViewModel,
     myUserId: String?,
+    onOpenGame: ((gameId: String) -> Unit)? = null,
 ) {
     val state by viewModel.history.collectAsState()
     val listState = rememberLazyListState()
@@ -86,7 +88,7 @@ internal fun MpHistoryTab(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(state.items, key = { it.gameId }) { game ->
-                MpHistoryCard(game = game, myUserId = myUserId)
+                MpHistoryCard(game = game, myUserId = myUserId, onOpenGame = onOpenGame)
             }
             if (state.isLoading && state.items.isNotEmpty()) {
                 item {
@@ -124,10 +126,18 @@ internal fun mpResultDisplay(
 }
 
 @Composable
-private fun MpHistoryCard(game: MpGameHistoryDto, myUserId: String?) {
+private fun MpHistoryCard(
+    game: MpGameHistoryDto,
+    myUserId: String?,
+    onOpenGame: ((gameId: String) -> Unit)? = null,
+) {
     val (resultLabel, resultColor) = mpResultDisplay(game.players, game.result, myUserId)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onOpenGame != null) Modifier.clickable { onOpenGame(game.gameId) } else Modifier),
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

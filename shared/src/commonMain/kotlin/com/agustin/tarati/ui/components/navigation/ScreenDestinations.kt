@@ -25,6 +25,10 @@ sealed class ScreenDestinations(
 
     object MpLeaderboardDest : ScreenDestinations(route = "mp_leaderboard")
 
+    object MpGameDetailDest : ScreenDestinations(route = "mp_game_details/{gameId}") {
+        fun createRoute(gameId: String): String = "mp_game_details/$gameId"
+    }
+
     object LeaderboardDest : ScreenDestinations(route = "leaderboard")
 
     object PublicProfileDest : ScreenDestinations(route = "public_profile/{userId}") {

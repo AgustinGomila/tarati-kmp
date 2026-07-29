@@ -52,6 +52,7 @@ import com.agustin.tarati.features.game.IGameModel
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
+import com.agustin.tarati.features.game6.MpGameDetailScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.library.GamesLibraryScreen
@@ -102,6 +103,7 @@ import com.agustin.tarati.ui.layout.CompanionPanelDestination.GameDetails
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Leaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Library
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Lobby
+import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpGameDetail
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpLeaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.MpLobby
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.None
@@ -402,6 +404,7 @@ private fun CompanionPane(
             onNavigateToSupporter = { controller.navigate(Supporter) },
             onNavigateToLeaderboard = { controller.navigate(MpLeaderboard) },
             onNavigateToProfile = { userId -> controller.navigate(Profile(userId)) },
+            onOpenGame = { gameId -> controller.navigate(MpGameDetail(gameId)) },
         )
 
         Lobby -> OnlineLobbyScreen(
@@ -446,6 +449,13 @@ private fun CompanionPane(
                 controller.navigate(Profile(userId))
             },
         )
+
+        is MpGameDetail -> key(dest.gameId) {
+            MpGameDetailScreen(
+                gameId = dest.gameId,
+                onBack = controller::back,
+            )
+        }
 
         is Profile -> key(dest.userId) {
             PublicProfileScreen(

@@ -26,6 +26,7 @@ import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.MpGameScreen
+import com.agustin.tarati.features.game6.MpGameDetailScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
 import com.agustin.tarati.features.game6.MpLocalGameViewModel
@@ -57,6 +58,7 @@ import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GameDetail
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GameScreenDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.GamesLibraryDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.LeaderboardDest
+import com.agustin.tarati.ui.components.navigation.ScreenDestinations.MpGameDetailDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.MpLeaderboardDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.OnlineSettingsDest
 import com.agustin.tarati.ui.components.navigation.ScreenDestinations.PublicProfileDest
@@ -329,6 +331,9 @@ fun NavGraph(
                 onNavigateToProfile = { userId ->
                     navController.navigate(PublicProfileDest.createRoute(userId))
                 },
+                onOpenGame = { gameId ->
+                    navController.navigate(MpGameDetailDest.createRoute(gameId))
+                },
             )
         }
 
@@ -338,6 +343,14 @@ fun NavGraph(
                 onNavigateToProfile = { userId ->
                     navController.navigate(PublicProfileDest.createRoute(userId))
                 },
+            )
+        }
+
+        composable(MpGameDetailDest.route) { backStackEntry ->
+            val gameId = backStackEntry.arguments?.read { getString("gameId") } ?: return@composable
+            MpGameDetailScreen(
+                gameId = gameId,
+                onBack = { navController.popBackStack() },
             )
         }
 

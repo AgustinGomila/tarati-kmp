@@ -1,5 +1,6 @@
 package com.agustin.tarati.features.game6
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +40,10 @@ import com.agustin.tarati.shared.generated.resources.mp_feed_empty
  * seguido (nombre destacado + su resultado). Reusa [mpResultDisplay] con el sujeto del feed.
  */
 @Composable
-internal fun MpFeedTab(viewModel: MpLobbyViewModel) {
+internal fun MpFeedTab(
+    viewModel: MpLobbyViewModel,
+    onOpenGame: ((gameId: String) -> Unit)? = null,
+) {
     val state by viewModel.feed.collectAsState()
     val listState = rememberLazyListState()
 
@@ -72,7 +76,7 @@ internal fun MpFeedTab(viewModel: MpLobbyViewModel) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(state.items, key = { it.game.gameId }) { entry ->
-                MpFeedCard(entry = entry)
+                MpFeedCard(entry = entry, onOpenGame = onOpenGame)
             }
             if (state.isLoading && state.items.isNotEmpty()) {
                 item {
@@ -86,11 +90,15 @@ internal fun MpFeedTab(viewModel: MpLobbyViewModel) {
 }
 
 @Composable
-private fun MpFeedCard(entry: MpFeedGameDto) {
+private fun MpFeedCard(entry: MpFeedGameDto, onOpenGame: ((gameId: String) -> Unit)? = null) {
     val game = entry.game
     val (resultLabel, resultColor) = mpResultDisplay(game.players, game.result, entry.subjectUserId)
 
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onOpenGame != null) Modifier.clickable { onOpenGame(game.gameId) } else Modifier),
+    ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

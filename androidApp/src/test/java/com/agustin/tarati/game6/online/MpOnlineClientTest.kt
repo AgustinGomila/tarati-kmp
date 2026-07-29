@@ -4,6 +4,8 @@ package com.agustin.tarati.game6.online
 
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor.P1
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor.P2
+import com.agustin.tarati.core.domain.game6.play.MpEndReason
+import com.agustin.tarati.core.domain.game6.play.MpResult
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.network.client.MpOnlineClient
@@ -87,6 +89,20 @@ class MpOnlineClientTest {
 
         assertEquals("D1", client.currentGame.value?.lastMoveFrom)
         assertEquals(mapOf("B1" to P2), client.currentGame.value?.converted)
+        scope.cancel()
+    }
+
+    @Test
+    fun gameEnded_setsRatingDeltas(): TestResult = runTest {
+        val incoming = MutableSharedFlow<ServerMessage>(extraBufferCapacity = 16)
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val client = MpOnlineClient(incoming, {}, scope)
+
+        incoming.emit(ServerMessage.Mp(gameStarted("g1")))
+        val result = MpResult(listOf(P1), MpEndReason.LAST_STANDING, mapOf(P1 to 4, P2 to 0))
+        incoming.emit(ServerMessage.Mp(MpServerMessage.GameEnded("g1", result, mapOf("me" to 12))))
+
+        assertEquals(mapOf("me" to 12), client.currentGame.value?.ratingDeltas)
         scope.cancel()
     }
 

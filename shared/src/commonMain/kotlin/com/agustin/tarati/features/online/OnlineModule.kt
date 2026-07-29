@@ -4,7 +4,9 @@ package com.agustin.tarati.features.online
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.achievements.AchievementsViewModel
 import com.agustin.tarati.features.achievements.IAchievementsViewModel
+import com.agustin.tarati.features.game6.IMpGameDetailViewModel
 import com.agustin.tarati.features.game6.IMpLeaderboardViewModel
+import com.agustin.tarati.features.game6.MpGameDetailViewModel
 import com.agustin.tarati.features.game6.MpLeaderboardViewModel
 import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.features.online.auth.AuthApi
@@ -291,6 +293,16 @@ val onlineModule: Module = module {
         MpLeaderboardViewModel(
             getToken = tokenProvider(get()),
             fetchLeaderboard = { token -> repo.getMpLeaderboard(token) },
+        )
+    }
+
+    // Visor de replay de una partida MP terminada — `factory` (instancia por pantalla, recarga al
+    // re-entrar), inyectado con `koinInject`. Reconstruye el replay desde el historial persistido.
+    factory<IMpGameDetailViewModel> {
+        val repo = get<OnlineLobbyRepository>()
+        MpGameDetailViewModel(
+            getToken = tokenProvider(get()),
+            fetchDetail = { token, gameId -> repo.getMpGameDetail(token, gameId) },
         )
     }
 

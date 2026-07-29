@@ -175,6 +175,10 @@
     <string name="board_position_copied_to_clipboard">Board position copied to clipboard</string>
     <string name="copy_position">Copy position</string>
     <string name="game_details">Game details</string>
+    <string name="mp_replay_first">First move</string>
+    <string name="mp_replay_previous">Previous move</string>
+    <string name="mp_replay_next">Next move</string>
+    <string name="mp_replay_last">Last move</string>
     <string name="load_to_board">Load to board</string>
     <string name="toggle_details">Toggle details</string>
     <string name="delete_game">Delete game</string>

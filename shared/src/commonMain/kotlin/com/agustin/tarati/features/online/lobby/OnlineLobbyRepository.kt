@@ -7,6 +7,7 @@ import com.agustin.tarati.network.models.Game
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
 import com.agustin.tarati.network.models.MpFeedGameDto
+import com.agustin.tarati.network.models.MpGameDetailDto
 import com.agustin.tarati.network.models.MpGameHistoryDto
 import com.agustin.tarati.network.models.MpLeaderboardEntryDto
 import com.agustin.tarati.network.models.MpLiveGameDto
@@ -159,6 +160,18 @@ class OnlineLobbyRepository(
         "page" to page,
         "limit" to limit,
     )
+
+    /**
+     * Obtiene el detalle completo de una partida MP **terminada** (incluye el historial serializado
+     * para reconstruir el replay jugada a jugada).
+     *
+     * @param token  JWT del usuario autenticado.
+     * @param gameId identificador de la partida.
+     */
+    suspend fun getMpGameDetail(
+        token: String,
+        gameId: String,
+    ): Result<MpGameDetailDto> = httpClient.authGet("$baseUrl/api/mp/games/$gameId", token)
 
     /**
      * Obtiene la tabla de clasificación multijugador (Tarati Six) — bucket único de rating MP.

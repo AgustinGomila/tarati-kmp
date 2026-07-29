@@ -17,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -190,14 +191,21 @@ fun MpOnlineGameScreen(
     // Popup de fin: al pasar a terminado, sonido + diálogo (tras dejar completar la animación). Solo si
     // el fin es **nuevo** (no una re-entrada tras cambiar de modo) → no repite la alerta de resultado.
     val result = state.result
+    // Los deltas de rating llegan en `GameEnded`, **después** del StateUpdate que trae el resultado; con
+    // `rememberUpdatedState` el diálogo (mostrado tras el delay) lee el valor ya actualizado.
+    val latestDeltas by rememberUpdatedState(game.ratingDeltas)
     LaunchedEffect(result, game.gameId) {
         if (result != null && isFreshGameOver(game.gameId)) {
             onGameOverPresented(game.gameId)
             delay(700.milliseconds)
             soundService.playGameOverSound()
             bus.alert { dismiss ->
+                // Delta de rating MP del jugador local (vacío si casual, espectador o aún sin llegar).
+                val myUserId = myColor?.let { c -> game.players.firstOrNull { it.color == c }?.userId }
+                val deltaSuffix = myUserId?.let { latestDeltas[it] }
+                    ?.let { if (it >= 0) " (+$it)" else " ($it)" } ?: ""
                 GameOverDialog(
-                    gameOverMessage = mpResultMessage(result, nameByColor),
+                    gameOverMessage = mpResultMessage(result, nameByColor) + deltaSuffix,
                     onConfirmed = {
                         dismiss()
                         onLeave()
