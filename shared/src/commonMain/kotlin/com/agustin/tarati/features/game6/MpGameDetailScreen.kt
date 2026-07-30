@@ -55,9 +55,11 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.Seat
+import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.features.online.lobby.formatGameDate
 import com.agustin.tarati.features.settings.BoardVisualState
 import com.agustin.tarati.features.settings.ISettingsViewModel
+import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.back
@@ -77,6 +79,7 @@ import com.agustin.tarati.shared.generated.resources.toggle_details
 import com.agustin.tarati.shared.generated.resources.toggle_move_history
 import com.agustin.tarati.shared.generated.resources.total_moves
 import com.agustin.tarati.ui.components.TooltipIconButton
+import com.agustin.tarati.ui.components.bottombar.rememberPanelTilt
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.theme.TaratiIcons
@@ -141,7 +144,11 @@ fun MpGameDetailScreen(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     ui = ui,
                     boardState = boardState,
-                    boardVisual = settings.boardVisualState,
+                    // Detalle de Partidas: la conversión de capturas usa siempre Transformación (no el
+                    // estilo elegido por el usuario), igual que el detalle single.
+                    boardVisual = settings.boardVisualState.copy(
+                        conversionAnimationStyle = ConversionAnimationStyle.TRANSFORMATION,
+                    ),
                     onMoveToIndex = viewModel::moveToIndex,
                     onFirst = viewModel::first,
                     onPrev = viewModel::prev,
@@ -170,40 +177,49 @@ private fun MpGameDetailBody(
         boardState.seats.map { seat -> ui.players.firstOrNull { it.color == seat.color }?.isBot ?: false }
     }
 
-    val board: @Composable (Modifier) -> Unit = { m ->
-        MpDetailBoard(
-            modifier = m,
-            state = boardState,
-            seatIsAI = seatIsAI,
-            lastMove = ui.lastMove,
-            converted = ui.converted,
-            boardVisual = boardVisual,
-            moveIndex = ui.moveIndex,
-            plyCount = ui.history.size,
-            onFirst = onFirst,
-            onPrev = onPrev,
-            onNext = onNext,
-            onLast = onLast,
-        )
-    }
-
     BoxWithConstraints(modifier = modifier) {
         val isLandscape = maxWidth > maxHeight
+        // Estados de los paneles izados (antes internos a cada card): habilitan el cabeceo del tablero
+        // al expandir/contraer (paridad con el detalle single). Movimientos arranca expandido en
+        // landscape y colapsado en portrait, como antes (`initialExpanded = isLandscape`).
+        var isInfoExpanded by remember { mutableStateOf(false) }
+        var isMovesExpanded by remember(isLandscape) { mutableStateOf(isLandscape) }
+
         if (isLandscape) {
             Row(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
-                    MpGameInfoCard(ui = ui, nameByColor = nameByColor)
+                    MpGameInfoCard(
+                        ui = ui,
+                        nameByColor = nameByColor,
+                        expanded = isInfoExpanded,
+                        onExpandedChange = { isInfoExpanded = it },
+                    )
                 }
-                board(Modifier.weight(1.2f).fillMaxHeight())
+                // Landscape: sin cabeceo ni leyenda externa (los paneles están al costado, hay espacio).
+                MpDetailBoard(
+                    modifier = Modifier.weight(1.2f).fillMaxHeight(),
+                    state = boardState,
+                    seatIsAI = seatIsAI,
+                    lastMove = ui.lastMove,
+                    converted = ui.converted,
+                    boardVisual = boardVisual,
+                    moveIndex = ui.moveIndex,
+                    plyCount = ui.history.size,
+                    onFirst = onFirst,
+                    onPrev = onPrev,
+                    onNext = onNext,
+                    onLast = onLast,
+                )
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
                     MpCollapsibleMoveHistoryCard(
                         modifier = Modifier.fillMaxWidth(),
                         seats = boardState.seats,
                         ui = ui,
-                        initialExpanded = true,
+                        expanded = isMovesExpanded,
+                        onExpandedChange = { isMovesExpanded = it },
                         onMoveToIndex = onMoveToIndex,
                     )
                 }
@@ -213,13 +229,36 @@ private fun MpGameDetailBody(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                MpGameInfoCard(ui = ui, nameByColor = nameByColor)
-                board(Modifier.fillMaxWidth().weight(1f))
+                MpGameInfoCard(
+                    ui = ui,
+                    nameByColor = nameByColor,
+                    expanded = isInfoExpanded,
+                    onExpandedChange = { isInfoExpanded = it },
+                )
+                // Portrait: cabeceo al expandir/contraer paneles + fichas de conteo fuera del tablero.
+                MpDetailBoard(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    state = boardState,
+                    seatIsAI = seatIsAI,
+                    lastMove = ui.lastMove,
+                    converted = ui.converted,
+                    boardVisual = boardVisual,
+                    moveIndex = ui.moveIndex,
+                    plyCount = ui.history.size,
+                    onFirst = onFirst,
+                    onPrev = onPrev,
+                    onNext = onNext,
+                    onLast = onLast,
+                    topPanelExpanded = isInfoExpanded,
+                    bottomPanelExpanded = isMovesExpanded,
+                    externalSeatLegend = true,
+                )
                 MpCollapsibleMoveHistoryCard(
                     modifier = Modifier.fillMaxWidth(),
                     seats = boardState.seats,
                     ui = ui,
-                    initialExpanded = false,
+                    expanded = isMovesExpanded,
+                    onExpandedChange = { isMovesExpanded = it },
                     onMoveToIndex = onMoveToIndex,
                 )
             }
@@ -248,11 +287,28 @@ private fun MpDetailBoard(
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onLast: () -> Unit,
+    // Cabeceo inercial al expandir/contraer los paneles Información/Movimientos (portrait).
+    topPanelExpanded: Boolean = false,
+    bottomPanelExpanded: Boolean = false,
+    // Reubica las fichas de conteo por jugador fuera del tablero (leyenda en 2 filas debajo), útil en
+    // portrait donde los indicadores in-board quedan apretados. En landscape se dejan en el tablero.
+    externalSeatLegend: Boolean = false,
 ) {
     val canPrev = moveIndex > -1
     val canNext = moveIndex < plyCount - 1
 
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    val panelTilt = rememberPanelTilt(
+        topPanelExpanded = topPanelExpanded,
+        bottomPanelExpanded = bottomPanelExpanded,
+    )
+
+    Column(
+        modifier = modifier.graphicsLayer {
+            rotationX = panelTilt.rotationX
+            cameraDistance = 12f * density
+        },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth().weight(1f),
             verticalAlignment = Alignment.CenterVertically,
@@ -269,9 +325,19 @@ private fun MpDetailBoard(
                 converted = converted,
                 boardVisual = boardVisual,
                 onVertexTap = {},
+                showBaseIndicators = !externalSeatLegend,
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             SideNavButton(TaratiIcons.KeyboardArrowRight, localizedString(Res.string.next), canNext, onNext)
+        }
+
+        // Fichas de conteo por jugador, reubicadas fuera del tablero (portrait) en 2 filas.
+        if (externalSeatLegend) {
+            MpSeatLegend(
+                state = state,
+                seatIsAI = seatIsAI,
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            )
         }
 
         // Barra de progreso + inicio/contador/fin (mismo bloque que single, debajo del tablero).
@@ -302,6 +368,61 @@ private fun MpDetailBoard(
                     EdgeNavButton(TaratiIcons.SkipNext, localizedString(Res.string.go_to_end), canNext, onLast)
                 }
             }
+        }
+    }
+}
+
+// ── Leyenda de asientos fuera del tablero (portrait) ─────────────────────────────
+
+/**
+ * Leyenda de asientos **fuera del tablero** para el portrait del detalle: dos filas de chips (color +
+ * Humano/IA + Nº de piezas en el tablero), con la distribución 6→3/3, 5→3/2, 4→2/2, 3→3/0, 2→2/0. Reusa
+ * el mismo chip que los indicadores in-board ([SeatChip]); reemplaza a esos indicadores cuando el detalle
+ * los suprime (`showBaseIndicators = false`), que en portrait quedan apretados sobre el tablero. Resalta
+ * el asiento en turno y atenúa a los retirados.
+ */
+@Composable
+private fun MpSeatLegend(
+    state: MpGameState,
+    seatIsAI: List<Boolean>,
+    modifier: Modifier = Modifier,
+) {
+    val n = state.seats.size
+    if (n == 0) return
+    // Fila superior: todos si n ≤ 3, si no la mitad redondeada hacia arriba (→ 3/3, 3/2, 2/2, 3/0, 2/0).
+    val topCount = if (n <= 3) n else (n + 1) / 2
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        SeatChipRow(state = state, seatIsAI = seatIsAI, from = 0, until = topCount)
+        if (topCount < n) SeatChipRow(state = state, seatIsAI = seatIsAI, from = topCount, until = n)
+    }
+}
+
+/** Una fila de la leyenda: los asientos `[from, until)` en orden de asiento. */
+@Composable
+private fun SeatChipRow(
+    state: MpGameState,
+    seatIsAI: List<Boolean>,
+    from: Int,
+    until: Int,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for (i in from until until) {
+            val seat = state.seats[i]
+            SeatChip(
+                color = seat.color,
+                isAI = seatIsAI.getOrElse(i) { false },
+                count = state.pieceCount(seat.color),
+                retired = seat.status == SeatStatus.RETIRED,
+                isCurrent = i == state.currentSeatIndex && !state.isGameOver,
+            )
         }
     }
 }
@@ -357,8 +478,9 @@ private fun EdgeNavButton(
 private fun MpGameInfoCard(
     ui: MpGameDetailUiState,
     nameByColor: Map<PlayerColor, String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
     val resultText = ui.result?.let { mpResultMessage(it, nameByColor) } ?: ""
 
     val chevronRotation by animateFloatAsState(
@@ -400,7 +522,7 @@ private fun MpGameInfoCard(
                 }
                 TooltipIconButton(
                     tooltip = localizedString(Res.string.toggle_details),
-                    onClick = { expanded = !expanded },
+                    onClick = { onExpandedChange(!expanded) },
                     modifier = Modifier.size(24.dp),
                 ) {
                     Icon(
@@ -488,10 +610,10 @@ private fun MpCollapsibleMoveHistoryCard(
     modifier: Modifier,
     seats: List<Seat>,
     ui: MpGameDetailUiState,
-    initialExpanded: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onMoveToIndex: (Int) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(initialExpanded) }
     val chevronRotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
         animationSpec = tween(EXPAND_DURATION_MS, easing = FastOutSlowInEasing),
@@ -527,7 +649,7 @@ private fun MpCollapsibleMoveHistoryCard(
                     )
                     TooltipIconButton(
                         tooltip = localizedString(Res.string.toggle_move_history),
-                        onClick = { expanded = !expanded },
+                        onClick = { onExpandedChange(!expanded) },
                         modifier = Modifier.size(24.dp),
                     ) {
                         Icon(

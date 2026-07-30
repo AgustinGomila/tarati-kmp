@@ -76,6 +76,7 @@ import com.agustin.tarati.ui.components.game.draw.pieces.CobColorScheme
 import com.agustin.tarati.ui.components.game.draw.pieces.CobShape
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationType
+import com.agustin.tarati.ui.components.game.draw.pieces.resolveType
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceColor
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceType
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypeManager
@@ -108,19 +109,6 @@ private const val ANIMATION_MS = 420
 /** Fracción del progreso del movimiento dedicada al deslizamiento; el resto, a la conversión. */
 private const val SLIDE_FRACTION = 0.55f
 
-/**
- * Resuelve la preferencia [ConversionAnimationStyle] a un [ConversionAnimationType] concreto por
- * captura (como single): TRANSFORMATION → centro o borde al azar; FLIP → volteo; SURPRISE → cualquiera
- * de los tres.
- */
-private fun resolveConversionType(style: ConversionAnimationStyle): ConversionAnimationType =
-    when (style) {
-        ConversionAnimationStyle.TRANSFORMATION ->
-            listOf(ConversionAnimationType.FROM_CENTER, ConversionAnimationType.FROM_BORDER).random()
-
-        ConversionAnimationStyle.FLIP -> ConversionAnimationType.FLIP
-        ConversionAnimationStyle.SURPRISE -> ConversionAnimationType.entries.random()
-    }
 
 /**
  * [CobShape] de una pieza poligonal MP: la forma/guarda/patrón del [pieceType] con el color del
@@ -322,6 +310,9 @@ fun Board25View(
     // resalta el nombre del vértice que explica). Ignorado si [showLabels] ya está activo.
     forcedLabelVertices: Set<Vertex> = emptySet(),
     guideArrows: List<MpMove> = emptyList(),
+    // Indicadores de jugador junto a cada base (color + Humano/IA + Nº de piezas). El detalle en portrait
+    // los apaga y los reubica como leyenda fuera del tablero.
+    showBaseIndicators: Boolean = true,
 ) {
     val boardColors = getBoardColors()
     val edgeColor = boardColors.boardEdgeColor.copy(alpha = 0.8f)
@@ -341,7 +332,7 @@ fun Board25View(
     // Tipo de animación de conversión por pieza capturada, decidido **una vez por jugada** (estable
     // durante toda la animación) según la preferencia [conversionStyle] de Settings — como single.
     val conversionTypes = remember(moveCount) {
-        converted.keys.associateWith { resolveConversionType(conversionStyle) }
+        converted.keys.associateWith { conversionStyle.resolveType() }
     }
 
     // Tick a ~60fps mientras haya una pieza seleccionada, un pre-movimiento activo o flechas guía
@@ -696,11 +687,13 @@ fun Board25View(
             }
 
             // Indicadores de jugador junto a cada base (color + Humano/IA + contador de piezas).
-            BaseIndicators(
-                state = state,
-                seatIsAI = seatIsAI,
-                positions = screenPositions,
-            )
+            if (showBaseIndicators) {
+                BaseIndicators(
+                    state = state,
+                    seatIsAI = seatIsAI,
+                    positions = screenPositions,
+                )
+            }
         }
     }
 }
@@ -769,11 +762,13 @@ private fun SeatIndicator(
     anchor: Offset,
     outward: Offset,
 ) {
-    val fill = PlayerPalette.fill(color)
-    val borderCol = PlayerPalette.border(color)
-    val shape = RoundedCornerShape(50)
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
-    Row(
+    SeatChip(
+        color = color,
+        isAI = isAI,
+        count = count,
+        retired = retired,
+        isCurrent = isCurrent,
         modifier = Modifier
             .absoluteOffset {
                 // Se apoya el **borde interior** de la cápsula sobre `anchor` (en lugar de centrarla),
@@ -787,7 +782,30 @@ private fun SeatIndicator(
                     (anchor.y - halfH + outward.y * halfH).roundToInt(),
                 )
             }
-            .onSizeChanged { boxSize = it }
+            .onSizeChanged { boxSize = it },
+    )
+}
+
+/**
+ * Cápsula de un asiento: círculo de color del jugador + ícono Humano/IA + contador de piezas. Resalta
+ * (borde grueso del color) al asiento en turno y se atenúa si el jugador está retirado. La usan tanto
+ * los indicadores in-board ([SeatIndicator], con posicionamiento absoluto) como la leyenda fuera del
+ * tablero del detalle en portrait (`MpSeatLegend`), pasando su propio [modifier] de layout.
+ */
+@Composable
+internal fun SeatChip(
+    color: PlayerColor,
+    isAI: Boolean,
+    count: Int,
+    retired: Boolean,
+    isCurrent: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val fill = PlayerPalette.fill(color)
+    val borderCol = PlayerPalette.border(color)
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier = modifier
             .alpha(if (retired) 0.4f else 1f)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))

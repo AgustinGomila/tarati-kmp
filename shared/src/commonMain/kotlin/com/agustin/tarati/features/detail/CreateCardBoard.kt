@@ -48,6 +48,7 @@ import com.agustin.tarati.core.data.database.dto.MatchDto
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNotation
+import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.back
@@ -58,7 +59,8 @@ import com.agustin.tarati.shared.generated.resources.move_n_of_n
 import com.agustin.tarati.shared.generated.resources.next
 import com.agustin.tarati.shared.generated.resources.observations
 import com.agustin.tarati.ui.components.TooltipIconButton
-import com.agustin.tarati.ui.components.library.StaticBoardRenderer
+import com.agustin.tarati.ui.components.bottombar.rememberPanelTilt
+import com.agustin.tarati.ui.components.library.ReplayBoardRenderer
 import com.agustin.tarati.ui.theme.TaratiIcons
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -88,76 +90,53 @@ fun CreateCardBoard(
         matchDto.game.moveHistory.size,
     ) { mutableStateOf(parseBoardNotation(matchDto.game.boardPosition)) }
 
-    // Sync the board whenever currentMoveIndex is changed externally
-    // (e.g. a click on MoveHistoryList). The navigation buttons already call
-    // updateBoardState directly; this effect covers all other callers so
-    // currentBoardState is always the single source of truth for what is shown.
+    // ── Animación de avance de jugada (paridad con el detalle MP) ────────────
+    // Al avanzar exactamente una jugada, la pieza que se mueve se desliza de origen a destino
+    // ([ReplayBoardRenderer]). Cualquier otra transición (retroceso, salto, inicio/fin lejano) hace snap.
+    var animPrevState by remember(matchDto.game.boardPosition, matchDto.game.moveHistory.size) {
+        mutableStateOf<GameState?>(null)
+    }
+    var animMove by remember(matchDto.game.boardPosition, matchDto.game.moveHistory.size) {
+        mutableStateOf<Move?>(null)
+    }
+    var animKey by remember(matchDto.game.boardPosition, matchDto.game.moveHistory.size) {
+        mutableIntStateOf(0)
+    }
+    var prevMoveIndex by remember(matchDto.game.boardPosition, matchDto.game.moveHistory.size) {
+        mutableIntStateOf(currentMoveIndex)
+    }
+
+    // Única fuente de verdad de la posición mostrada: reacciona a cualquier cambio de índice
+    // (botones o click en la lista). Si el índice avanzó una jugada, arma la animación de deslizamiento.
     LaunchedEffect(currentMoveIndex) {
-        updateBoardState(matchDto, currentMoveIndex, initialState) { currentBoardState = it }
+        val old = prevMoveIndex
+        val newState = GameState.getBoardStateAtMove(moves, currentMoveIndex, initialState)
+        val advancedMove = if (currentMoveIndex == old + 1) moves.getOrNull(currentMoveIndex) else null
+        if (advancedMove != null && !advancedMove.isPromotion()) {
+            animPrevState = currentBoardState // posición en `old`, antes de aplicar la jugada
+            animMove = advancedMove
+            animKey++
+        } else {
+            animPrevState = null
+            animMove = null
+        }
+        currentBoardState = newState
+        prevMoveIndex = currentMoveIndex
     }
 
     // ── Inclinación inercial al expandir/colapsar los paneles ────────────────
-    // Un Animatable compartido acumula los kicks de ambos paneles, luego
-    // spring-vuelve a cero con amortiguación media para el efecto inercial.
-    val panelTiltX = remember { Animatable(0f) }
-    var topFirstRender by remember { mutableStateOf(true) }
-    var botFirstRender by remember { mutableStateOf(true) }
-
-    // Al aparecer el tablero (edición colapsada): la info card se contrae
-    // desde arriba y el espacio se libera hacia abajo — el tablero "cae"
-    // hacia adelante, mismo kick que topPanel colapsando (→ +8f).
-    LaunchedEffect(Unit) {
-        panelTiltX.animateTo(8f, animationSpec = tween(durationMillis = 80))
-        panelTiltX.animateTo(
-            targetValue = 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
-    }
-
-    // Panel superior:
-    //   expandir → tablero bascula hacia atrás (top se aleja) → rotationX < 0
-    //   colapsar → rebote suave hacia adelante → rotationX > 0 brevemente
-    LaunchedEffect(topPanelExpanded) {
-        if (topFirstRender) {
-            topFirstRender = false; return@LaunchedEffect
-        }
-        val kick = if (topPanelExpanded) -10f else 8f
-        panelTiltX.animateTo(kick, animationSpec = tween(durationMillis = 80))
-        panelTiltX.animateTo(
-            targetValue = 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
-    }
-
-    // Panel inferior:
-    //   expandir → tablero bascula hacia adelante (bottom se aleja) → rotationX > 0
-    //   colapsar → rebote suave hacia atrás → rotationX < 0 brevemente
-    LaunchedEffect(bottomPanelExpanded) {
-        if (botFirstRender) {
-            botFirstRender = false; return@LaunchedEffect
-        }
-        val kick = if (bottomPanelExpanded) 10f else -8f
-        panelTiltX.animateTo(kick, animationSpec = tween(durationMillis = 80))
-        panelTiltX.animateTo(
-            targetValue = 0f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-            ),
-        )
-    }
+    // Helper compartido con el detalle MP: kick corto + spring inercial de vuelta a 0° por cada
+    // cambio de panel, más un kick inicial de "aparición".
+    val panelTilt = rememberPanelTilt(
+        topPanelExpanded = topPanelExpanded,
+        bottomPanelExpanded = bottomPanelExpanded,
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
-                rotationX = panelTiltX.value
+                rotationX = panelTilt.rotationX
                 cameraDistance = 12f * density
             },
         contentAlignment = Alignment.Center,
@@ -207,11 +186,7 @@ fun CreateCardBoard(
                 TooltipIconButton(
                     tooltip = stringResource(Res.string.back),
                     onClick = {
-                        if (currentMoveIndex > -1) {
-                            val next = currentMoveIndex - 1
-                            onMoveIndexChange(next)
-                            updateBoardState(matchDto, next, initialState) { currentBoardState = it }
-                        }
+                        if (currentMoveIndex > -1) onMoveIndexChange(currentMoveIndex - 1)
                     },
                     modifier = Modifier.size(48.dp),
                 ) {
@@ -270,9 +245,12 @@ fun CreateCardBoard(
                     ) {
                         val normalizedAngle = ((rotationY.value % 360f) + 360f) % 360f
                         if (normalizedAngle !in 90f..<270f) {
-                            StaticBoardRenderer(
+                            ReplayBoardRenderer(
                                 modifier = Modifier.fillMaxSize(),
                                 gameState = currentBoardState,
+                                previousState = animPrevState,
+                                lastMove = animMove,
+                                animationKey = animKey,
                             )
                         } else {
                             BackOfCard(
@@ -289,11 +267,7 @@ fun CreateCardBoard(
                 TooltipIconButton(
                     tooltip = stringResource(Res.string.next),
                     onClick = {
-                        if (currentMoveIndex < moves.lastIndex) {
-                            val next = currentMoveIndex + 1
-                            onMoveIndexChange(next)
-                            updateBoardState(matchDto, next, initialState) { currentBoardState = it }
-                        }
+                        if (currentMoveIndex < moves.lastIndex) onMoveIndexChange(currentMoveIndex + 1)
                     },
                     modifier = Modifier.size(48.dp),
                 ) {
@@ -339,10 +313,7 @@ fun CreateCardBoard(
                     // Botón Inicio
                     TooltipIconButton(
                         tooltip = stringResource(Res.string.go_to_begin),
-                        onClick = {
-                            onMoveIndexChange(0)
-                            updateBoardState(matchDto, 0, initialState) { currentBoardState = it }
-                        },
+                        onClick = { onMoveIndexChange(0) },
                         enabled = currentMoveIndex > -1,
                         modifier = Modifier.size(36.dp),
                     ) {
@@ -369,10 +340,7 @@ fun CreateCardBoard(
                     // Botón Fin
                     TooltipIconButton(
                         tooltip = stringResource(Res.string.go_to_end),
-                        onClick = {
-                            onMoveIndexChange(moves.lastIndex)
-                            updateBoardState(matchDto, moves.lastIndex, initialState) { currentBoardState = it }
-                        },
+                        onClick = { onMoveIndexChange(moves.lastIndex) },
                         enabled = currentMoveIndex < moves.size - 1,
                         modifier = Modifier.size(36.dp),
                     ) {
@@ -392,22 +360,6 @@ fun CreateCardBoard(
             }
         }
     }
-}
-
-// Función auxiliar para actualizar el estado del tablero
-private fun updateBoardState(
-    matchDto: MatchDto,
-    moveIndex: Int? = null,
-    initialState: GameState,
-    gameState: (GameState) -> Unit = {},
-) {
-    gameState(
-        GameState.getBoardStateAtMove(
-            moveHistory = matchDto.game.moveHistory,
-            moveIndex = moveIndex,
-            initialState = initialState,
-        )
-    )
 }
 
 @Composable

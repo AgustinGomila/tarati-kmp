@@ -32,6 +32,9 @@ fun Board25Pane(
     pendingPreMove: MpMove? = null,
     forcedLabelVertices: Set<Vertex> = emptySet(),
     guideArrows: List<MpMove> = emptyList(),
+    // Dibuja los indicadores de jugador (color + Humano/IA + Nº de piezas) junto a cada base. El detalle
+    // en portrait lo apaga y los muestra como leyenda fuera del tablero (`MpSeatLegend`).
+    showBaseIndicators: Boolean = true,
 ) {
     Board25View(
         state = state,
@@ -57,5 +60,6 @@ fun Board25Pane(
         pendingPreMove = pendingPreMove,
         forcedLabelVertices = forcedLabelVertices,
         guideArrows = guideArrows,
+        showBaseIndicators = showBaseIndicators,
     )
 }

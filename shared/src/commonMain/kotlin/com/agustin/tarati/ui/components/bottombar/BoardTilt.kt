@@ -79,3 +79,56 @@ fun rememberBoardTilt(
 
     return remember { BoardTilt(boardTiltX, boardTiltY) }
 }
+
+/**
+ * Cabeceo inercial del tablero en las pantallas de **detalle/replay** al expandir/contraer los paneles
+ * de Información (arriba) y Movimientos (abajo). Un `Animatable` acumula los kicks y luego spring-vuelve
+ * a 0° (inercia), más un kick inicial de "aparición" al entrar. Solo usa `rotationX` (`rotationY` = 0).
+ * Compartido por el detalle single ([com.agustin.tarati.features.detail.CreateCardBoard]) y el MP
+ * ([com.agustin.tarati.features.game6.MpGameDetailScreen]).
+ *
+ * Se lee dentro de un `graphicsLayer { rotationX = tilt.rotationX; cameraDistance = 12f * density }`.
+ */
+@Composable
+fun rememberPanelTilt(
+    topPanelExpanded: Boolean,
+    bottomPanelExpanded: Boolean,
+): BoardTilt {
+    val panelTiltX = remember { Animatable(0f) }
+    val zeroY = remember { Animatable(0f) }
+    var topFirstRender by remember { mutableStateOf(true) }
+    var botFirstRender by remember { mutableStateOf(true) }
+
+    val returnSpec = spring<Float>(
+        dampingRatio = Spring.DampingRatioMediumBouncy,
+        stiffness = Spring.StiffnessLow,
+    )
+
+    // Al aparecer el tablero, "cae" levemente hacia adelante (mismo kick que un panel superior colapsando).
+    LaunchedEffect(Unit) {
+        panelTiltX.animateTo(8f, tween(durationMillis = 80))
+        panelTiltX.animateTo(0f, returnSpec)
+    }
+
+    // Panel superior: expandir → bascula hacia atrás (−10°); colapsar → rebote hacia adelante (+8°).
+    LaunchedEffect(topPanelExpanded) {
+        if (topFirstRender) {
+            topFirstRender = false; return@LaunchedEffect
+        }
+        val kick = if (topPanelExpanded) -10f else 8f
+        panelTiltX.animateTo(kick, tween(durationMillis = 80))
+        panelTiltX.animateTo(0f, returnSpec)
+    }
+
+    // Panel inferior: expandir → bascula hacia adelante (+10°); colapsar → rebote hacia atrás (−8°).
+    LaunchedEffect(bottomPanelExpanded) {
+        if (botFirstRender) {
+            botFirstRender = false; return@LaunchedEffect
+        }
+        val kick = if (bottomPanelExpanded) 10f else -8f
+        panelTiltX.animateTo(kick, tween(durationMillis = 80))
+        panelTiltX.animateTo(0f, returnSpec)
+    }
+
+    return remember { BoardTilt(panelTiltX, zeroY) }
+}
