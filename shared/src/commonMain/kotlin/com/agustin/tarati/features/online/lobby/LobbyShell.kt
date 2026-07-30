@@ -38,8 +38,7 @@ import org.jetbrains.compose.resources.StringResource
  * @property label   Recurso de texto de la etiqueta (se muestra localizado).
  * @property icon    Ícono de la pestaña.
  * @property enabled Si es `false`, la pestaña sigue siendo visible y clickeable pero muestra el
- *                   placeholder "próximamente" en lugar de [content]. Útil para paridad estructural
- *                   con otro lobby mientras la funcionalidad del tab aún no existe.
+ *                   placeholder "próximamente" en lugar de [content].
  * @property content Contenido de la pestaña cuando está seleccionada y habilitada.
  */
 data class LobbyTabSpec(

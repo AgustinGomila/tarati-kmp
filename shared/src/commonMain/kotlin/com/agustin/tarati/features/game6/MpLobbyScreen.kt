@@ -150,8 +150,8 @@ fun MpLobbyScreen(
     val myUserId = (authState as? AuthState.Authenticated)?.userInfo?.userId
     val scope = rememberCoroutineScope()
 
-    // Paridad con el lobby clásico: si no hay sesión, auto-login como invitado + auto-conexión del WS
-    // (antes MP exigía sesión previa y salía). El nombre preferido sale de settings si es válido.
+    // Paridad con el lobby clásico: si no hay sesión, auto-login como invitado + auto-conexión del WS.
+    // El nombre preferido sale de settings si es válido.
     var isAutoConnecting by remember {
         mutableStateOf(authState !is AuthState.Authenticated)
     }
@@ -350,7 +350,7 @@ fun MpLobbyScreen(
 /**
  * Contenido del tab "En Vivo" del lobby MP. Si el usuario ya está sentado en una mesa muestra su
  * detalle (asientos, iniciar, salir); si no, un único scroll con: crear mesa, mesas abiertas
- * (unirse) y partidas en curso (observar). Fusiona lo que antes eran los tabs "Mesas" y "En Vivo".
+ * (unirse) y partidas en curso (observar).
  */
 @Composable
 private fun MpLiveTab(

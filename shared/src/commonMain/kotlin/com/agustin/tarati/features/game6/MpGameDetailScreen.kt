@@ -102,9 +102,9 @@ private const val FADE_DURATION_MS = 250
 fun MpGameDetailScreen(
     gameId: String,
     onBack: () -> Unit,
-    // Recibido desde el call site (NavGraph/CompanionPane): la instancia de settings se crea una sola vez
-    // en el entrypoint de cada plataforma (Wasm/Desktop registran su propio VM como `viewModel`, no como
-    // definición root) y se propaga. Resolverlo con `koinInject()` acá rompía en web (`_root_` sin `ISettingsViewModel`).
+    // Recibido desde el call site (NavGraph/CompanionPane): cada plataforma provee su propia instancia de
+    // settings (Wasm/Desktop la registran como `viewModel`, no en el grafo root), por eso se propaga
+    // explícitamente en lugar de resolverse con `koinInject()`.
     settingsViewModel: ISettingsViewModel,
     viewModel: IMpGameDetailViewModel = koinInject(),
 ) {
@@ -179,9 +179,9 @@ private fun MpGameDetailBody(
 
     BoxWithConstraints(modifier = modifier) {
         val isLandscape = maxWidth > maxHeight
-        // Estados de los paneles izados (antes internos a cada card): habilitan el cabeceo del tablero
-        // al expandir/contraer (paridad con el detalle single). Movimientos arranca expandido en
-        // landscape y colapsado en portrait, como antes (`initialExpanded = isLandscape`).
+        // Estados de los paneles (Información/Movimientos): habilitan el cabeceo del tablero al
+        // expandir/contraer (paridad con el detalle single). Movimientos arranca expandido en landscape
+        // y colapsado en portrait.
         var isInfoExpanded by remember { mutableStateOf(false) }
         var isMovesExpanded by remember(isLandscape) { mutableStateOf(isLandscape) }
 
@@ -290,8 +290,8 @@ private fun MpDetailBoard(
     // Cabeceo inercial al expandir/contraer los paneles Información/Movimientos (portrait).
     topPanelExpanded: Boolean = false,
     bottomPanelExpanded: Boolean = false,
-    // Reubica las fichas de conteo por jugador fuera del tablero (leyenda en 2 filas debajo), útil en
-    // portrait donde los indicadores in-board quedan apretados. En landscape se dejan en el tablero.
+    // Reubica las fichas de conteo por jugador fuera del tablero (leyenda en 2 filas debajo) en portrait;
+    // en landscape se dejan en el tablero.
     externalSeatLegend: Boolean = false,
 ) {
     val canPrev = moveIndex > -1
@@ -377,9 +377,8 @@ private fun MpDetailBoard(
 /**
  * Leyenda de asientos **fuera del tablero** para el portrait del detalle: dos filas de chips (color +
  * Humano/IA + Nº de piezas en el tablero), con la distribución 6→3/3, 5→3/2, 4→2/2, 3→3/0, 2→2/0. Reusa
- * el mismo chip que los indicadores in-board ([SeatChip]); reemplaza a esos indicadores cuando el detalle
- * los suprime (`showBaseIndicators = false`), que en portrait quedan apretados sobre el tablero. Resalta
- * el asiento en turno y atenúa a los retirados.
+ * el mismo chip que los indicadores in-board ([SeatChip]) y se muestra cuando el detalle los suprime
+ * (`showBaseIndicators = false`). Resalta el asiento en turno y atenúa a los retirados.
  */
 @Composable
 private fun MpSeatLegend(
