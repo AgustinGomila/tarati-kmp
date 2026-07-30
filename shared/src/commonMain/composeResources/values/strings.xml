@@ -524,6 +524,7 @@
     <string name="mp_feed_empty">No recent games from players you follow.</string>
     <string name="mp_leaderboard_title">Multiplayer Ranking</string>
     <string name="profile_mp_section">Multiplayer</string>
+    <string name="profile_mp_history_section">Multiplayer games</string>
     <string name="profile_stat_shared_short">S</string>
     <string name="lobby_no_players_match_filters">No players match the current filters</string>
     <string name="lobby_online_users_section">Online now</string>

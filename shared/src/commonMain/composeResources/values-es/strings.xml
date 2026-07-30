@@ -534,6 +534,7 @@
     <string name="mp_feed_empty">Sin partidas recientes de jugadores que seguís.</string>
     <string name="mp_leaderboard_title">Clasificación multijugador</string>
     <string name="profile_mp_section">Multijugador</string>
+    <string name="profile_mp_history_section">Partidas multijugador</string>
     <string name="profile_stat_shared_short">C</string>
     <string name="lobby_no_players_match_filters">Sin jugadores con estos filtros</string>
     <string name="lobby_online_users_section">En línea</string>

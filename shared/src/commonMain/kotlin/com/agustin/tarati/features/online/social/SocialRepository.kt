@@ -8,6 +8,7 @@ import com.agustin.tarati.network.authPost
 import com.agustin.tarati.network.models.FollowStatusDto
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LeaderboardEntryDto
+import com.agustin.tarati.network.models.MpGameHistoryDto
 import com.agustin.tarati.network.models.PagedResponse
 import com.agustin.tarati.network.models.PublicProfileDto
 import com.agustin.tarati.network.models.ServerAchievementDto
@@ -20,6 +21,7 @@ import io.ktor.client.HttpClient
  * Consume:
  * - GET /api/users/:id             → [getUserProfile]
  * - GET /api/users/:id/games       → [getUserGames]
+ * - GET /api/users/:id/mp-games    → [getUserMpGames]
  * - GET /api/leaderboard/:tc       → [getLeaderboard]
  */
 class SocialRepository(
@@ -45,6 +47,17 @@ class SocialRepository(
         "timeControl" to timeControl,
         "result" to result,
         "rated" to rated,
+    )
+
+    suspend fun getUserMpGames(
+        token: String,
+        userId: String,
+        page: Int = 0,
+        limit: Int = 20,
+    ): Result<PagedResponse<MpGameHistoryDto>> = httpClient.authGet(
+        "$baseUrl/api/users/$userId/mp-games", token,
+        "page" to page,
+        "limit" to limit,
     )
 
     suspend fun getLeaderboard(

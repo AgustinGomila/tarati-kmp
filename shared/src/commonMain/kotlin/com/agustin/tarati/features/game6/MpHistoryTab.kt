@@ -126,15 +126,16 @@ internal fun mpResultDisplay(
 }
 
 @Composable
-private fun MpHistoryCard(
+internal fun MpHistoryCard(
     game: MpGameHistoryDto,
     myUserId: String?,
     onOpenGame: ((gameId: String) -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val (resultLabel, resultColor) = mpResultDisplay(game.players, game.result, myUserId)
 
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(if (onOpenGame != null) Modifier.clickable { onOpenGame(game.gameId) } else Modifier),
     ) {

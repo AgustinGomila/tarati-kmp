@@ -468,6 +468,9 @@ private fun CompanionPane(
                         }
                     }
                 },
+                onNavigateToMpGameDetails = { gameId ->
+                    controller.navigate(MpGameDetail(gameId))
+                },
             )
         }
 

@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.features.achievements.ProfileAchievementsSection
+import com.agustin.tarati.features.game6.MpHistoryCard
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.lobby.GameHistoryCard
 import com.agustin.tarati.features.online.lobby.GameHistoryFilterRow
@@ -66,6 +67,7 @@ import com.agustin.tarati.shared.generated.resources.no_games_found
 import com.agustin.tarati.shared.generated.resources.profile_games_played
 import com.agustin.tarati.shared.generated.resources.profile_history_section
 import com.agustin.tarati.shared.generated.resources.profile_member_since
+import com.agustin.tarati.shared.generated.resources.profile_mp_history_section
 import com.agustin.tarati.shared.generated.resources.profile_mp_section
 import com.agustin.tarati.shared.generated.resources.profile_peak_rating
 import com.agustin.tarati.shared.generated.resources.profile_ratings_section
@@ -98,6 +100,8 @@ fun PublicProfileScreen(
     userId: String,
     onBack: () -> Unit,
     onNavigateToGameDetails: ((gameId: String) -> Unit)? = null,
+    /** Abre el detalle/replay de una partida multijugador (Tarati Six) desde el historial MP. */
+    onNavigateToMpGameDetails: ((gameId: String) -> Unit)? = null,
     /**
      * Habilita el botón "Desafiar" (partida de 2 jugadores). El desafío directo solo tiene sentido en
      * modo single: desde el lobby multijugador se pasa `false` para no lanzar una partida 2-jugadores
@@ -154,6 +158,7 @@ fun PublicProfileScreen(
                     onToggleFollow = viewModel::toggleFollow,
                     onSendChallenge = { tc, rated -> viewModel.sendChallenge(tc, rated) },
                     onNavigateToGameDetails = onNavigateToGameDetails,
+                    onNavigateToMpGameDetails = onNavigateToMpGameDetails,
                     forceNonRated = isCurrentUserGuest || (profileState.profile ?: return@Scaffold).isGuest,
                     allowChallenge = allowChallenge,
                     viewModel = viewModel,
@@ -175,16 +180,19 @@ private fun ProfileContent(
     onToggleFollow: () -> Unit,
     onSendChallenge: (timeControl: String, rated: Boolean) -> Unit,
     onNavigateToGameDetails: ((gameId: String) -> Unit)? = null,
+    onNavigateToMpGameDetails: ((gameId: String) -> Unit)? = null,
     forceNonRated: Boolean = false,
     allowChallenge: Boolean = true,
     viewModel: IPublicProfileViewModel,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
+    val mpHistoryState by viewModel.mpHistoryState.collectAsState()
     var showChallengeDialog by remember { mutableStateOf(false) }
-    // Secciones colapsables de logros e historial (por defecto expandidas).
-    var achievementsExpanded by remember { mutableStateOf(true) }
-    var historyExpanded by remember { mutableStateOf(true) }
+    // Secciones colapsables de logros, historial e historial multijugador (por defecto colapsadas).
+    var achievementsExpanded by remember { mutableStateOf(false) }
+    var historyExpanded by remember { mutableStateOf(false) }
+    var mpHistoryExpanded by remember { mutableStateOf(false) }
 
     if (showChallengeDialog) {
         ChallengeDialog(
@@ -198,7 +206,13 @@ private fun ProfileContent(
         )
     }
 
-    InfiniteScrollEffect(listState) { viewModel.loadMoreHistory() }
+    // El historial clásico y el MP se apilan en el mismo LazyColumn; al acercarse al final se pide la
+    // página siguiente de cada sección expandida que ya tenga su primera página (evita saltear la
+    // página 0 si el efecto se dispara con la lista corta y colapsada).
+    InfiniteScrollEffect(listState) {
+        if (historyExpanded && historyState.games.isNotEmpty()) viewModel.loadMoreHistory()
+        if (mpHistoryExpanded && mpHistoryState.items.isNotEmpty()) viewModel.loadMoreMpHistory()
+    }
 
     LazyColumn(
         state = listState,
@@ -248,7 +262,10 @@ private fun ProfileContent(
                 stats = profile.stats,
                 timeControlFilter = historyState.filters.timeControl,
                 expanded = historyExpanded,
-                onToggle = { historyExpanded = !historyExpanded },
+                onToggle = {
+                    historyExpanded = !historyExpanded
+                    if (historyExpanded) viewModel.ensureHistoryLoaded()
+                },
             )
             AnimatedVisibility(visible = historyExpanded) {
                 GameHistoryFilterRow(
@@ -303,6 +320,68 @@ private fun ProfileContent(
                     )
                 }
                 loadingMoreIndicator(historyState.isLoadingMore)
+            }
+        }
+
+        // Partidas multijugador (Tarati Six) — sección colapsable, solo si el usuario jugó alguna.
+        if (profile.mpStats.games > 0) {
+            item {
+                Spacer(Modifier.height(8.dp))
+                ProfileMpHistoryHeader(
+                    stats = profile.mpStats,
+                    expanded = mpHistoryExpanded,
+                    onToggle = {
+                        mpHistoryExpanded = !mpHistoryExpanded
+                        if (mpHistoryExpanded) viewModel.ensureMpHistoryLoaded()
+                    },
+                )
+            }
+
+            if (mpHistoryExpanded) when {
+                mpHistoryState.isLoading && mpHistoryState.items.isEmpty() -> item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
+                }
+
+                mpHistoryState.error != null -> item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = localizedString(Res.string.error, mpHistoryState.error.orEmpty()),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                mpHistoryState.items.isEmpty() -> item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = localizedString(Res.string.no_games_found),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+
+                else -> {
+                    items(mpHistoryState.items, key = { "mp_${it.gameId}" }) { game ->
+                        MpHistoryCard(
+                            game = game,
+                            myUserId = profile.id,
+                            onOpenGame = onNavigateToMpGameDetails?.let { cb -> { cb(game.gameId) } },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        )
+                    }
+                    loadingMoreIndicator(mpHistoryState.isLoading && mpHistoryState.items.isNotEmpty())
+                }
             }
         }
     }
@@ -642,6 +721,66 @@ private fun ProfileHistoryHeader(
             Icon(
                 imageVector = TaratiIcons.ExpandMore,
                 contentDescription = localizedString(Res.string.profile_history_section),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .graphicsLayer { rotationZ = chevronRotation },
+            )
+        }
+    }
+}
+
+/**
+ * Encabezado colapsable de la sección de partidas multijugador (Tarati Six): título
+ * "Partidas multijugador" + resumen W/S/L (victorias / compartidas / derrotas; MP no tiene tablas)
+ * + chevron. Mismo patrón visual que [ProfileHistoryHeader].
+ */
+@Composable
+private fun ProfileMpHistoryHeader(
+    stats: MpStatsDto,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(200),
+        label = "mp_history_chevron",
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = localizedString(Res.string.profile_mp_history_section),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WdlPart(
+                "${stats.wins}${localizedString(Res.string.profile_stat_win_short)}",
+                PositiveGreen,
+            )
+            WdlSeparator()
+            WdlPart(
+                "${stats.shared}${localizedString(Res.string.profile_stat_shared_short)}",
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            WdlSeparator()
+            WdlPart(
+                "${stats.losses}${localizedString(Res.string.profile_stat_loss_short)}",
+                MaterialTheme.colorScheme.error,
+            )
+            Icon(
+                imageVector = TaratiIcons.ExpandMore,
+                contentDescription = localizedString(Res.string.profile_mp_history_section),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .padding(start = 4.dp)

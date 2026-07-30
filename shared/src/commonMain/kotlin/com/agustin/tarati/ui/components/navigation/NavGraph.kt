@@ -381,6 +381,9 @@ fun NavGraph(
                         }
                     }
                 },
+                onNavigateToMpGameDetails = { gameId ->
+                    navController.navigate(MpGameDetailDest.createRoute(gameId))
+                },
             )
         }
 

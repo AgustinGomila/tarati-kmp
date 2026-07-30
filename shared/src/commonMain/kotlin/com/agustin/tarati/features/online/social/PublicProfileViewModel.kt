@@ -3,6 +3,7 @@ package com.agustin.tarati.features.online.social
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.agustin.tarati.features.game6.MpHistoryUiState
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.features.online.game.IOnlineGameViewModel
@@ -39,6 +40,10 @@ class PublicProfileViewModel(
     }
     override val historyState: StateFlow<GameHistoryUiState> = historyLoader.state
 
+    /** Historial multijugador del perfil ([GET /api/users/:id/mp-games]). MP no tiene filtros. */
+    private val _mpHistoryState = MutableStateFlow(MpHistoryUiState())
+    override val mpHistoryState: StateFlow<MpHistoryUiState> = _mpHistoryState.asStateFlow()
+
     private val _followStatusState = MutableStateFlow(FollowStatusUiState())
     override val followStatusState: StateFlow<FollowStatusUiState> = _followStatusState.asStateFlow()
 
@@ -48,12 +53,27 @@ class PublicProfileViewModel(
     override val isOwnProfile: Boolean
         get() = authViewModel.currentUser?.userId == userId
 
+    // Guarda de carga perezosa del historial clásico: pide su primera página una sola vez, en su
+    // primer expand ([historyLoader.load] recarga en cada llamada, así que necesita el flag).
+    private var historyRequested = false
+
     init {
         loadProfile()
-        historyLoader.load()
+        // Logros son eager: el contador `X/N` del header debe ser correcto aun con la sección colapsada.
         loadAchievements()
         if (!isOwnProfile) loadFollowStatus()
     }
+
+    // ── Cargas perezosas de los historiales paginados (primer expand de cada sección) ──
+
+    override fun ensureHistoryLoaded() {
+        if (historyRequested) return
+        historyRequested = true
+        historyLoader.load()
+    }
+
+    // [loadMpHistory] ya es idempotente por su guarda interna (isLoading/loaded).
+    override fun ensureMpHistoryLoaded(): Unit = loadMpHistory()
 
     private fun loadProfile() {
         viewModelScope.launch {
@@ -75,6 +95,41 @@ class PublicProfileViewModel(
     // ── History (delegado en el loader compartido) ────────────────────────────
 
     override fun loadMoreHistory(): Unit = historyLoader.loadMore()
+
+    // ── Historial multijugador (paginado propio; MP no comparte el loader clásico) ──
+
+    private fun loadMpHistory() {
+        val st = _mpHistoryState.value
+        if (st.isLoading || st.loaded) return
+        viewModelScope.launch { fetchMpHistoryPage(0, replace = true) }
+    }
+
+    override fun loadMoreMpHistory() {
+        val st = _mpHistoryState.value
+        if (st.isLoading || st.endReached) return
+        viewModelScope.launch { fetchMpHistoryPage(st.page + 1, replace = false) }
+    }
+
+    private suspend fun fetchMpHistoryPage(page: Int, replace: Boolean) {
+        val token = authViewModel.validToken() ?: return
+        _mpHistoryState.update { it.copy(isLoading = true, error = null) }
+        repository.getUserMpGames(token, userId, page)
+            .onSuccess { resp ->
+                _mpHistoryState.update { cur ->
+                    val merged = if (replace) resp.items else cur.items + resp.items
+                    cur.copy(
+                        items = merged,
+                        isLoading = false,
+                        page = resp.page,
+                        endReached = merged.size.toLong() >= resp.total,
+                        loaded = true,
+                    )
+                }
+            }
+            .onFailure { e ->
+                _mpHistoryState.update { it.copy(isLoading = false, error = e.message, loaded = true) }
+            }
+    }
 
     override fun setTimeControlFilter(tc: String?): Unit = historyLoader.setTimeControlFilter(tc)
 
