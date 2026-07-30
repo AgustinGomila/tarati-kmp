@@ -76,7 +76,6 @@ import com.agustin.tarati.ui.components.game.draw.pieces.CobColorScheme
 import com.agustin.tarati.ui.components.game.draw.pieces.CobShape
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationType
-import com.agustin.tarati.ui.components.game.draw.pieces.resolveType
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceColor
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceType
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypeManager
@@ -91,6 +90,7 @@ import com.agustin.tarati.ui.components.game.draw.pieces.drawMorphConversionFrom
 import com.agustin.tarati.ui.components.game.draw.pieces.drawOrganicCob
 import com.agustin.tarati.ui.components.game.draw.pieces.drawPolygonSelection
 import com.agustin.tarati.ui.components.game.draw.pieces.drawSelection
+import com.agustin.tarati.ui.components.game.draw.pieces.resolveType
 import com.agustin.tarati.ui.components.game.draw.pieces.toShapeColors
 import com.agustin.tarati.ui.components.game.highlights.HighlightAction
 import com.agustin.tarati.ui.theme.BoardColors
@@ -1030,13 +1030,13 @@ private fun DrawScope.drawBoard25RegionFills(
             drawBorders
         )
     }
-    // Bandas C→D → color alternativo de las domésticas.
+    // Bandas C→D → color principal de las domésticas.
     Board25.bandRegions.forEach {
-        fillRegion(it, screen, colors.boardPatternColor2, border, drawBorders)
-    }
-    // Cuadrados de base → color principal (alterna con la banda adyacente).
-    Board25.baseSquareRegions.forEach {
         fillRegion(it, screen, colors.boardPatternColor1, border, drawBorders)
+    }
+    // Cuadrados de base → color alternativo (alterna con la banda adyacente).
+    Board25.baseSquareRegions.forEach {
+        fillRegion(it, screen, colors.boardPatternColor2, border, drawBorders)
     }
     Board25.connectorSideRegions.forEach {
         fillRegion(it, screen, colors.boardPatternColor3, border, drawBorders)
