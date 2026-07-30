@@ -323,9 +323,17 @@ fun Board25View(
     // detectar la jugada, evitando el frame en que la pieza aparecía ya en destino antes de animar.
     // El deslizamiento y el morph de conversión NO dependen de [animate] (paridad con single, donde
     // "animar efectos" sólo apaga los efectos decorativos, no la animación del movimiento).
-    val shouldAnimateMove = lastMove != null && moveCount > 0 && !suppressMoveAnimation
+    // Guard de primera composición: al (re)montar el tablero (p. ej. al volver de single↔multi) la última
+    // jugada ya está en su posición final y NO se re-anima; solo se anima una jugada que llega como cambio
+    // de `moveCount` con el tablero ya montado.
+    var mounted by remember { mutableStateOf(false) }
+    val shouldAnimateMove = mounted && lastMove != null && moveCount > 0 && !suppressMoveAnimation
     val moveProgress = remember(moveCount) { Animatable(if (shouldAnimateMove) 0f else 1f) }
     LaunchedEffect(moveCount) {
+        if (!mounted) {
+            mounted = true
+            return@LaunchedEffect
+        }
         if (shouldAnimateMove) moveProgress.animateTo(1f, animationSpec = tween(ANIMATION_MS))
     }
 

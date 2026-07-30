@@ -203,12 +203,16 @@ fun MpOnlineGameScreen(
     val freshMove = isFreshMove(state.moveCount)
 
     // Sonido por jugada (paridad con local): captura si la última jugada convirtió, si no movimiento.
-    // Solo para jugadas nuevas; al re-entrar no re-suena (la marca vive en el cliente `single`).
+    // Solo suena una jugada nueva llegada con la pantalla ya montada; en la primera composición (montaje
+    // o re-entrada tras cambiar de modo) la jugada actual se marca como presentada sin re-sonar.
+    var soundMounted by remember { mutableStateOf(false) }
     LaunchedEffect(state.moveCount) {
-        if (state.moveCount > 0 && isFreshMove(state.moveCount)) {
+        val fresh = state.moveCount > 0 && isFreshMove(state.moveCount)
+        if (fresh) onMovePresented(state.moveCount)
+        if (soundMounted && fresh) {
             if (game.converted.isNotEmpty()) soundService.playCaptureSound() else soundService.playMoveSound()
-            onMovePresented(state.moveCount)
         }
+        soundMounted = true
     }
 
     // Popup de fin: al pasar a terminado, sonido + diálogo (tras dejar completar la animación). Solo si
