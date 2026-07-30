@@ -310,13 +310,16 @@ fun MpMoveHistorySection(
     history: List<PlayerMove>,
     onOnlineLobby: () -> Unit,
     nameByColor: Map<PlayerColor, String> = mpPlayerNames(),
-    // Navegación del historial (undo/redo) — solo el juego local la provee; online pasa null → no se
-    // muestran controles ni se resalta/navega el historial (el servidor es la autoridad).
+    // Navegación del historial (undo/redo). El juego local la provee siempre; la online la provee
+    // pero **grisada** ([navigationEnabled] = false) mientras corre — se activa al terminar para
+    // navegar el desarrollo (el servidor es la autoridad mientras se juega).
     moveIndex: Int = -1,
     onUndo: (() -> Unit)? = null,
     onRedo: (() -> Unit)? = null,
     onMoveToIndex: ((Int) -> Unit)? = null,
     onMoveToCurrent: (() -> Unit)? = null,
+    /** `false` grisa undo/redo/saltar e inhabilita los clicks de la lista (online en curso). */
+    navigationEnabled: Boolean = true,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MpStatusRow(state, nameByColor)
@@ -340,11 +343,11 @@ fun MpMoveHistorySection(
             }
         }
 
-        // Undo/Redo (solo local) — mismos botones que single (NavigableHistoryList).
+        // Undo/Redo — mismos botones que single (NavigableHistoryList). Grisados si !navigationEnabled.
         if (onUndo != null && onRedo != null) {
             MpUndoRedoRow(
-                canUndo = moveIndex >= 0,
-                canRedo = moveIndex < history.size - 1,
+                canUndo = navigationEnabled && moveIndex >= 0,
+                canRedo = navigationEnabled && moveIndex < history.size - 1,
                 onUndo = onUndo,
                 onRedo = onRedo,
             )
@@ -357,12 +360,13 @@ fun MpMoveHistorySection(
                 seats = state.seats,
                 history = history,
                 currentPly = moveIndex,
-                onCellClick = onMoveToIndex,
+                // Sin navegación (online en curso) los clicks de la lista quedan inertes.
+                onCellClick = if (navigationEnabled) onMoveToIndex else null,
             )
         }
 
-        // Salto a la posición actual (solo local, y solo si se está revisando el pasado).
-        if (onMoveToCurrent != null && moveIndex < history.size - 1) {
+        // Salto a la posición actual (solo si se navega y se está revisando el pasado).
+        if (navigationEnabled && onMoveToCurrent != null && moveIndex < history.size - 1) {
             Button(
                 onClick = onMoveToCurrent,
                 modifier = Modifier.fillMaxWidth(),

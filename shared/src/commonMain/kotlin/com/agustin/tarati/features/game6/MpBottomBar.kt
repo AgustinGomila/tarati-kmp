@@ -65,12 +65,14 @@ fun MpBottomBar(
     onMoveToCurrent: () -> Unit,
     onMoveToIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** `false` grisa undo/redo/saltar (online en curso); activo offline u online-terminada. */
+    navigationEnabled: Boolean = true,
     // Notifican al host el estado del FAB / panel de historial → alimentan el cabeceo del tablero.
     onFabExpandedChange: (Boolean) -> Unit = {},
     onHistoryOpenChange: (Boolean) -> Unit = {},
 ) {
-    val canUndo = moveIndex >= 0
-    val canRedo = moveIndex < moves.size - 1
+    val canUndo = navigationEnabled && moveIndex >= 0
+    val canRedo = navigationEnabled && moveIndex < moves.size - 1
 
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     var isHistoryOpen by rememberSaveable { mutableStateOf(false) }
@@ -137,10 +139,9 @@ fun MpBottomBar(
                         onMoveToCurrent()
                         isHistoryOpen = false
                     },
-                    onMoveToIndex = { idx ->
-                        onMoveToIndex(idx)
-                        isHistoryOpen = false
-                    },
+                    onMoveToIndex = if (navigationEnabled) {
+                        { idx -> onMoveToIndex(idx); isHistoryOpen = false }
+                    } else null,
                 )
             }
 
@@ -178,7 +179,12 @@ fun MpBottomBar(
     }
 }
 
-/** Tarjeta flotante con la grilla de movimientos MP + acceso rápido a la posición actual. */
+/**
+ * Tarjeta flotante con la grilla de movimientos MP + acceso rápido a la posición actual.
+ *
+ * [onMoveToIndex] `null` la vuelve **read-only** (celdas no clickeables): úsalo en la partida online,
+ * donde el servidor es la autoridad del estado en vivo y la lista es solo para consulta.
+ */
 @Composable
 private fun MpMoveHistoryPanel(
     modifier: Modifier,
@@ -187,7 +193,7 @@ private fun MpMoveHistoryPanel(
     moveIndex: Int,
     canJumpToCurrent: Boolean,
     onMoveToCurrent: () -> Unit,
-    onMoveToIndex: (Int) -> Unit,
+    onMoveToIndex: ((Int) -> Unit)?,
 ) {
     Surface(
         modifier = modifier,
@@ -252,3 +258,4 @@ private fun MpMoveHistoryPanel(
         }
     }
 }
+

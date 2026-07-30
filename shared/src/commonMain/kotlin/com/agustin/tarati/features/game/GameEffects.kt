@@ -259,6 +259,8 @@ fun MainContent(
     spectatingState: SpectatingState? = null,
     onStopSpectating: () -> Unit = {},
     showTurnIndicator: Boolean = true,
+    /** `false` grisa undo/redo/saltar del FAB (online en curso / espectador); ver [BottomGameBar]. */
+    navigationEnabled: Boolean = true,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -604,6 +606,7 @@ fun MainContent(
                     onMoveClick = onMoveToIndex,
                     modifier = Modifier.fillMaxSize(),
                     isLandscape = isLandscape,
+                    navigationEnabled = navigationEnabled,
                     onHistoryOpenChange = { isHistoryPanelOpen = it },
                     onFabExpandedChange = { isFabExpanded = it },
                     onlineContent = onlineContent?.let { { it() } },

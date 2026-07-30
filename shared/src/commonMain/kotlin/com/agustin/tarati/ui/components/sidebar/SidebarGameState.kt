@@ -25,4 +25,10 @@ data class SidebarGameState(
      * y contextos donde el motor no está disponible.
      */
     val positionHistory: Map<String, Int> = emptyMap(),
+    /**
+     * Habilita la navegación por historial (undo/redo/saltar). `false` mientras corre una partida
+     * online o una sesión de espectador → los controles se muestran **grisados** (paridad cosmética).
+     * Se reactiva offline o cuando la partida online **termina**, para navegar su desarrollo.
+     */
+    val navigationEnabled: Boolean = true,
 )

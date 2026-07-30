@@ -110,11 +110,13 @@ fun BottomGameBar(
     onFabExpandedChange: (Boolean) -> Unit = {},
     onMoveClick: ((moveIndex: Int) -> Unit)? = null,
     initialHistoryExpanded: Boolean = false,
+    /** `false` grisa undo/redo/saltar (online en curso / espectador); activo offline o online-terminada. */
+    navigationEnabled: Boolean = true,
     onlineContent: @Composable (() -> Unit)? = null,
 ) {
     val moves = history.getMoves()
-    val canUndo = moveIndex >= 0
-    val canRedo = moveIndex < moves.size - 1
+    val canUndo = navigationEnabled && moveIndex >= 0
+    val canRedo = navigationEnabled && moveIndex < moves.size - 1
 
     // initialHistoryExpanded permite a los previews de Play Store mostrar el panel
     // abierto directamente sin afectar el comportamiento de producción (default false).
@@ -195,7 +197,7 @@ fun BottomGameBar(
                         onMoveToCurrent()
                         isHistoryOpen = false
                     },
-                    onMoveClick = if (onMoveClick != null) {
+                    onMoveClick = if (navigationEnabled && onMoveClick != null) {
                         { idx -> onMoveClick(idx); isHistoryOpen = false }
                     } else null,
                 )

@@ -645,6 +645,9 @@ fun GameScreen(
                 onRedo = undoRedo.handleRedo,
                 onMoveToCurrent = undoRedo.handleMoveToCurrent,
                 onMoveToIndex = undoRedo.handleMoveToIndex,
+                // Undo/redo grisados mientras corre la online o se especta; activos offline o al
+                // terminar la online (para navegar su desarrollo). Mismo criterio que el sidebar.
+                navigationEnabled = !isOnlineGame && spectatingState == null,
                 // ── Online components ─────────────────────────────────────────
                 onlineContent = if (isOnlineGame || spectatingState != null) ({
                     OnlineGameBar(

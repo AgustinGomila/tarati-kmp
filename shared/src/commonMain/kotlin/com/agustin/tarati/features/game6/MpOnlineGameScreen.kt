@@ -1,8 +1,10 @@
 package com.agustin.tarati.features.game6
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,9 +27,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
+import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
+import com.agustin.tarati.core.domain.game6.play.PlayerMove
+import com.agustin.tarati.core.domain.game6.rules.MpMatch
 import com.agustin.tarati.core.domain.game6.rules.MpPreMove
 import com.agustin.tarati.core.domain.game6.rules.MpRules
+import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.core.domain.game6.rules.MpTransforms
 import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.network.models.MpOnlineGame
@@ -262,6 +268,37 @@ fun MpOnlineGameScreen(
         if (viewRotation == 0) game.history else game.history.map { MpTransforms.rotate(it, viewRotation) }
     }
 
+    // ── Navegación por historial (undo/redo), convergente con single ──────────────────────────────
+    // Mientras la partida corre, undo/redo van **grisados** (el servidor es la autoridad). Al terminar
+    // se habilitan para **navegar el desarrollo**: se reconstruyen los estados canónicos desde
+    // `game.history` (mismo mecanismo que el visor de replay) y el tablero muestra la posición del
+    // índice. Espectador incluido (puede repasar una partida observada ya terminada).
+    val navigationEnabled = state.isGameOver
+    val snapshots = remember(game.gameId, game.players.size, game.history.size) {
+        buildOnlineSnapshots(game.players.size, game.history)
+    }
+    val lastPly = snapshots.size - 2
+    var reviewIndex by remember(game.gameId) { mutableStateOf(lastPly) }
+    // Mientras se juega, el cursor sigue la punta; al terminar arranca en la posición final.
+    LaunchedEffect(navigationEnabled, lastPly) {
+        reviewIndex = if (!navigationEnabled) lastPly else reviewIndex.coerceIn(-1, lastPly)
+    }
+
+    // Posición canónica a mostrar: en vivo o en la punta = estado del servidor (incluye retiros no
+    // serializados); en una posición pasada = snapshot reconstruido. Rotada al marco de display.
+    val boardCanonical = when {
+        !navigationEnabled -> game.state
+        reviewIndex >= lastPly -> game.state
+        else -> snapshots.getOrElse(reviewIndex + 1) { game.state }
+    }
+    val boardState = remember(boardCanonical, viewRotation) { MpTransforms.rotate(boardCanonical, viewRotation) }
+
+    // Handlers de navegación (solo activos tras el fin; operan sobre el índice de ply).
+    val onReviewUndo = { reviewIndex = (reviewIndex - 1).coerceAtLeast(-1) }
+    val onReviewRedo = { reviewIndex = (reviewIndex + 1).coerceAtMost(lastPly) }
+    val onReviewToCurrent = { reviewIndex = lastPly }
+    val onReviewToIndex = { idx: Int -> reviewIndex = idx.coerceIn(-1, lastPly) }
+
     // Countdown del turno (solo si hay timer y el turno es de un humano; los bots no tienen timer).
     val currentIsBot = game.players.firstOrNull { it.color == state.currentSeat.color }?.isBot ?: false
     val showCountdown = game.turnTimeoutMs > 0 && !state.isGameOver && !currentIsBot && !spectating
@@ -300,10 +337,17 @@ fun MpOnlineGameScreen(
                 moveHistory = {
                     MpMoveHistorySection(
                         modifier = Modifier.weight(1f),
-                        state = state,
+                        state = boardState,
                         history = displayHistory,
                         onOnlineLobby = onNavigateToOnline,
                         nameByColor = nameByColor,
+                        // Undo/redo visibles (paridad con single): grisados en juego, activos al terminar.
+                        moveIndex = reviewIndex,
+                        onUndo = onReviewUndo,
+                        onRedo = onReviewRedo,
+                        onMoveToIndex = onReviewToIndex,
+                        onMoveToCurrent = onReviewToCurrent,
+                        navigationEnabled = navigationEnabled,
                     )
                 },
                 footer = {
@@ -314,23 +358,41 @@ fun MpOnlineGameScreen(
             )
         },
         board = { boardModifier ->
-            Board25Pane(
-                state = state,
-                seatIsAI = seatIsAI,
-                selection = selection,
-                legalTargets = legalTargets,
-                threatened = threatened,
-                lastMove = lastMove,
-                converted = convertedMap,
-                boardVisual = boardVisual,
-                onVertexTap = onVertexTap,
-                // Al re-entrar (cambio de modo) el último movimiento ya fue presentado → sin re-animar.
-                suppressMoveAnimation = !freshMove,
-                preMoveFrom = preMoveFrom,
-                preMoveTargets = preMoveTargets,
-                pendingPreMove = pendingPreMove,
-                modifier = boardModifier.padding(12.dp),
-            )
+            Box(modifier = boardModifier) {
+                // Reviso el pasado (partida terminada, cursor antes de la punta) → snap sin animación,
+                // selección/overlays inactivos (la partida ya terminó).
+                val reviewing = navigationEnabled && reviewIndex < lastPly
+                Board25Pane(
+                    state = boardState,
+                    seatIsAI = seatIsAI,
+                    selection = selection,
+                    legalTargets = legalTargets,
+                    threatened = threatened,
+                    lastMove = if (reviewing) null else lastMove,
+                    converted = if (reviewing) emptyMap() else convertedMap,
+                    boardVisual = boardVisual,
+                    onVertexTap = onVertexTap,
+                    // Al re-entrar (cambio de modo) o al navegar el historial → sin animación (snap).
+                    suppressMoveAnimation = reviewing || !freshMove,
+                    preMoveFrom = preMoveFrom,
+                    preMoveTargets = preMoveTargets,
+                    pendingPreMove = pendingPreMove,
+                    modifier = Modifier.fillMaxSize().padding(12.dp),
+                )
+                // FAB de undo/redo + lista, superpuesto al tablero (paridad con el FAB local y con
+                // single online): grisado en juego, activo al terminar para navegar el desarrollo. En el
+                // mismo marco de display que el tablero (`displayHistory` + `boardState.seats` rotados).
+                MpBottomBar(
+                    moves = displayHistory,
+                    seats = boardState.seats,
+                    moveIndex = reviewIndex,
+                    onUndo = onReviewUndo,
+                    onRedo = onReviewRedo,
+                    onMoveToCurrent = onReviewToCurrent,
+                    onMoveToIndex = onReviewToIndex,
+                    navigationEnabled = navigationEnabled,
+                )
+            }
         },
     )
 }
@@ -375,4 +437,22 @@ private fun MpOnlineControls(countdownSec: Int?, spectating: Boolean, onLeave: (
             )
         }
     }
+}
+
+/**
+ * Reconstruye los estados canónicos de la partida jugada a jugada, para navegar su desarrollo tras el
+ * fin (undo/redo). `snapshots[0]` = posición inicial; `snapshots[k+1]` = tras la jugada `k`. Mismo
+ * mecanismo determinista que el visor de replay ([MpGameDetailViewModel]): [MpSetup.initialState] +
+ * reaplicar cada jugada con [MpMatch]. Los retiros por timeout/desconexión no viajan en el historial,
+ * así que la posición final "en vivo" (`game.state`) se prefiere sobre el último snapshot.
+ */
+private fun buildOnlineSnapshots(playerCount: Int, history: List<PlayerMove>): List<MpGameState> {
+    val initial = MpSetup.initialState(playerCount)
+    val match = MpMatch(initial)
+    val states = ArrayList<MpGameState>(history.size + 1).apply { add(initial) }
+    for (pm in history) {
+        if (match.state.isGameOver) break
+        states += match.applyMove(pm.move)
+    }
+    return states
 }

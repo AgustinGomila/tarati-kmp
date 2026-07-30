@@ -184,6 +184,11 @@ fun SidebarContent(
         onNavigateToAchievements = onNavigateToAchievements,
     )
 
+    // Navegación por historial deshabilitada mientras corre una online (en curso) o se especta;
+    // habilitada offline o cuando la online termina (para navegar su desarrollo).
+    val navigationEnabled = (onlineGame == null || onlineGame.status != OnlineGameStatus.InProgress) &&
+            spectatingState == null
+
     val sidebarGameState = SidebarGameState(
         gameManagerState = gameManagerState,
         playerSide = playerSide,
@@ -195,6 +200,7 @@ fun SidebarContent(
         blackIsAI = blackIsAI,
         isEditing = isEditing,
         positionHistory = aiEngine.positionHistory,
+        navigationEnabled = navigationEnabled,
     )
 
     Sidebar(
@@ -1000,7 +1006,8 @@ private fun MoveHistorySection(
         NavigableHistoryList(
             modifier, isLandscape, currentMoveIndex,
             gameManagerState.history, onUndo, onRedo, onMoveToCurrent,
-            onMoveToIndex = onMoveToIndex
+            onMoveToIndex = onMoveToIndex,
+            navigationEnabled = sidebarState.navigationEnabled,
         )
     }
 }
@@ -1098,6 +1105,8 @@ private fun NavigableHistoryList(
     history: StableHistoryList, onUndo: () -> Unit, onRedo: () -> Unit,
     onMoveToCurrent: () -> Unit,
     onMoveToIndex: ((Int) -> Unit)? = null,
+    /** `false` grisa undo/redo/saltar (online en curso / espectador); ver [SidebarGameState]. */
+    navigationEnabled: Boolean = true,
 ) {
     val moves = history.getMoves()
     val density = LocalDensity.current
@@ -1106,14 +1115,14 @@ private fun NavigableHistoryList(
 
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(
-            onUndo, enabled = currentMoveIndex >= 0,
+            onUndo, enabled = navigationEnabled && currentMoveIndex >= 0,
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
             Icon(TaratiIcons.ArrowBack, null, Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp)); LocalizedText(Res.string.undo)
         }
         OutlinedButton(
-            onRedo, enabled = currentMoveIndex < moves.size - 1,
+            onRedo, enabled = navigationEnabled && currentMoveIndex < moves.size - 1,
             modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)
         ) {
             LocalizedText(Res.string.redo); Spacer(Modifier.width(4.dp))
@@ -1131,7 +1140,8 @@ private fun NavigableHistoryList(
             MoveHistoryList(
                 history = history,
                 moveIndex = currentMoveIndex,
-                onMoveClick = onMoveToIndex,
+                // Sin navegación (online en curso) los clicks de la lista quedan inertes.
+                onMoveClick = if (navigationEnabled) onMoveToIndex else null,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(8.dp),
@@ -1139,7 +1149,7 @@ private fun NavigableHistoryList(
         }
     }
 
-    if (currentMoveIndex != moves.size - 1)
+    if (navigationEnabled && currentMoveIndex != moves.size - 1)
         Button(onMoveToCurrent, Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp)) {
             LocalizedText(Res.string.jump_to_current_position)
         }
