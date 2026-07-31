@@ -8,8 +8,10 @@ import com.agustin.tarati.network.models.MpFeedGameDto
 import com.agustin.tarati.network.models.MpGameHistoryDto
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpOnlineGame
+import com.agustin.tarati.network.models.MpStartPolicy
 import com.agustin.tarati.network.models.MpTableDto
 import com.agustin.tarati.network.models.PagedResponse
+import com.agustin.tarati.network.protocol.MpServerMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -104,6 +106,12 @@ class MpLobbyViewModel(
 
     /** Motivo por el que se cerró la mesa actual (`host_left`, …). */
     val tableClosed: SharedFlow<String> = client.tableClosed
+
+    /** Invitaciones de mesa recibidas (dirigidas): la UI muestra la notificación aceptar/rechazar. */
+    val tableInvites: SharedFlow<MpServerMessage.TableInviteReceived> = client.tableInvites
+
+    /** Desenlace de una invitación enviada (para el host): `"declined"` / `"expired:<reason>"`. */
+    val inviteResolved: SharedFlow<String> = client.inviteResolved
 
     private val _history = MutableStateFlow(MpHistoryUiState())
 
@@ -238,12 +246,26 @@ class MpLobbyViewModel(
 
     // ── Acciones (delegan en el cliente; toleran fallo de envío si no hay conexión) ──
 
-    fun createTable(playerCount: Int): Unit = action { client.createTable(playerCount) }
+    fun createTable(playerCount: Int, startPolicy: MpStartPolicy = MpStartPolicy.HOST_MANUAL): Unit =
+        action { client.createTable(playerCount, startPolicy) }
+
     fun joinTable(tableId: String): Unit = action { client.joinTable(tableId) }
     fun leaveTable(): Unit = action { client.leaveTable() }
     fun addBot(seatIndex: Int): Unit = action { client.addBot(seatIndex) }
     fun removeBot(seatIndex: Int): Unit = action { client.removeBot(seatIndex) }
     fun startTable(): Unit = action { client.startTable() }
+
+    /** (Mesa VOTE) Marca/desmarca "listo" mi asiento. */
+    fun setReady(ready: Boolean): Unit = action { client.setReady(ready) }
+
+    /** (Host) Invita a [userId] a un asiento libre de la mesa actual. */
+    fun inviteToTable(userId: String): Unit = action { client.inviteToTable(userId) }
+
+    /** Responde a una invitación de mesa recibida. */
+    fun respondToInvite(inviteId: String, accept: Boolean): Unit = action { client.respondToInvite(inviteId, accept) }
+
+    /** (Host) Cancela una invitación de mesa que había enviado. */
+    fun cancelInvite(inviteId: String): Unit = action { client.cancelInvite(inviteId) }
 
     /** Envía una jugada en la partida online en curso (vértices por nombre). */
     fun makeMove(from: String, to: String): Unit = action { client.makeMove(from, to) }

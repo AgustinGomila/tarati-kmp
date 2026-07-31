@@ -25,22 +25,43 @@ enum class MpTableStatus {
     STARTING,
 }
 
-/** Un asiento de la mesa. Ocupante humano ([occupantId] no nulo) o bot ([isBot]) o vacío. */
+/**
+ * Política de arranque de una mesa (elegida al crearla).
+ *
+ * - [HOST_MANUAL]: el host inicia la partida cuando quiere (≥2 ocupados). Comportamiento clásico.
+ * - [VOTE]: los ocupantes humanos marcan "listo"; la partida arranca sola cuando **todos** están
+ *   listos (con ≥2 ocupados). El host conserva el inicio manual como escape ante un ausente.
+ */
+@Serializable
+enum class MpStartPolicy {
+    HOST_MANUAL,
+    VOTE,
+}
+
+/**
+ * Un asiento de la mesa. Ocupante humano ([occupantId] no nulo) o bot ([isBot]) o vacío.
+ *
+ * @property ready en mesas [MpStartPolicy.VOTE], si el ocupante humano marcó "listo". Los bots y
+ *   los asientos vacíos no participan del quórum de arranque.
+ */
 @Serializable
 data class MpSeatDto(
     val index: Int,
     val occupantId: String? = null,
     val occupantName: String? = null,
     val isBot: Boolean = false,
+    val ready: Boolean = false,
 )
 
 /**
  * Una mesa del lobby multijugador.
  *
  * @property id identificador único de la mesa.
- * @property hostId usuario que la creó y controla (agrega bots / inicia).
+ * @property hostId usuario que la controla (agrega bots / invita / inicia). Puede **migrar** a otro
+ *   ocupante si el host original abandona (los controles de host se derivan de este campo, no del índice).
  * @property playerCount cantidad de asientos configurada (2–6).
  * @property status ver [MpTableStatus].
+ * @property startPolicy ver [MpStartPolicy].
  * @property seats asientos en orden; `seats.size == playerCount`.
  */
 @Serializable
@@ -50,6 +71,7 @@ data class MpTableDto(
     val playerCount: Int,
     val status: MpTableStatus,
     val seats: List<MpSeatDto>,
+    val startPolicy: MpStartPolicy = MpStartPolicy.HOST_MANUAL,
 )
 
 /**

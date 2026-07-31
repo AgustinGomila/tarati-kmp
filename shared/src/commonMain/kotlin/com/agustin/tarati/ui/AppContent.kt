@@ -55,6 +55,7 @@ import com.agustin.tarati.features.game6.LocalGameModeController
 import com.agustin.tarati.features.game6.MpGameDetailScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
+import com.agustin.tarati.features.game6.MpLobbyViewModel
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel
 import com.agustin.tarati.features.library.IGamesLibraryViewModel
@@ -88,6 +89,10 @@ import com.agustin.tarati.services.notifications.UIMessageBus
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.accept
 import com.agustin.tarati.shared.generated.resources.cancel
+import com.agustin.tarati.shared.generated.resources.game6_invite_body
+import com.agustin.tarati.shared.generated.resources.game6_invite_declined
+import com.agustin.tarati.shared.generated.resources.game6_invite_expired
+import com.agustin.tarati.shared.generated.resources.game6_invite_title
 import com.agustin.tarati.shared.generated.resources.social_challenge_declined
 import com.agustin.tarati.shared.generated.resources.social_challenge_expired
 import com.agustin.tarati.shared.generated.resources.social_challenge_from
@@ -271,6 +276,7 @@ fun AppContent(
                         AlertHost()
                         if (FeatureFlags.ONLINE_ENABLED) ChallengeNotificationEffect()
                         if (FeatureFlags.ONLINE_ENABLED) TournamentNotificationEffect()
+                        if (FeatureFlags.ONLINE_ENABLED) MpTableInviteNotificationEffect()
                         if (showLoginModal) {
                             LoginSheet(
                                 onLoginSuccess = {
@@ -676,6 +682,67 @@ private fun TournamentNotificationEffect(
                 is TournamentEvent.StandingsUpdated -> Unit
                 is TournamentEvent.Cancelled -> bus.toast(UIMessage.Toast(tournamentCancelledMsg))
             }
+        }
+    }
+}
+
+/**
+ * Collector global de invitaciones a mesas multijugador (dirigidas).
+ *
+ * Corre en la raíz de la composición para que la invitación sea visible desde cualquier pantalla
+ * (espejo de [ChallengeNotificationEffect] pero para el lobby de mesas MP). Inyecta el
+ * [MpLobbyViewModel] singleton, así comparte el flujo con la pantalla del lobby.
+ */
+@Composable
+private fun MpTableInviteNotificationEffect(
+    mpLobbyViewModel: MpLobbyViewModel = koinInject(),
+    bus: UIMessageBus = koinInject(),
+) {
+    val scope = rememberCoroutineScope()
+    val bodyTemplate = localizedString(Res.string.game6_invite_body)
+    val declinedMsg = localizedString(Res.string.game6_invite_declined)
+    val expiredMsg = localizedString(Res.string.game6_invite_expired)
+
+    LaunchedEffect(Unit) {
+        mpLobbyViewModel.tableInvites.collect { invite ->
+            bus.alert { dismiss ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(16.dp),
+                ) {
+                    Text(
+                        text = localizedString(Res.string.game6_invite_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = bodyTemplate
+                            .replace($$"%1$s", invite.inviterName)
+                            .replace($$"%2$d", "${invite.playerCount}"),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            scope.launch { mpLobbyViewModel.respondToInvite(invite.inviteId, true) }
+                            dismiss()
+                        }) {
+                            Text(localizedString(Res.string.accept))
+                        }
+                        TextButton(onClick = {
+                            scope.launch { mpLobbyViewModel.respondToInvite(invite.inviteId, false) }
+                            dismiss()
+                        }) {
+                            Text(localizedString(Res.string.cancel))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        mpLobbyViewModel.inviteResolved.collect { outcome ->
+            val msg = if (outcome == "declined") declinedMsg else expiredMsg
+            bus.toast(UIMessage.Toast(msg))
         }
     }
 }

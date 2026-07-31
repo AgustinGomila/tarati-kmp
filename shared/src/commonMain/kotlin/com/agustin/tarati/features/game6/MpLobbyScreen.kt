@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -56,7 +57,9 @@ import com.agustin.tarati.features.online.lobby.OnlineLobbyViewModel
 import com.agustin.tarati.features.settings.SettingsRepository
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpSeatDto
+import com.agustin.tarati.network.models.MpStartPolicy
 import com.agustin.tarati.network.models.MpTableDto
+import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.services.notifications.UIMessage
 import com.agustin.tarati.services.notifications.UIMessageBus
@@ -68,17 +71,26 @@ import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.confirm
 import com.agustin.tarati.shared.generated.resources.game6_lobby_action_error
 import com.agustin.tarati.shared.generated.resources.game6_lobby_add_bot
+import com.agustin.tarati.shared.generated.resources.game6_lobby_cancel_ready
 import com.agustin.tarati.shared.generated.resources.game6_lobby_create
 import com.agustin.tarati.shared.generated.resources.game6_lobby_empty_seat
 import com.agustin.tarati.shared.generated.resources.game6_lobby_host_badge
+import com.agustin.tarati.shared.generated.resources.game6_lobby_invite
+import com.agustin.tarati.shared.generated.resources.game6_lobby_invite_empty
+import com.agustin.tarati.shared.generated.resources.game6_lobby_invite_title
 import com.agustin.tarati.shared.generated.resources.game6_lobby_join
 import com.agustin.tarati.shared.generated.resources.game6_lobby_leave
 import com.agustin.tarati.shared.generated.resources.game6_lobby_live_moves
 import com.agustin.tarati.shared.generated.resources.game6_lobby_no_live
 import com.agustin.tarati.shared.generated.resources.game6_lobby_no_tables
+import com.agustin.tarati.shared.generated.resources.game6_lobby_policy_host
+import com.agustin.tarati.shared.generated.resources.game6_lobby_policy_vote
+import com.agustin.tarati.shared.generated.resources.game6_lobby_ready
+import com.agustin.tarati.shared.generated.resources.game6_lobby_ready_badge
 import com.agustin.tarati.shared.generated.resources.game6_lobby_remove_bot
 import com.agustin.tarati.shared.generated.resources.game6_lobby_seats
 import com.agustin.tarati.shared.generated.resources.game6_lobby_start
+import com.agustin.tarati.shared.generated.resources.game6_lobby_start_policy
 import com.agustin.tarati.shared.generated.resources.game6_lobby_tab_live
 import com.agustin.tarati.shared.generated.resources.game6_lobby_tab_tables
 import com.agustin.tarati.shared.generated.resources.game6_lobby_table_closed
@@ -144,6 +156,8 @@ fun MpLobbyScreen(
     val liveGames by viewModel.liveGames.collectAsState()
     val currentTable by viewModel.currentTable.collectAsState()
     val currentGame by viewModel.currentGame.collectAsState()
+    // Usuarios conectados: fuente del picker de invitación a mesa (host).
+    val onlineUsers by lobbyViewModel.onlineUsers.collectAsState()
     // Reactivo a la sesión: la pantalla recompone al iniciar/cerrar sesión.
     val authState by authViewModel.authState.collectAsState()
     val connectionState by connectionViewModel.connectionState.collectAsState()
@@ -310,6 +324,7 @@ fun MpLobbyScreen(
                 liveGames = liveGames,
                 activeTable = activeTable,
                 myUserId = myUserId,
+                onlineUsers = onlineUsers,
                 viewModel = viewModel,
             )
         },
@@ -358,6 +373,7 @@ private fun MpLiveTab(
     liveGames: List<MpLiveGameDto>,
     activeTable: MpTableDto?,
     myUserId: String?,
+    onlineUsers: List<OnlineUserDto>,
     viewModel: MpLobbyViewModel,
 ) {
     if (activeTable != null) {
@@ -368,6 +384,8 @@ private fun MpLiveTab(
             MpTableDetail(
                 table = activeTable,
                 isHost = activeTable.hostId == myUserId,
+                myUserId = myUserId,
+                onlineUsers = onlineUsers,
                 viewModel = viewModel,
             )
         }
@@ -495,12 +513,14 @@ private fun MpTurnDisc(color: PlayerColor) {
 
 /**
  * Sección **colapsable** de creación de mesa: una cabecera "Crear mesa" que **se despliega hacia
- * abajo** revelando el selector de tamaño (2–6) + el botón de confirmar.
+ * abajo** revelando el selector de tamaño (2–6), el modo de inicio (anfitrión / todos listos) y el
+ * botón de confirmar.
  */
 @Composable
-private fun MpCreateTableSection(onCreate: (Int) -> Unit) {
+private fun MpCreateTableSection(onCreate: (Int, MpStartPolicy) -> Unit) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     var count by remember { mutableStateOf(MpSetup.MIN_PLAYERS + 2) } // 4 por defecto
+    var policy by remember { mutableStateOf(MpStartPolicy.HOST_MANUAL) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -534,19 +554,43 @@ private fun MpCreateTableSection(onCreate: (Int) -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         for (n in MpSetup.MIN_PLAYERS..MpSetup.MAX_PLAYERS) {
-                            if (n == count) {
-                                Button(onClick = { count = n }) { Text("$n") }
-                            } else {
-                                OutlinedButton(onClick = { count = n }) { Text("$n") }
-                            }
+                            MpToggleChip(label = "$n", selected = n == count, onClick = { count = n })
                         }
                     }
-                    Button(onClick = { onCreate(count) }, modifier = Modifier.fillMaxWidth()) {
+                    // Modo de inicio: anfitrión manual vs. votación de "listos".
+                    Text(
+                        text = localizedString(Res.string.game6_lobby_start_policy),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MpToggleChip(
+                            label = localizedString(Res.string.game6_lobby_policy_host),
+                            selected = policy == MpStartPolicy.HOST_MANUAL,
+                            onClick = { policy = MpStartPolicy.HOST_MANUAL },
+                        )
+                        MpToggleChip(
+                            label = localizedString(Res.string.game6_lobby_policy_vote),
+                            selected = policy == MpStartPolicy.VOTE,
+                            onClick = { policy = MpStartPolicy.VOTE },
+                        )
+                    }
+                    Button(onClick = { onCreate(count, policy) }, modifier = Modifier.fillMaxWidth()) {
                         Text(localizedString(Res.string.game6_lobby_create))
                     }
                 }
             }
         }
+    }
+}
+
+/** Chip binario (seleccionado = relleno / no = contorno) — tamaño de mesa y modo de inicio. */
+@Composable
+private fun MpToggleChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    if (selected) {
+        Button(onClick = onClick) { Text(label) }
+    } else {
+        OutlinedButton(onClick = onClick) { Text(label) }
     }
 }
 
@@ -579,18 +623,50 @@ private fun MpTableCard(table: MpTableDto, onJoin: () -> Unit) {
 // ── Detalle de la mesa (sentado) ────────────────────────────────────────────────
 
 @Composable
-private fun MpTableDetail(table: MpTableDto, isHost: Boolean, viewModel: MpLobbyViewModel) {
+private fun MpTableDetail(
+    table: MpTableDto,
+    isHost: Boolean,
+    myUserId: String?,
+    onlineUsers: List<OnlineUserDto>,
+    viewModel: MpLobbyViewModel,
+) {
     val occupied = table.seats.count { it.occupantId != null || it.isBot }
+    val hasFreeSeat = table.seats.any { it.occupantId == null && !it.isBot }
+    val mySeat = table.seats.firstOrNull { it.occupantId == myUserId }
+    val isVote = table.startPolicy == MpStartPolicy.VOTE
+    var showInvite by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         table.seats.forEach { seat ->
-            MpSeatRow(seat = seat, isHost = isHost, hostId = table.hostId, viewModel = viewModel)
+            MpSeatRow(
+                seat = seat,
+                isHost = isHost,
+                hostId = table.hostId,
+                isVote = isVote,
+                viewModel = viewModel,
+            )
         }
 
         Spacer(Modifier.size(4.dp))
 
+        // Mesas VOTE: toggle "listo" del jugador local (al estar todos listos, arranca sola).
+        if (isVote && mySeat != null) {
+            if (mySeat.ready) {
+                Button(onClick = { viewModel.setReady(false) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(TaratiIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text(localizedString(Res.string.game6_lobby_cancel_ready))
+                }
+            } else {
+                OutlinedButton(onClick = { viewModel.setReady(true) }, modifier = Modifier.fillMaxWidth()) {
+                    Text(localizedString(Res.string.game6_lobby_ready))
+                }
+            }
+        }
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (isHost) {
+                // El inicio manual del host vale también en VOTE (escape ante un ausente).
                 Button(
                     onClick = { viewModel.startTable() },
                     enabled = occupied >= MpSetup.MIN_PLAYERS,
@@ -599,23 +675,41 @@ private fun MpTableDetail(table: MpTableDto, isHost: Boolean, viewModel: MpLobby
                     Spacer(Modifier.size(6.dp))
                     Text(localizedString(Res.string.game6_lobby_start))
                 }
-            } else {
+                if (hasFreeSeat) {
+                    OutlinedButton(onClick = { showInvite = true }) {
+                        Icon(TaratiIcons.Group, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text(localizedString(Res.string.game6_lobby_invite))
+                    }
+                }
+            } else if (!isVote) {
                 Text(
                     text = localizedString(Res.string.game6_lobby_waiting_host),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
+            } else {
+                Spacer(Modifier.weight(1f))
             }
             OutlinedButton(onClick = { viewModel.leaveTable() }) {
                 Text(localizedString(Res.string.game6_lobby_leave))
             }
         }
     }
+
+    if (showInvite) {
+        MpInviteDialog(
+            onlineUsers = onlineUsers,
+            excludedIds = table.seats.mapNotNull { it.occupantId }.toSet() + setOfNotNull(myUserId),
+            onInvite = { viewModel.inviteToTable(it); showInvite = false },
+            onDismiss = { showInvite = false },
+        )
+    }
 }
 
 @Composable
-private fun MpSeatRow(seat: MpSeatDto, isHost: Boolean, hostId: String, viewModel: MpLobbyViewModel) {
+private fun MpSeatRow(seat: MpSeatDto, isHost: Boolean, hostId: String, isVote: Boolean, viewModel: MpLobbyViewModel) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -648,6 +742,25 @@ private fun MpSeatRow(seat: MpSeatDto, isHost: Boolean, hostId: String, viewMode
                         color = MaterialTheme.colorScheme.primary,
                     )
                 }
+                // Badge "Listo" en mesas VOTE para ocupantes humanos que ya confirmaron.
+                if (isVote && seat.ready && seat.occupantId != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            TaratiIcons.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = localizedString(Res.string.game6_lobby_ready_badge),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
 
             if (isHost) {
@@ -665,4 +778,53 @@ private fun MpSeatRow(seat: MpSeatDto, isHost: Boolean, hostId: String, viewMode
             }
         }
     }
+}
+
+/**
+ * Diálogo de **invitación dirigida**: lista los usuarios conectados invitables (excluye bots, al
+ * emisor y a quienes ya están sentados en la mesa). Tocar uno envía la invitación y cierra.
+ */
+@Composable
+private fun MpInviteDialog(
+    onlineUsers: List<OnlineUserDto>,
+    excludedIds: Set<String>,
+    onInvite: (userId: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val invitable = remember(onlineUsers, excludedIds) {
+        onlineUsers.filter { !it.isBot && it.userId !in excludedIds }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(localizedString(Res.string.game6_lobby_invite_title)) },
+        text = {
+            if (invitable.isEmpty()) {
+                Text(
+                    text = localizedString(Res.string.game6_lobby_invite_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(invitable) { user ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { onInvite(user.userId) }
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(TaratiIcons.Person, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text(text = user.displayName, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(localizedString(Res.string.cancel)) }
+        },
+    )
 }

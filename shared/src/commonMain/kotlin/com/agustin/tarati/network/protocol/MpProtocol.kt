@@ -4,6 +4,7 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpResult
 import com.agustin.tarati.network.models.MpPlayerDto
+import com.agustin.tarati.network.models.MpStartPolicy
 import com.agustin.tarati.network.models.MpTableDto
 import kotlinx.serialization.Serializable
 
@@ -20,15 +21,21 @@ import kotlinx.serialization.Serializable
 @Serializable
 sealed class MpClientMessage {
 
-    /** Crear una mesa pública para [playerCount] jugadores (2–6). El emisor queda de host en el asiento 0. */
+    /**
+     * Crear una mesa pública para [playerCount] jugadores (2–6). El emisor queda de host en el
+     * asiento 0. [startPolicy] fija cómo arranca la partida (host manual o votación de listos).
+     */
     @Serializable
-    data class CreateTable(val playerCount: Int) : MpClientMessage()
+    data class CreateTable(
+        val playerCount: Int,
+        val startPolicy: MpStartPolicy = MpStartPolicy.HOST_MANUAL,
+    ) : MpClientMessage()
 
     /** Unirse a una mesa abierta ocupando el primer asiento libre. */
     @Serializable
     data class JoinTable(val tableId: String) : MpClientMessage()
 
-    /** Abandonar una mesa (si es el host, la mesa se cierra para todos). */
+    /** Abandonar una mesa (si es el host, se promueve al siguiente ocupante; si no queda nadie, se cierra). */
     @Serializable
     data class LeaveTable(val tableId: String) : MpClientMessage()
 
@@ -43,6 +50,22 @@ sealed class MpClientMessage {
     /** (Host) Iniciar la partida con los asientos ocupados (≥2; los vacíos se descartan). */
     @Serializable
     data class StartTable(val tableId: String) : MpClientMessage()
+
+    /** (Mesa VOTE) Marcar/desmarcar "listo" el asiento del emisor. Al estar todos listos, arranca. */
+    @Serializable
+    data class SetReady(val tableId: String, val ready: Boolean) : MpClientMessage()
+
+    /** (Host) Invitar a un usuario online a un asiento libre de la mesa (paridad con los desafíos single). */
+    @Serializable
+    data class InviteToTable(val tableId: String, val targetUserId: String) : MpClientMessage()
+
+    /** Responder a una invitación de mesa recibida. Al aceptar, se ocupa el primer asiento libre. */
+    @Serializable
+    data class RespondToTableInvite(val inviteId: String, val accept: Boolean) : MpClientMessage()
+
+    /** (Host) Cancelar una invitación de mesa que había enviado. */
+    @Serializable
+    data class CancelTableInvite(val inviteId: String) : MpClientMessage()
 
     /** Realizar una jugada en una partida en curso. Vértices por nombre (p.ej. "D1", "C1"). */
     @Serializable
@@ -72,6 +95,31 @@ sealed class MpServerMessage {
     /** Error en una acción de mesa. [code] p.ej. "table_full", "not_host", "already_in_table". */
     @Serializable
     data class Error(val code: String) : MpServerMessage()
+
+    /**
+     * Invitación a unirse a una mesa (dirigida). El receptor la acepta/rechaza con
+     * [MpClientMessage.RespondToTableInvite]. Expira a los 30 s (como los desafíos single).
+     *
+     * @property inviteId identificador para responder.
+     * @property tableId mesa a la que se lo invita.
+     * @property inviterName nombre visible del host que invita.
+     * @property playerCount asientos de la mesa (para el texto de la notificación).
+     */
+    @Serializable
+    data class TableInviteReceived(
+        val inviteId: String,
+        val tableId: String,
+        val inviterName: String,
+        val playerCount: Int,
+    ) : MpServerMessage()
+
+    /** El invitado rechazó la invitación (enviado al host). */
+    @Serializable
+    data class TableInviteDeclined(val inviteId: String) : MpServerMessage()
+
+    /** La invitación caducó/canceló/quedó sin efecto. [reason] p.ej. "timeout", "cancelled", "table_full". */
+    @Serializable
+    data class TableInviteExpired(val inviteId: String, val reason: String) : MpServerMessage()
 
     /**
      * La partida comenzó (o se reenvía al reconectar). [state] es el estado; [players] mapea cada color

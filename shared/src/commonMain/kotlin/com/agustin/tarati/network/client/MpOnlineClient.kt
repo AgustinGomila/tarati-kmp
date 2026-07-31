@@ -6,6 +6,7 @@ import com.agustin.tarati.core.domain.game6.play.MpNotation
 import com.agustin.tarati.core.domain.game6.play.PlayerMove
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.network.models.MpOnlineGame
+import com.agustin.tarati.network.models.MpStartPolicy
 import com.agustin.tarati.network.models.MpTableDto
 import com.agustin.tarati.network.protocol.ClientMessage
 import com.agustin.tarati.network.protocol.MpClientMessage
@@ -57,6 +58,14 @@ class MpOnlineClient(
     private val _tableClosed = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val tableClosed: SharedFlow<String> = _tableClosed.asSharedFlow()
 
+    /** Invitaciones de mesa recibidas (dirigidas): la UI muestra la notificación aceptar/rechazar. */
+    private val _tableInvites = MutableSharedFlow<MpServerMessage.TableInviteReceived>(extraBufferCapacity = 4)
+    val tableInvites: SharedFlow<MpServerMessage.TableInviteReceived> = _tableInvites.asSharedFlow()
+
+    /** Desenlace de una invitación que envié (para el host): `"declined"` o `"expired"`. */
+    private val _inviteResolved = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val inviteResolved: SharedFlow<String> = _inviteResolved.asSharedFlow()
+
     /**
      * Nº de la última jugada ya **presentada** por la UI (sonido + animación de deslizamiento/flip).
      * Vive en el cliente (`single`) → **sobrevive el cambio de modo Single↔Multi**, así que al re-entrar
@@ -105,6 +114,10 @@ class MpOnlineClient(
             }
 
             is MpServerMessage.Error -> _errors.tryEmit(payload.code)
+
+            is MpServerMessage.TableInviteReceived -> _tableInvites.tryEmit(payload)
+            is MpServerMessage.TableInviteDeclined -> _inviteResolved.tryEmit("declined")
+            is MpServerMessage.TableInviteExpired -> _inviteResolved.tryEmit("expired")
 
             is MpServerMessage.GameStarted -> {
                 _currentTable.value = null // salimos del lobby, entramos a la partida
@@ -156,8 +169,10 @@ class MpOnlineClient(
 
     // ── Envío (acciones de lobby / partida) ──────────────────────────────────────
 
-    suspend fun createTable(playerCount: Int): Unit =
-        sendMp(MpClientMessage.CreateTable(playerCount))
+    suspend fun createTable(
+        playerCount: Int,
+        startPolicy: MpStartPolicy = MpStartPolicy.HOST_MANUAL,
+    ): Unit = sendMp(MpClientMessage.CreateTable(playerCount, startPolicy))
 
     suspend fun joinTable(tableId: String): Unit =
         sendMp(MpClientMessage.JoinTable(tableId))
@@ -182,6 +197,26 @@ class MpOnlineClient(
         val id = _currentTable.value?.id ?: return
         sendMp(MpClientMessage.StartTable(id))
     }
+
+    /** (Mesa VOTE) Marca/desmarca "listo" mi asiento en la mesa actual. */
+    suspend fun setReady(ready: Boolean) {
+        val id = _currentTable.value?.id ?: return
+        sendMp(MpClientMessage.SetReady(id, ready))
+    }
+
+    /** (Host) Invita a [targetUserId] a un asiento libre de la mesa actual. */
+    suspend fun inviteToTable(targetUserId: String) {
+        val id = _currentTable.value?.id ?: return
+        sendMp(MpClientMessage.InviteToTable(id, targetUserId))
+    }
+
+    /** Responde a una invitación de mesa recibida. Al aceptar, el servidor me sienta en la mesa. */
+    suspend fun respondToInvite(inviteId: String, accept: Boolean): Unit =
+        sendMp(MpClientMessage.RespondToTableInvite(inviteId, accept))
+
+    /** (Host) Cancela una invitación de mesa que había enviado. */
+    suspend fun cancelInvite(inviteId: String): Unit =
+        sendMp(MpClientMessage.CancelTableInvite(inviteId))
 
     suspend fun makeMove(from: String, to: String) {
         val gameId = _currentGame.value?.gameId ?: return

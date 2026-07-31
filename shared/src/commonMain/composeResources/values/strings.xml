@@ -682,6 +682,20 @@
     <string name="game6_lobby_live_moves">%1$d moves</string>
     <string name="game6_lobby_spectating">Spectating</string>
     <string name="game6_lobby_stop_watching">Stop watching</string>
+    <!-- Multiplayer tables — start policy, ready-check & invites -->
+    <string name="game6_lobby_start_policy">Start mode</string>
+    <string name="game6_lobby_policy_host">Host starts</string>
+    <string name="game6_lobby_policy_vote">Everyone ready</string>
+    <string name="game6_lobby_ready">Ready</string>
+    <string name="game6_lobby_cancel_ready">Not ready</string>
+    <string name="game6_lobby_ready_badge">Ready</string>
+    <string name="game6_lobby_invite">Invite</string>
+    <string name="game6_lobby_invite_title">Invite to table</string>
+    <string name="game6_lobby_invite_empty">No players available to invite</string>
+    <string name="game6_invite_title">Table invite</string>
+    <string name="game6_invite_body">%1$s invited you to a %2$d-player table</string>
+    <string name="game6_invite_declined">Your table invite was declined</string>
+    <string name="game6_invite_expired">The table invite expired</string>
     <string name="game6_edit_reset">Reset position</string>
 
     <!-- Multiplayer tutorial (game6) — only the differences vs. the two-player game -->

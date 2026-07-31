@@ -693,6 +693,20 @@
     <string name="game6_lobby_live_moves">%1$d jugadas</string>
     <string name="game6_lobby_spectating">Observando</string>
     <string name="game6_lobby_stop_watching">Dejar de observar</string>
+    <!-- Mesas multijugador — política de inicio, listo y invitaciones -->
+    <string name="game6_lobby_start_policy">Modo de inicio</string>
+    <string name="game6_lobby_policy_host">Inicia el anfitrión</string>
+    <string name="game6_lobby_policy_vote">Todos listos</string>
+    <string name="game6_lobby_ready">Listo</string>
+    <string name="game6_lobby_cancel_ready">No listo</string>
+    <string name="game6_lobby_ready_badge">Listo</string>
+    <string name="game6_lobby_invite">Invitar</string>
+    <string name="game6_lobby_invite_title">Invitar a la mesa</string>
+    <string name="game6_lobby_invite_empty">No hay jugadores disponibles para invitar</string>
+    <string name="game6_invite_title">Invitación a mesa</string>
+    <string name="game6_invite_body">%1$s te invitó a una mesa de %2$d jugadores</string>
+    <string name="game6_invite_declined">Rechazaron tu invitación a la mesa</string>
+    <string name="game6_invite_expired">La invitación a la mesa caducó</string>
     <string name="game6_edit_reset">Reiniciar posición</string>
 
     <!-- Tutorial multijugador (game6) — solo las diferencias respecto del juego de dos -->
