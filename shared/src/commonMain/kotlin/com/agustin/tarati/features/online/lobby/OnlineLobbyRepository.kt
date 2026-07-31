@@ -2,7 +2,10 @@ package com.agustin.tarati.features.online.lobby
 
 
 import com.agustin.tarati.features.online.devServerUrl
+import com.agustin.tarati.network.authDelete
 import com.agustin.tarati.network.authGet
+import com.agustin.tarati.network.authPost
+import com.agustin.tarati.network.models.CreateMpTournamentRequest
 import com.agustin.tarati.network.models.Game
 import com.agustin.tarati.network.models.GameHistoryDto
 import com.agustin.tarati.network.models.LiveGameDto
@@ -12,10 +15,14 @@ import com.agustin.tarati.network.models.MpGameHistoryDto
 import com.agustin.tarati.network.models.MpLeaderboardEntryDto
 import com.agustin.tarati.network.models.MpLiveGameDto
 import com.agustin.tarati.network.models.MpTableDto
+import com.agustin.tarati.network.models.MpTournamentDto
 import com.agustin.tarati.network.models.OnlineUserDto
 import com.agustin.tarati.network.models.OpenSearchDto
 import com.agustin.tarati.network.models.PagedResponse
 import io.ktor.client.HttpClient
+import io.ktor.client.request.setBody
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 
 /**
  * Repositorio para los endpoints del lobby online.
@@ -186,4 +193,37 @@ class OnlineLobbyRepository(
         "$baseUrl/api/mp/leaderboard", token,
         "limit" to limit,
     )
+
+    // ── Torneos MP (Arena, fase 4b) ──────────────────────────────────────────────
+
+    /** Torneos MP visibles (en registro / activos). */
+    suspend fun getMpTournaments(token: String): Result<List<MpTournamentDto>> =
+        httpClient.authGet("$baseUrl/api/mp/tournaments", token)
+
+    /** Detalle + clasificación de un torneo MP. */
+    suspend fun getMpTournament(token: String, id: String): Result<MpTournamentDto> =
+        httpClient.authGet("$baseUrl/api/mp/tournaments/$id", token)
+
+    /** Crea un torneo MP; el emisor queda como creador e inscrito. */
+    suspend fun createMpTournament(token: String, request: CreateMpTournamentRequest): Result<MpTournamentDto> =
+        httpClient.authPost("$baseUrl/api/mp/tournaments", token) {
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+
+    /** Inscribe al emisor en un torneo MP. */
+    suspend fun registerMpTournament(token: String, id: String): Result<MpTournamentDto> =
+        httpClient.authPost("$baseUrl/api/mp/tournaments/$id/register", token)
+
+    /** Da de baja al emisor de un torneo MP. */
+    suspend fun unregisterMpTournament(token: String, id: String): Result<MpTournamentDto> =
+        httpClient.authDelete("$baseUrl/api/mp/tournaments/$id/register", token)
+
+    /** (Creador) Arranca la ventana Arena de un torneo MP. */
+    suspend fun startMpTournament(token: String, id: String): Result<MpTournamentDto> =
+        httpClient.authPost("$baseUrl/api/mp/tournaments/$id/start", token)
+
+    /** (Creador) Cancela un torneo MP. */
+    suspend fun cancelMpTournament(token: String, id: String): Result<MpTournamentDto> =
+        httpClient.authPost("$baseUrl/api/mp/tournaments/$id/cancel", token)
 }

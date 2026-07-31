@@ -6,6 +6,7 @@ import com.agustin.tarati.core.domain.game6.play.MpResult
 import com.agustin.tarati.network.models.MpPlayerDto
 import com.agustin.tarati.network.models.MpStartPolicy
 import com.agustin.tarati.network.models.MpTableDto
+import com.agustin.tarati.network.models.MpTournamentStandingDto
 import kotlinx.serialization.Serializable
 
 /**
@@ -120,6 +121,24 @@ sealed class MpServerMessage {
     /** La invitación caducó/canceló/quedó sin efecto. [reason] p.ej. "timeout", "cancelled", "table_full". */
     @Serializable
     data class TableInviteExpired(val inviteId: String, val reason: String) : MpServerMessage()
+
+    /** Clasificación actualizada de un torneo MP (Arena) — difundido a los inscritos tras cada mesa. */
+    @Serializable
+    data class TournamentStandingsUpdated(
+        val tournamentId: String,
+        val standings: List<MpTournamentStandingDto>,
+    ) : MpServerMessage()
+
+    /** El torneo MP terminó (venció la ventana Arena); [standings] trae la clasificación final. */
+    @Serializable
+    data class TournamentFinished(
+        val tournamentId: String,
+        val standings: List<MpTournamentStandingDto>,
+    ) : MpServerMessage()
+
+    /** El torneo MP se canceló (el creador lo canceló antes de terminar). */
+    @Serializable
+    data class TournamentCancelled(val tournamentId: String) : MpServerMessage()
 
     /**
      * La partida comenzó (o se reenvía al reconectar). [state] es el estado; [players] mapea cada color

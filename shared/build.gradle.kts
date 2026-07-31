@@ -18,7 +18,7 @@ plugins {
 // appVersion generado desde version.properties — fuente única, incluye build number.
 // Reemplaza los antiguos AppInfo.kt hardcodeados ("1.0.0") por plataforma.
 // ─────────────────────────────────────────────────────────────────────────────
-val generateAppVersion = tasks.register("generateAppVersion") {
+val generateAppVersion: TaskProvider<Task> = tasks.register("generateAppVersion") {
     description =
         "Generate AppVersion.kt from version.properties (single source of truth for versionName/code, replacing hardcoded platform-specific values)"
     val versionFile = rootProject.file("version.properties")

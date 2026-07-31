@@ -66,6 +66,17 @@ class MpOnlineClient(
     private val _inviteResolved = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val inviteResolved: SharedFlow<String> = _inviteResolved.asSharedFlow()
 
+    /** Clasificación en vivo de un torneo MP (Arena) — actualizada tras cada mesa y al finalizar. */
+    private val _tournamentStandings = MutableSharedFlow<MpServerMessage.TournamentStandingsUpdated>(extraBufferCapacity = 8)
+    val tournamentStandings: SharedFlow<MpServerMessage.TournamentStandingsUpdated> = _tournamentStandings.asSharedFlow()
+
+    /** Fin de un torneo MP (clasificación final) o cancelación (`tournamentId`). */
+    private val _tournamentFinished = MutableSharedFlow<MpServerMessage.TournamentFinished>(extraBufferCapacity = 4)
+    val tournamentFinished: SharedFlow<MpServerMessage.TournamentFinished> = _tournamentFinished.asSharedFlow()
+
+    private val _tournamentCancelled = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val tournamentCancelled: SharedFlow<String> = _tournamentCancelled.asSharedFlow()
+
     /**
      * Nº de la última jugada ya **presentada** por la UI (sonido + animación de deslizamiento/flip).
      * Vive en el cliente (`single`) → **sobrevive el cambio de modo Single↔Multi**, así que al re-entrar
@@ -118,6 +129,10 @@ class MpOnlineClient(
             is MpServerMessage.TableInviteReceived -> _tableInvites.tryEmit(payload)
             is MpServerMessage.TableInviteDeclined -> _inviteResolved.tryEmit("declined")
             is MpServerMessage.TableInviteExpired -> _inviteResolved.tryEmit("expired")
+
+            is MpServerMessage.TournamentStandingsUpdated -> _tournamentStandings.tryEmit(payload)
+            is MpServerMessage.TournamentFinished -> _tournamentFinished.tryEmit(payload)
+            is MpServerMessage.TournamentCancelled -> _tournamentCancelled.tryEmit(payload.tournamentId)
 
             is MpServerMessage.GameStarted -> {
                 _currentTable.value = null // salimos del lobby, entramos a la partida

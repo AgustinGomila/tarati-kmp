@@ -205,7 +205,7 @@ fun DrawScope.drawPolygonSelection(
     cob: Cob,
     colors: BoardColors,
     selectionTimeMs: Long = 0L,
-) = drawPolygonSelection(
+): Unit = drawPolygonSelection(
     position = position,
     radius = radius,
     pieceType = pieceType,

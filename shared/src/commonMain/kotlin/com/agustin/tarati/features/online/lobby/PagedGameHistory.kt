@@ -116,13 +116,13 @@ class PagedGameHistoryLoader(
 
     // ── Filtros (cada cambio recarga desde la primera página) ──────────────────
 
-    fun setTimeControlFilter(tc: String?) = updateFilters { it.copy(timeControl = tc) }
+    fun setTimeControlFilter(tc: String?): Unit = updateFilters { it.copy(timeControl = tc) }
 
-    fun setResultFilter(result: String?) = updateFilters { it.copy(result = result) }
+    fun setResultFilter(result: String?): Unit = updateFilters { it.copy(result = result) }
 
-    fun setRatedFilter(rated: Boolean?) = updateFilters { it.copy(rated = rated) }
+    fun setRatedFilter(rated: Boolean?): Unit = updateFilters { it.copy(rated = rated) }
 
-    fun clearFilters() = updateFilters { HistoryFilters() }
+    fun clearFilters(): Unit = updateFilters { HistoryFilters() }
 
     private fun updateFilters(transform: (HistoryFilters) -> HistoryFilters) {
         _state.update { it.copy(filters = transform(it.filters)) }

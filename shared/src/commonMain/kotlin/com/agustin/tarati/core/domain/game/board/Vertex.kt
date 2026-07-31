@@ -8,7 +8,7 @@ data class Vertex(
     val zone: Zone,
     val position: Int,
 ) {
-    val name get() = "${zone.name}$position"
+    val name: String get() = "${zone.name}$position"
 
     fun isAdjacentTo(other: Vertex): Boolean = adjacencyMap[this]?.contains(other) == true
 

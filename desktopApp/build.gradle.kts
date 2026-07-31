@@ -9,8 +9,8 @@ plugins {
 // ═══════════════════════════════════════════════════════════════════════════
 // Versión desde properties de Gradle (pasadas por workflow con -P)
 // ═══════════════════════════════════════════════════════════════════════════
-val appVersionName = project.findProperty("versionName")?.toString() ?: "1.0.0"
-val appVersionCode = project.findProperty("versionCode")?.toString() ?: "1"
+val appVersionName: String = project.findProperty("versionName")?.toString() ?: "1.0.0"
+val appVersionCode: String = project.findProperty("versionCode")?.toString() ?: "1"
 
 // Versión del instalador nativo (MSI/DEB). Windows Installer solo hace upgrade
 // in-place si la ProductVersion (major.minor.build) aumenta entre releases. El

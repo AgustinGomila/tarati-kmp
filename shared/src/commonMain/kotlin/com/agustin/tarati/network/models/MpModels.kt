@@ -192,6 +192,77 @@ data class MpLeaderboardEntryDto(
 )
 
 /**
+ * Estado de un torneo MP (Arena) para la lista y el detalle del lobby.
+ *
+ * MP solo soporta el formato **Arena**: ventana de tiempo fija durante la cual se agrupan los
+ * participantes ociosos en mesas de [tableSize] jugadores; al terminar cada mesa se puntúa y se
+ * reagrupa. No hay rondas ni brackets.
+ *
+ * @property tableSize jugadores por mesa (2–6); todas las mesas del torneo son de este tamaño.
+ * @property durationMinutes duración de la ventana Arena.
+ * @property participantCount inscritos actuales.
+ * @property startsAtMs / endsAtMs epoch millis (null mientras REGISTERING).
+ */
+@Immutable
+@Serializable
+data class MpTournamentDto(
+    val id: String,
+    val name: String,
+    val creatorId: String,
+    val creatorName: String,
+    val status: TournamentStatus,
+    val tableSize: Int,
+    val turnTimeoutMs: Long,
+    val minPlayers: Int,
+    val maxPlayers: Int,
+    val durationMinutes: Int,
+    val spectatingAllowed: Boolean,
+    val participantCount: Int,
+    val standings: List<MpTournamentStandingDto> = emptyList(),
+    val startsAtMs: Long? = null,
+    val endsAtMs: Long? = null,
+)
+
+/**
+ * Request para crear un torneo MP (Arena). El emisor queda como creador e inscrito.
+ *
+ * @property tableSize jugadores por mesa (2–6).
+ * @property turnTimeoutMs tiempo por turno de las mesas del torneo (`0` = sin timer).
+ * @property minPlayers mínimo de inscritos para arrancar (≥ [tableSize]).
+ * @property maxPlayers tope de inscritos.
+ * @property durationMinutes duración de la ventana Arena.
+ */
+@Serializable
+data class CreateMpTournamentRequest(
+    val name: String,
+    val tableSize: Int = 4,
+    val turnTimeoutMs: Long = 60_000L,
+    val minPlayers: Int = 4,
+    val maxPlayers: Int = 16,
+    val durationMinutes: Int = 20,
+    val spectatingAllowed: Boolean = true,
+)
+
+/**
+ * Posición de un jugador en la clasificación de un torneo MP. Puntuación estilo Arena
+ * (victoria=2 + bono de racha, victoria compartida=1, derrota=0). MP no tiene empates → [shared]
+ * (victorias compartidas) en lugar de draws.
+ */
+@Immutable
+@Serializable
+data class MpTournamentStandingDto(
+    val rank: Int,
+    val userId: String,
+    val username: String,
+    val score: Int,
+    val wins: Int,
+    val shared: Int,
+    val losses: Int,
+    val streak: Int,
+    val games: Int,
+)
+
+/**
  * Estado agregado (cliente) de una partida MP **online** en curso — lo que la UI observa. Combina el
  * `MpGameState` del servidor con el mapeo de jugadores y el último movimiento/conversiones (para
  * animar). No viaja por el cable (lo arma el cliente a partir de `MpServerMessage`).

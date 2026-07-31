@@ -707,6 +707,21 @@
     <string name="game6_invite_body">%1$s te invitó a una mesa de %2$d jugadores</string>
     <string name="game6_invite_declined">Rechazaron tu invitación a la mesa</string>
     <string name="game6_invite_expired">La invitación a la mesa caducó</string>
+    <!-- Torneos multijugador (Arena) -->
+    <string name="mp_tournament_name">Nombre</string>
+    <string name="mp_tournament_table_size">Jugadores por mesa</string>
+    <string name="mp_tournament_duration">Duración</string>
+    <string name="mp_tournament_minutes">%1$d min</string>
+    <string name="mp_tournament_register">Inscribirse</string>
+    <string name="mp_tournament_unregister">Darse de baja</string>
+    <string name="mp_tournament_start">Arrancar</string>
+    <string name="mp_tournament_cancel">Cancelar torneo</string>
+    <string name="mp_tournament_empty">No hay torneos. ¡Creá uno!</string>
+    <string name="mp_tournament_action_error">Acción fallida</string>
+    <string name="mp_tournament_status_registering">Inscripción</string>
+    <string name="mp_tournament_status_active">En curso</string>
+    <string name="mp_tournament_status_finished">Finalizado</string>
+    <string name="mp_tournament_status_cancelled">Cancelado</string>
     <string name="game6_edit_reset">Reiniciar posición</string>
 
     <!-- Tutorial multijugador (game6) — solo las diferencias respecto del juego de dos -->

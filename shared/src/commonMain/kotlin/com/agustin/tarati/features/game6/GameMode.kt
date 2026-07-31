@@ -1,5 +1,6 @@
 package com.agustin.tarati.features.game6
 
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,4 +36,4 @@ class GameModeController(initial: GameMode = GameMode.SINGLE) {
     }
 }
 
-val LocalGameModeController = staticCompositionLocalOf<GameModeController?> { null }
+val LocalGameModeController: ProvidableCompositionLocal<GameModeController?> = staticCompositionLocalOf { null }

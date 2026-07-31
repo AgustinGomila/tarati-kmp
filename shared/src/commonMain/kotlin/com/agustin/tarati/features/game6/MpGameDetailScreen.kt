@@ -59,7 +59,6 @@ import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.features.online.lobby.formatGameDate
 import com.agustin.tarati.features.settings.BoardVisualState
 import com.agustin.tarati.features.settings.ISettingsViewModel
-import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.back
@@ -80,6 +79,7 @@ import com.agustin.tarati.shared.generated.resources.toggle_move_history
 import com.agustin.tarati.shared.generated.resources.total_moves
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.bottombar.rememberPanelTilt
+import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyle
 import com.agustin.tarati.ui.components.topbar.TaratiTopBar
 import com.agustin.tarati.ui.components.topbar.TopBarNavigationType
 import com.agustin.tarati.ui.theme.TaratiIcons

@@ -9,6 +9,7 @@ import com.agustin.tarati.features.game6.IMpLeaderboardViewModel
 import com.agustin.tarati.features.game6.MpGameDetailViewModel
 import com.agustin.tarati.features.game6.MpLeaderboardViewModel
 import com.agustin.tarati.features.game6.MpLobbyViewModel
+import com.agustin.tarati.features.game6.MpTournamentViewModel
 import com.agustin.tarati.features.online.auth.AuthApi
 import com.agustin.tarati.features.online.auth.AuthRepository
 import com.agustin.tarati.features.online.auth.AuthViewModel
@@ -303,6 +304,26 @@ val onlineModule: Module = module {
         MpGameDetailViewModel(
             getToken = tokenProvider(get()),
             fetchDetail = { token, gameId -> repo.getMpGameDetail(token, gameId) },
+        )
+    }
+
+    // Torneos multijugador (Arena, fase 4b). Singleton: comparte los flows en vivo con el MpOnlineClient
+    // (single) y mantiene el detalle seleccionado. La pantalla arranca/detiene el polling de la lista.
+    single {
+        val repo = get<OnlineLobbyRepository>()
+        val client = get<MpOnlineClient>()
+        MpTournamentViewModel(
+            getToken = tokenProvider(get()),
+            fetchList = repo::getMpTournaments,
+            fetchDetail = repo::getMpTournament,
+            createReq = repo::createMpTournament,
+            registerReq = repo::registerMpTournament,
+            unregisterReq = repo::unregisterMpTournament,
+            startReq = repo::startMpTournament,
+            cancelReq = repo::cancelMpTournament,
+            standings = client.tournamentStandings,
+            finished = client.tournamentFinished,
+            cancelled = client.tournamentCancelled,
         )
     }
 

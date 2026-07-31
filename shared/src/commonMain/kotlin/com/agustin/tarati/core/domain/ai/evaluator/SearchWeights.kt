@@ -20,11 +20,11 @@ data class SearchWeights(
     val lmrDepthReduction: Int = 1,
     val lmrMoveIndexThreshold: Int = 3,
 ) {
-    fun scaleKiller(factor: Double) = copy(
+    fun scaleKiller(factor: Double): SearchWeights = copy(
         killerMoveBaseBonus = killerMoveBaseBonus * factor,
     )
 
-    fun scaleLmr(penalty: Double = 1.0, depth: Int = lateMoveReductionDepth) = copy(
+    fun scaleLmr(penalty: Double = 1.0, depth: Int = lateMoveReductionDepth): SearchWeights = copy(
         lateMoveReductionPenalty = lateMoveReductionPenalty * penalty,
         lateMoveReductionDepth = depth,
     )

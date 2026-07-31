@@ -102,7 +102,7 @@ class AchievementsManager(
      * en todas las plataformas al establecerse la sesión. En Android eso reconcilia
      * Play Games ↔ servidor en ambos sentidos.
      */
-    override suspend fun syncFromServer() = reconcileAchievements()
+    override suspend fun syncFromServer(): Unit = reconcileAchievements()
 
     /**
      * Fusiona el estado de logros de Play Games y del servidor de Tarati en ambos

@@ -696,6 +696,21 @@
     <string name="game6_invite_body">%1$s invited you to a %2$d-player table</string>
     <string name="game6_invite_declined">Your table invite was declined</string>
     <string name="game6_invite_expired">The table invite expired</string>
+    <!-- Multiplayer tournaments (Arena) -->
+    <string name="mp_tournament_name">Name</string>
+    <string name="mp_tournament_table_size">Players per table</string>
+    <string name="mp_tournament_duration">Duration</string>
+    <string name="mp_tournament_minutes">%1$d min</string>
+    <string name="mp_tournament_register">Join</string>
+    <string name="mp_tournament_unregister">Leave</string>
+    <string name="mp_tournament_start">Start</string>
+    <string name="mp_tournament_cancel">Cancel tournament</string>
+    <string name="mp_tournament_empty">No tournaments yet. Create one!</string>
+    <string name="mp_tournament_action_error">Action failed</string>
+    <string name="mp_tournament_status_registering">Registering</string>
+    <string name="mp_tournament_status_active">Live</string>
+    <string name="mp_tournament_status_finished">Finished</string>
+    <string name="mp_tournament_status_cancelled">Cancelled</string>
     <string name="game6_edit_reset">Reset position</string>
 
     <!-- Multiplayer tutorial (game6) — only the differences vs. the two-player game -->

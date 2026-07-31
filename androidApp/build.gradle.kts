@@ -14,10 +14,10 @@ fun getVersionProperties(): Properties {
     return versionProps
 }
 
-val versionProps = getVersionProperties()
+val versionProps: Properties = getVersionProperties()
 
 // Credenciales de firma: env var (CI) → keystore/signing.properties (local, gitignoreado) → "".
-val signingProps = Properties().apply {
+val signingProps: Properties = Properties().apply {
     val file = rootProject.file("keystore/signing.properties")
     if (file.exists()) file.reader().use { load(it) }
 }
@@ -135,7 +135,7 @@ kotlin {
 // ═══════════════════════════════════════════════════════════════
 // Exclusión de tests pesados - POR DEFECTO
 // ═══════════════════════════════════════════════════════════════
-val skipHeavyTests = if (project.hasProperty("skipHeavyTests")) {
+val skipHeavyTests: Boolean = if (project.hasProperty("skipHeavyTests")) {
     project.property("skipHeavyTests").toString().toBoolean()
 } else {
     true  // Por defecto EXCLUIR
@@ -145,7 +145,7 @@ val skipHeavyTests = if (project.hasProperty("skipHeavyTests")) {
 // pero se **habilitan cuando se pide un test puntual**: tanto `--tests` por consola como el clic del
 // gutter de la IDE (vía Tooling API) pueblan `filter.commandLineIncludePatterns` de la task, así que
 // se levanta la exclusión en ese caso. `-PskipHeavyTests=false` fuerza correr todo siempre.
-val heavyTestPatterns = setOf(
+val heavyTestPatterns: Set<String> = setOf(
     "**/*RegressionTest*.class",
     "**/*RoundRobinTest*.class",
     "**/*DifficultyDiagnosticTest*.class",

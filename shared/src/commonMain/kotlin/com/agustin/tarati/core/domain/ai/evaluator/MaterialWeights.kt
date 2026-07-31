@@ -14,17 +14,17 @@ data class MaterialWeights(
     val cobFlipMultiplier: Double = 1.0,
     val rocFlipMultiplier: Double = 1.5,
 ) {
-    fun scalePieces(cob: Double = 1.0, rok: Double = 1.0) = copy(
+    fun scalePieces(cob: Double = 1.0, rok: Double = 1.0): MaterialWeights = copy(
         cobScore = cobScore * cob,
         rocScore = rocScore * rok,
     )
 
-    fun scaleFlips(cob: Double = 1.0, rok: Double = 1.0) = copy(
+    fun scaleFlips(cob: Double = 1.0, rok: Double = 1.0): MaterialWeights = copy(
         flipCobBonus = flipCobBonus * cob,
         flipRocBonus = flipRocBonus * rok,
     )
 
-    fun scaleFlipMultipliers(cob: Double = 1.0, rok: Double = 1.0) = copy(
+    fun scaleFlipMultipliers(cob: Double = 1.0, rok: Double = 1.0): MaterialWeights = copy(
         cobFlipMultiplier = cobFlipMultiplier * cob,
         rocFlipMultiplier = rocFlipMultiplier * rok,
     )

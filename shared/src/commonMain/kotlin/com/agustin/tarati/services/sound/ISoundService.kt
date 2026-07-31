@@ -22,6 +22,6 @@ interface ISoundService {
     fun setVolume(volume: Float)
 }
 
-val LocalSoundService: ProvidableCompositionLocal<ISoundService> = staticCompositionLocalOf<ISoundService> {
+val LocalSoundService: ProvidableCompositionLocal<ISoundService> = staticCompositionLocalOf {
     error("No ISoundService provided")
 }

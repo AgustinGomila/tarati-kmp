@@ -328,8 +328,10 @@ fun MpLobbyScreen(
                 viewModel = viewModel,
             )
         },
-        // 2 — Torneos (Fase 4) — visible pero deshabilitado
-        LobbyTabSpec(label = Res.string.tournaments, icon = TaratiIcons.EmojiEvents, enabled = false) {},
+        // 2 — Torneos MP (Arena, Fase 4b)
+        LobbyTabSpec(label = Res.string.tournaments, icon = TaratiIcons.EmojiEvents) {
+            MpTournamentTab(myUserId = myUserId)
+        },
         // 3 — Mis Partidas: historial paginado de partidas MP propias (Fase 2)
         LobbyTabSpec(label = Res.string.lobby_my_games, icon = TaratiIcons.MenuBook) {
             MpHistoryTab(viewModel = viewModel, myUserId = myUserId, onOpenGame = onOpenGame)
@@ -584,9 +586,9 @@ private fun MpCreateTableSection(onCreate: (Int, MpStartPolicy) -> Unit) {
     }
 }
 
-/** Chip binario (seleccionado = relleno / no = contorno) — tamaño de mesa y modo de inicio. */
+/** Chip binario (seleccionado = relleno / no = contorno) — tamaño de mesa, modo de inicio, torneos. */
 @Composable
-private fun MpToggleChip(label: String, selected: Boolean, onClick: () -> Unit) {
+internal fun MpToggleChip(label: String, selected: Boolean, onClick: () -> Unit) {
     if (selected) {
         Button(onClick = onClick) { Text(label) }
     } else {
