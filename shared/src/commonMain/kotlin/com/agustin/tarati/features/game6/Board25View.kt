@@ -57,10 +57,12 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
+import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
 import com.agustin.tarati.ui.components.game.draw.board.drawArrowHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawDynamicEdgeElectricHighlight
+import com.agustin.tarati.ui.components.game.draw.board.drawDynamicFireballEdgeHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcDynamicHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawForceArcImpactHighlight
 import com.agustin.tarati.ui.components.game.draw.board.drawPreMoveArrow
@@ -93,6 +95,7 @@ import com.agustin.tarati.ui.components.game.draw.pieces.drawSelection
 import com.agustin.tarati.ui.components.game.draw.pieces.resolveType
 import com.agustin.tarati.ui.components.game.draw.pieces.toShapeColors
 import com.agustin.tarati.ui.components.game.highlights.HighlightAction
+import com.agustin.tarati.ui.components.game.highlights.base.DynamicEdgeHighlight
 import com.agustin.tarati.ui.theme.BoardColors
 import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.getBoardColors
@@ -108,6 +111,12 @@ private const val ANIMATION_MS = 420
 
 /** Fracción del progreso del movimiento dedicada al deslizamiento; el resto, a la conversión. */
 private const val SLIDE_FRACTION = 0.55f
+
+/**
+ * Duración (ms) del resalte de los destinos alcanzables de la pieza recién movida, mostrado al
+ * completarse el deslizamiento. Paridad con single, donde `createValidMovesHighlights` usa 400 ms.
+ */
+private const val POST_MOVE_MS = 400L
 
 
 /**
@@ -329,12 +338,42 @@ fun Board25View(
     var mounted by remember { mutableStateOf(false) }
     val shouldAnimateMove = mounted && lastMove != null && moveCount > 0 && !suppressMoveAnimation
     val moveProgress = remember(moveCount) { Animatable(if (shouldAnimateMove) 0f else 1f) }
+
+    // Destinos legales de la pieza recién movida — se resaltan brevemente al terminar el deslizamiento
+    // (paridad con single: `createValidMovesHighlights` sobre `getValidVertex` del destino). El turno
+    // ya avanzó, por eso se consulta contra el asiento del **dueño** de la pieza en el destino, no el
+    // que está en turno. `legalMovesFor` no exige que sea su turno.
+    val postMoveTargets = remember(moveCount) {
+        when {
+            lastMove == null || state.isGameOver -> emptySet()
+            else -> {
+                val owner = state.pieces[lastMove.to]?.owner
+                val seat = owner?.let { o -> state.seats.firstOrNull { it.color == o } }
+                if (seat == null) {
+                    emptySet()
+                } else {
+                    MpRules.legalMovesFor(state, seat).asSequence()
+                        .filter { it.from == lastMove.to }
+                        .map { it.to }
+                        .toSet()
+                }
+            }
+        }
+    }
+    var showPostMove by remember { mutableStateOf(false) }
+
     LaunchedEffect(moveCount) {
         if (!mounted) {
             mounted = true
             return@LaunchedEffect
         }
         if (shouldAnimateMove) moveProgress.animateTo(1f, animationSpec = tween(ANIMATION_MS))
+        // Tras el deslizamiento, resalta los destinos alcanzables de la pieza recién llegada.
+        if (shouldAnimateMove && postMoveTargets.isNotEmpty()) {
+            showPostMove = true
+            delay(POST_MOVE_MS.milliseconds)
+            showPostMove = false
+        }
     }
 
     // Tipo de animación de conversión por pieza capturada, decidido **una vez por jugada** (estable
@@ -451,6 +490,21 @@ fun Board25View(
                 }
             }
 
+            // Destinos alcanzables de la pieza recién movida (recipe MOVE) — resalte breve al terminar
+            // el deslizamiento, paridad con el post-efecto de single. Ligado a "Animar efectos".
+            if (animate && showPostMove) {
+                postMoveTargets.forEach { vertex ->
+                    screen[vertex]?.let { center ->
+                        drawVertexHighlightAt(
+                            action = HighlightAction.MOVE,
+                            position = center,
+                            pulseRadius = pieceRadius * 0.5f,
+                            colors = boardColors,
+                        )
+                    }
+                }
+            }
+
             // Flechas guía del tutorial (movimientos permitidos del paso interactivo) — misma
             // flecha parpadeante que los pasos interactivos del tutorial single. Se dibujan **bajo
             // las piezas** (sobre los vértices/aristas) para no taparlas. El grosor conserva la
@@ -474,33 +528,70 @@ fun Board25View(
             val movingFrom = slidingMove?.let { screen.getValue(it.from) }
             val convertingActive = moveP < 1f && converted.isNotEmpty()
 
-            // Efecto de captura (dibujado **bajo** las piezas), como single: el efecto de borde depende
-            // del tipo de conversión de cada pieza. TRANSFORMATION (centro/borde) → onda de **arcos** que
-            // viaja desde la pieza capturadora + estallido de anillos al llegar. FLIP → **rayo eléctrico**
-            // (parpadea). Solo durante la conversión y con "Animar efectos" activo.
-            if (animate && convertingActive && conversion > 0f) {
-                lastMove?.let { screen[it.to] }?.let { origin ->
-                    converted.keys.forEach { captured ->
-                        screen[captured]?.let { target ->
-                            when (conversionTypes[captured] ?: ConversionAnimationType.FROM_CENTER) {
-                                ConversionAnimationType.FROM_CENTER, ConversionAnimationType.FROM_BORDER -> {
-                                    drawForceArcDynamicHighlight(origin, target, conversion, boardColors)
-                                    // El estallido aparece cuando los arcos "llegan" (último tramo).
-                                    val impact = ((conversion - 0.45f) / 0.55f).coerceIn(0f, 1f)
-                                    if (impact > 0f) drawForceArcImpactHighlight(target, impact, boardColors)
-                                }
+            // Posición interpolada de la pieza que se desliza — origen de la estela y de los arcos en
+            // vuelo (paridad con single, que los emite desde la posición actual de la pieza en movimiento).
+            val movingPos = if (movingTo != null && movingFrom != null) {
+                lerp(movingFrom, screen.getValue(movingTo), slide)
+            } else {
+                null
+            }
 
-                                ConversionAnimationType.FLIP -> {
-                                    val (minSeg, maxSeg) = getHighlightsSegmentsRange(origin, target)
-                                    drawDynamicEdgeElectricHighlight(
-                                        from = origin,
-                                        to = target,
-                                        variationFactor = Random.nextFloat(),
-                                        randomSegments = Random.nextInt(minSeg, maxSeg),
-                                        colors = boardColors,
-                                    )
-                                }
+            // Efectos "en vuelo" DURANTE el deslizamiento, saliendo de la pieza en movimiento (bajo las
+            // piezas) y con "Animar efectos" activo — paridad exacta con single:
+            //  · estela dinámica de la pieza hacia su destino + resalte del vértice de destino
+            //    (createMoveDynamicHighlight);
+            //  · onda de arcos (TRANSFORMATION) o rayo eléctrico (FLIP) hacia cada pieza a convertir.
+            if (animate && movingPos != null && movingTo != null) {
+                val destPos = screen.getValue(movingTo)
+                drawDynamicFireballEdgeHighlight(
+                    DynamicEdgeHighlight(from = movingPos, to = destPos, pulse = true),
+                    size,
+                    boardColors,
+                )
+                // Resalte pulsante del destino en el tramo final del deslizamiento (segundo componente
+                // de createMoveDynamicHighlight, que en single aparece con startDelay).
+                if (slide > SLIDE_FRACTION) {
+                    drawVertexHighlightAt(
+                        action = HighlightAction.MOVE,
+                        position = destPos,
+                        pulseRadius = pieceRadius * 0.5f * pulseFactor(Clock.System.now().toEpochMilliseconds()),
+                        colors = boardColors,
+                    )
+                }
+                converted.keys.forEach { captured ->
+                    screen[captured]?.let { target ->
+                        when (conversionTypes[captured] ?: ConversionAnimationType.FROM_CENTER) {
+                            ConversionAnimationType.FROM_CENTER, ConversionAnimationType.FROM_BORDER ->
+                                drawForceArcDynamicHighlight(movingPos, target, slide, boardColors)
+
+                            ConversionAnimationType.FLIP -> {
+                                val (minSeg, maxSeg) = getHighlightsSegmentsRange(movingPos, target)
+                                drawDynamicEdgeElectricHighlight(
+                                    from = movingPos,
+                                    to = target,
+                                    variationFactor = Random.nextFloat(),
+                                    randomSegments = Random.nextInt(minSeg, maxSeg),
+                                    colors = boardColors,
+                                )
                             }
+                        }
+                    }
+                }
+            }
+
+            // Estallido de anillos al "llegar" los arcos (TRANSFORMATION) — DURANTE la conversión, ya en
+            // destino, como single (impacto a mitad de la animación de captura). El morph de cada pieza
+            // capturada se dibuja en el bucle de piezas.
+            if (animate && convertingActive && conversion > 0f) {
+                converted.keys.forEach { captured ->
+                    screen[captured]?.let { target ->
+                        when (conversionTypes[captured] ?: ConversionAnimationType.FROM_CENTER) {
+                            ConversionAnimationType.FROM_CENTER, ConversionAnimationType.FROM_BORDER -> {
+                                val impact = ((conversion - 0.45f) / 0.55f).coerceIn(0f, 1f)
+                                if (impact > 0f) drawForceArcImpactHighlight(target, impact, boardColors)
+                            }
+
+                            ConversionAnimationType.FLIP -> Unit
                         }
                     }
                 }
