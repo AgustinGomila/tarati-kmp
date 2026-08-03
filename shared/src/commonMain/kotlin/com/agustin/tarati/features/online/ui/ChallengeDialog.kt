@@ -1,11 +1,10 @@
 package com.agustin.tarati.features.online.ui
 
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -16,7 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.time.TimeControl
 import com.agustin.tarati.services.localization.localizedString
@@ -34,6 +32,7 @@ import com.agustin.tarati.shared.generated.resources.social_challenge_dialog_tit
  * @param forceNonRated True si alguno de los dos jugadores es invitado —
  *        fuerza partida amistosa y deshabilita el switch.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ChallengeDialog(
     targetName: String,
@@ -54,9 +53,11 @@ internal fun ChallengeDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                // FlowRow: los chips envuelven a varias líneas para que TODOS queden visibles
+                // en portrait (sin scroll horizontal que oculte opciones).
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     TimeControlChips(selected = selectedTc, onSelect = { selectedTc = it })
                 }

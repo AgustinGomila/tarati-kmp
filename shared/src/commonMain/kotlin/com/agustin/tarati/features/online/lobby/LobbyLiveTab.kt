@@ -1,10 +1,11 @@
 package com.agustin.tarati.features.online.lobby
 
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -575,6 +575,7 @@ private fun OwnSearchCard(
  * Persiste las preferencias de time control y rated/casual en [SettingsRepository],
  * compartiendo el mismo almacenamiento que el modal de GameScreen.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun NewSearchSheet(
     onStartSearch: (timeControl: String, rated: Boolean, spectatingAllowed: Boolean) -> Unit,
@@ -602,10 +603,11 @@ internal fun NewSearchSheet(
         title = { LocalizedText(Res.string.lobby_new_search, style = MaterialTheme.typography.titleMedium) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // Time control chips
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                // Time control chips — FlowRow para que todas las opciones queden
+                // visibles en portrait (sin scroll horizontal que las oculte).
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     TimeControlChips(
                         selected = selectedTc,

@@ -664,6 +664,7 @@ fun GameScreen(
                             scope.launch { onlineGameViewModel.respondToDraw(false) }
                         },
                         spectatingState = spectatingState,
+                        compact = !screenState.isLandscape,
                     )
                 }) else null,
                 // Botón único: oculto durante partida propia, en modo lobby expandido,

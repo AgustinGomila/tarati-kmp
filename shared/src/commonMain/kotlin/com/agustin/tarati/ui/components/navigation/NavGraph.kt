@@ -4,6 +4,7 @@ package com.agustin.tarati.ui.components.navigation
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +14,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.savedstate.read
 import com.agustin.tarati.core.domain.game.play.GameStatus
@@ -48,6 +50,7 @@ import com.agustin.tarati.features.settings.LanguageAwareSettingsScreen
 import com.agustin.tarati.features.settings.OnlineSettingsScreen
 import com.agustin.tarati.features.settings.SettingsViewModel
 import com.agustin.tarati.features.store.StoreScreen
+import com.agustin.tarati.network.models.OnlineGameStatus
 import com.agustin.tarati.services.clipboard.GameClipboardHelper
 import com.agustin.tarati.ui.components.game.animation.BoardAnimationViewModel
 import com.agustin.tarati.ui.components.game.animation.BoardGeometryViewModel
@@ -93,6 +96,30 @@ fun NavGraph(
 ) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
+
+    // ── Navegación automática al tablero cuando arranca una partida online ──────────
+    // En layouts FullScreen (Compact/Medium — p. ej. portrait) el tablero es una ruta
+    // aparte: al formarse una partida online (matchmaking, o desafío directo enviado o
+    // aceptado desde el alert global) hay que traer al usuario al tablero. Este efecto es
+    // la autoridad única de esa navegación — el lobby ya no auto-navega (onMatchFound no-op).
+    // En Expanded el tablero está siempre visible en el panel primario, no hace falta navegar.
+    val globalLayout = LocalScreenLayout.current
+    val activeOnlineGame by onlineGameViewModel.currentGame.collectAsState()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    if (globalLayout != ScreenLayout.Expanded) {
+        LaunchedEffect(activeOnlineGame?.gameId) {
+            val game = activeOnlineGame ?: return@LaunchedEffect
+            val isActive = game.status == OnlineGameStatus.Starting ||
+                    game.status == OnlineGameStatus.InProgress
+            val onBoard = navBackStackEntry?.destination?.route == GameScreenDest.route
+            if (isActive && !onBoard) {
+                navController.navigate(GameScreenDest.route) {
+                    popUpTo(GameScreenDest.route) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
 
     // Estado de transferencia entre el lobby y GameScreen.
     val pendingMatchmaking = remember { mutableStateOf<Pair<String, Boolean>?>(null) }
@@ -292,6 +319,9 @@ fun NavGraph(
             OnlineLobbyScreen(
                 onBack = { navController.popBackStack() },
                 onShowLogin = { onShowLogin(null) },
+                // La navegación al tablero al formarse la partida la centraliza el efecto global del
+                // NavGraph (observa currentGame), cubriendo por igual matchmaking y desafíos directos.
+                onMatchFound = { },
                 onSpectateGame = { _ ->
                     navController.popBackStack()
                 },

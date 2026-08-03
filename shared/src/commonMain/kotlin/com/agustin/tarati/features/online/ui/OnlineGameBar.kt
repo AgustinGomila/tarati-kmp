@@ -99,6 +99,8 @@ import kotlin.time.Duration.Companion.seconds
  * @param onAcceptDraw      Callback para aceptar la oferta de tablas recibida.
  * @param onDeclineDraw     Callback para rechazar la oferta de tablas recibida.
  * @param visible           Controla la visibilidad animada de la barra.
+ * @param compact           En portrait: reduce tipografía, íconos y espaciado para que la
+ *                          barra ocupe menos alto y no tape el tablero.
  */
 @Composable
 fun OnlineGameBar(
@@ -113,6 +115,7 @@ fun OnlineGameBar(
     visible: Boolean = true,
     /** Cuando no null, activa el modo espectador: muestra ambos jugadores sin controles. */
     spectatingState: SpectatingState? = null,
+    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // ── Estado local de confirmación ──────────────────────────────────────────
@@ -164,31 +167,41 @@ fun OnlineGameBar(
         modifier = modifier,
     ) {
         onlineGame?.let { game ->
+            // Dimensiones adaptadas: en portrait (compact) todo se achica para no tapar el tablero.
+            val vSpacing = if (compact) 4.dp else 8.dp
+            val hSpacing = if (compact) 8.dp else 12.dp
+            val nameStyle =
+                if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium
+            val ratingStyle =
+                if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge
+            val avatarSize = if (compact) 18.dp else 24.dp
+            val iconSize = if (compact) 16.dp else 20.dp
+
             Surface(
                 modifier = Modifier.wrapContentWidth(align = Alignment.Start),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shadowElevation = 4.dp,
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = vSpacing),
+                    verticalArrangement = Arrangement.spacedBy(vSpacing),
                 ) {
                     // ── Fila 1: Oponente · Rating · Modalidad de tiempo ──────────
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(hSpacing),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = TaratiIcons.AccountCircle,
                                 contentDescription = localizedString(Res.string.opponent),
-                                modifier = Modifier.size(24.dp),
+                                modifier = Modifier.size(avatarSize),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            Spacer(Modifier.width(8.dp))
+                            Spacer(Modifier.width(if (compact) 6.dp else 8.dp))
                             Text(
                                 text = game.opponentInfo.username,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = nameStyle,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -197,13 +210,13 @@ fun OnlineGameBar(
                             Icon(
                                 imageVector = TaratiIcons.EmojiEvents,
                                 contentDescription = localizedString(Res.string.rating_nbr),
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(iconSize),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
                                 text = game.opponentInfo.rating.toString(),
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = ratingStyle,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -212,7 +225,7 @@ fun OnlineGameBar(
                             Icon(
                                 imageVector = TaratiIcons.Timer,
                                 contentDescription = localizedString(Res.string.time_control),
-                                modifier = Modifier.size(20.dp),
+                                modifier = Modifier.size(iconSize),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(Modifier.width(4.dp))
@@ -254,7 +267,7 @@ fun OnlineGameBar(
 
                     // ── Fila 2: Tu color + rated  ·  Acciones ────────────────────
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(hSpacing),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
