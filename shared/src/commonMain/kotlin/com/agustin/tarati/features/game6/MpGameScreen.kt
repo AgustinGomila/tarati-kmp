@@ -148,8 +148,13 @@ fun MpGameScreen(
         drawerState.closeIfOpen(scope)
     }
 
-    // Hay una partida "en curso" (con jugadas y sin terminar) → "Nueva partida" pide confirmación.
+    // Hay una partida "en curso" (con jugadas y sin terminar) → cambiar el nº de jugadores pide confirmación.
     val hasGameInProgress = history.isNotEmpty() && !state.isGameOver
+
+    // Hay una partida desarrollada (con jugadas, terminada o no) → "Nueva partida" pide confirmación,
+    // igual que single: al empezar de cero se pierde la partida (o su revisión post-fin). Tablero fresco
+    // sin jugadas → arranca directo.
+    val hasDevelopedGame = history.isNotEmpty()
 
     // Preferencia de pre-movimientos (Settings) → el VM decide si el tap va a la ruta de pre-move.
     LaunchedEffect(settings.preMovesEnabled) {
@@ -202,7 +207,7 @@ fun MpGameScreen(
     }
 
     val onNewGame: () -> Unit = {
-        if (hasGameInProgress) {
+        if (hasDevelopedGame) {
             bus.alert { dismiss ->
                 NewGameDialog(
                     onConfirmed = {
