@@ -6,6 +6,7 @@ import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.evaluator.MoveEval
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.ai.strategy.IAIStrategy
+import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.isMaximizingPlayer
 import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState
@@ -43,10 +44,21 @@ import kotlin.time.Clock
  * que funciona correctamente incluso en EASY (depth=2) donde la búsqueda corta
  * no puede anticipar la regla por sí sola.
  *
- * ## Desempate aleatorio
- * Cuando dos movimientos tienen exactamente el mismo score, se selecciona entre
- * ellos con probabilidad uniforme (reservoir sampling de un elemento). Esto
- * produce variedad en el juego sin sacrificar calidad.
+ * ## Desempate determinista
+ * Cuando dos movimientos tienen exactamente el mismo score, se conserva el
+ * **primero** en el orden de [MoveEvaluator.sortMoves] (que ya prioriza calidad:
+ * capturas, killer/history, bonus posicional). Es determinista y prefiere la mejor
+ * jugada ordenada entre las empatadas. Reemplaza al reservoir sampling aleatorio
+ * previo, que en aperturas simétricas (plagadas de empates) hacía elegir a veces la
+ * jugada objetivamente más pasiva y rompía la reproducibilidad de los tests de fuerza.
+ *
+ * ## Quiescence en la hoja (gateada por dificultad)
+ * Si [EvaluationConfig.quiescenceEnabled] (solo CHAMPION), en la hoja `depth==0` la
+ * posición no se puntúa estáticamente si tiene capturas pendientes: [quiescence]
+ * extiende la búsqueda sobre las jugadas **ruidosas** (que voltean piezas) hasta un
+ * estado tranquilo o [EvaluationConfig.quiescenceMaxPlies]. En Tarati casi toda jugada
+ * de contacto voltea piezas, así que la profundidad fija evalúa rutinariamente
+ * posiciones a mitad de un intercambio (horizon effect); la quiescence lo corrige.
  *
  * ## Límite de tiempo
  * Un [SearchContext] con timestamp de inicio permite cortar la búsqueda si se
@@ -133,8 +145,21 @@ class MinimaxStrategy(
     ): MoveEval {
         context.nodesEvaluated++
 
-        val terminalResult = checkTerminalState(gameState, depth, config)
-        if (terminalResult != null) return terminalResult
+        // Fin de partida (a cualquier profundidad): score desde la óptica del jugador al turno,
+        // igual que antes (el nodo padre lo interpreta vía su rama de victoria inmediata).
+        if (gameState.isGameOver(positionHistory)) {
+            return MoveEval(terminalScoreToMove(gameState, config), null)
+        }
+        // Hoja: quiescence (solo si está gateada) o eval estático directo.
+        if (depth == 0) {
+            val leafScore =
+                if (config.quiescenceEnabled) {
+                    quiescence(gameState, alpha, beta, config, context, config.quiescenceMaxPlies)
+                } else {
+                    getCachedEvaluation(gameState, config)
+                }
+            return MoveEval(leafScore, null)
+        }
 
         val boardHash = gameState.hashBoard()
         transpositionTable.get(boardHash, depth)?.let {
@@ -175,7 +200,6 @@ class MinimaxStrategy(
         var bestScore = if (isMaximizing) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY
         var alpha = alphaInit
         var beta = betaInit
-        var tiedCount = 0
         // Last-resort move used only when every legal move causes triple-repetition defeat.
         var repetitionFallback: Move? = null
 
@@ -184,7 +208,7 @@ class MinimaxStrategy(
 
             // Immediate win: return without recursing.
             // Score is from the parent's perspective (isMaximizing), not the child's,
-            // because checkTerminalState scores from the TO-MOVE player's viewpoint
+            // because terminalScoreToMove scores from the TO-MOVE player's viewpoint
             // (which after the winning move is the opponent -- wrong sign for the parent).
             if (newState.isGameOver(positionHistory) && newState.getWinner(positionHistory) == gameState.currentTurn) {
                 val score = if (isMaximizing) config.winningScore else -config.winningScore
@@ -234,20 +258,16 @@ class MinimaxStrategy(
                 moveEvaluator.recordKillerMove(move, depth, context)
             }
 
+            // Desempate determinista: se conserva el PRIMER movimiento que alcanza el mejor
+            // score (los empatados posteriores no lo reemplazan). Como los movimientos ya vienen
+            // ordenados por calidad heurística, el primero es el mejor ordenado entre los empatados.
             val isNewBest = if (isMaximizing) score > bestScore else score < bestScore
-            val isTied = score == bestScore
             if (isNewBest) {
                 bestScore = score
                 bestMove = move
-                tiedCount = 1
 
                 if (!causesCutoff) {
                     moveEvaluator.recordHistoryMove(move, depth, context)
-                }
-            } else if (isTied) {
-                tiedCount++
-                if (Random.nextDouble() < 1.0 / tiedCount) {
-                    bestMove = move
                 }
             }
 
@@ -293,26 +313,93 @@ class MinimaxStrategy(
         return if (noise > 0.0) base + (Random.nextDouble() - 0.5) * noise else base
     }
 
-    private fun checkTerminalState(
-        gameState: GameState,
-        depth: Int,
-        config: EvaluationConfig,
-    ): MoveEval? {
-        val gameOver = gameState.isGameOver(positionHistory)
-        if (depth != 0 && !gameOver) return null
+    /**
+     * Score de una posición terminal desde la óptica del **jugador al turno**:
+     * +winningScore si el al-turno ganó, −winningScore si perdió, eval estático en tablas.
+     * (Convención heredada; el nodo padre la resuelve con su chequeo de victoria inmediata.)
+     */
+    private fun terminalScoreToMove(gameState: GameState, config: EvaluationConfig): Double =
+        when (gameState.getWinner(positionHistory)) {
+            gameState.currentTurn -> config.winningScore
+            gameState.currentTurn.opponent -> -config.winningScore
+            else -> getCachedEvaluation(gameState, config)
+        }
 
-        val score =
-            if (gameOver) {
-                when (gameState.getWinner(positionHistory)) {
-                    gameState.currentTurn -> config.winningScore
-                    gameState.currentTurn.opponent -> -config.winningScore
-                    else -> getCachedEvaluation(gameState, config)
-                }
+    /**
+     * Quiescence search: resuelve las capturas pendientes en la hoja antes de puntuar.
+     *
+     * Solo expande jugadas **ruidosas** (que voltean ≥[EvaluationConfig.quiescenceMinCobFlips]
+     * cobs o cualquier rok), hasta [pliesLeft] == 0 o un estado tranquilo. Devuelve un score
+     * **absoluto** (perspectiva maximizante de Blancas), consistente con [getCachedEvaluation]
+     * al que reemplaza en la hoja.
+     *
+     * Usa **stand-pat** como cota: el bando al turno puede "no capturar" (asume que tiene alguna
+     * jugada tranquila) y garantizar al menos el eval estático; luego prueba las capturas para
+     * mejorarlo. Caveat de Tarati (sin pase): si *todas* sus jugadas son ruidosas, el stand-pat es
+     * optimista — limitación estándar aceptada, rara en la práctica.
+     */
+    private fun quiescence(
+        gameState: GameState,
+        alphaInit: Double,
+        betaInit: Double,
+        config: EvaluationConfig,
+        context: SearchContext,
+        pliesLeft: Int,
+    ): Double {
+        context.nodesEvaluated++
+
+        if (gameState.isGameOver(positionHistory)) {
+            return absoluteTerminalScore(gameState, config)
+        }
+
+        val standPat = getCachedEvaluation(gameState, config)
+        if (pliesLeft <= 0) return standPat
+
+        val isMaximizing = gameState.currentTurn.isMaximizingPlayer()
+        var alpha = alphaInit
+        var beta = betaInit
+
+        // Cota stand-pat.
+        if (isMaximizing) {
+            if (standPat >= beta) return standPat
+            if (standPat > alpha) alpha = standPat
+        } else {
+            if (standPat <= alpha) return standPat
+            if (standPat < beta) beta = standPat
+        }
+
+        var best = standPat
+        for (move in gameState.allMovesForTurn()) {
+            val child = gameState.applyMove(move)
+            val (rokFlips, cobFlips) = move.countFlipsByType(gameState, child)
+            val noisy = rokFlips >= 1 || cobFlips >= config.quiescenceMinCobFlips
+            if (!noisy) continue
+
+            val score = quiescence(child, alpha, beta, config, context, pliesLeft - 1)
+            if (isMaximizing) {
+                if (score > best) best = score
+                if (best > alpha) alpha = best
+                if (alpha >= beta) break
             } else {
-                getCachedEvaluation(gameState, config)
+                if (score < best) best = score
+                if (best < beta) beta = best
+                if (beta <= alpha) break
             }
-        return MoveEval(score, null)
+        }
+        return best
     }
+
+    /**
+     * Score terminal **absoluto** (perspectiva de Blancas): +winningScore si ganan Blancas,
+     * −winningScore si ganan Negras, eval estático en tablas. Usado por [quiescence], cuyo
+     * eval de hoja también es absoluto.
+     */
+    private fun absoluteTerminalScore(gameState: GameState, config: EvaluationConfig): Double =
+        when (gameState.getWinner(positionHistory)) {
+            CobColor.WHITE -> config.winningScore
+            CobColor.BLACK -> -config.winningScore
+            else -> getCachedEvaluation(gameState, config)
+        }
 
     private fun shouldPrune(
         bestScore: Double,

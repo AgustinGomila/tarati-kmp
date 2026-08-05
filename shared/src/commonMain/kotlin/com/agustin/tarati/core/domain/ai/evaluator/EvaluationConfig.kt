@@ -38,6 +38,18 @@ data class EvaluationConfig(
      * por-tier a futuro. Ver docs/internal/plans/engine_strength_plan.md.
      */
     val openingBookEnabled: Boolean = false,
+    /**
+     * Si la búsqueda resuelve las capturas pendientes en la hoja con una
+     * [com.agustin.tarati.core.domain.ai.engine.MinimaxStrategy] quiescence search
+     * antes de puntuar (ver [SearchWeights.quiescenceMaxPlies]). Gateable por dificultad;
+     * **solo CHAMPION** lo activa. En Tarati casi toda jugada de contacto voltea piezas,
+     * así que la profundidad fija evalúa rutinariamente posiciones a mitad de un intercambio
+     * (horizon effect); la quiescence lo corrige y es donde la profundidad de CHAMPION (7) por
+     * fin supera a HARD (5). Medida sin book (el contexto vigente tras gatear el book off):
+     * CHAMPION-quiescence vs HARD-static ≈ 68 %. Ver docs/internal/plans/engine_strength_plan.md,
+     * Fase B (reabierta).
+     */
+    val quiescenceEnabled: Boolean = false,
 ) {
     // ── MaterialWeights accessors ────────────────────────────────────────────
     val cobScore: Double get() = material.cobScore
@@ -68,6 +80,8 @@ data class EvaluationConfig(
     val lmrBranchingThreshold: Int get() = search.lmrBranchingThreshold
     val lmrDepthReduction: Int get() = search.lmrDepthReduction
     val lmrMoveIndexThreshold: Int get() = search.lmrMoveIndexThreshold
+    val quiescenceMaxPlies: Int get() = search.quiescenceMaxPlies
+    val quiescenceMinCobFlips: Int get() = search.quiescenceMinCobFlips
 
     // ── TacticalWeights accessors ────────────────────────────────────────────
     val quickThreatWeight: Double get() = tactical.quickThreatWeight
@@ -177,6 +191,10 @@ data class EvaluationConfig(
                 stallingPenalty = 8.0,
                 stallingThreshold = 65,
             ),
+            // Quiescence en la hoja — único tier que la activa. La profundidad 7 recién
+            // paga cuando evalúa posiciones tranquilas (sin capturas pendientes); es el
+            // diferenciador real frente a HARD (depth 5, sin quiescence).
+            quiescenceEnabled = true,
         )
 
         /**

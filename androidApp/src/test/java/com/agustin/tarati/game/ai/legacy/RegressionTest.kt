@@ -120,9 +120,10 @@ class RegressionTest {
      * Expected moves recorded from [NormalMovesBaselineTest] before this change.
      * Update these values after each accepted optimization.
      */
-    // La apertura se excluye como ancla: sin opening book (ver EvaluationConfig.openingBookEnabled)
-    // CHAMPION la resuelve por búsqueda sobre una posición simétrica con varias mejores jugadas
-    // espejo empatadas que el desempate aleatorio elige distinto en cada corrida — no determinista.
+    // La apertura se excluye como ancla por herencia histórica: sin opening book
+    // (ver EvaluationConfig.openingBookEnabled) CHAMPION la resuelve por búsqueda sobre una posición
+    // simétrica con varias mejores jugadas espejo empatadas. Con el **desempate determinista** (keep-first,
+    // 2026-08-05) ya es reproducible y podría re-anclarse; se conservan solo Mid-game/Final por simplicidad.
     private val fixedSuite = listOf(
         FixedPosition("Mid-game", midGamePosition, B2, A1),  // stable across all depths
         FixedPosition("Final", finalPosition, C12, B6),  // stable across all depths
@@ -141,10 +142,15 @@ class RegressionTest {
      * Recorded from [NormalMovesBaselineTest] before this optimization.
      * A pure optimization leaves these unchanged.
      * A branching reduction lowers them — update after each accepted change.
+     *
+     * Actualizado 2026-08-05 al activar la quiescence en CHAMPION (quiescenceMaxPlies=4): la búsqueda de
+     * hoja resuelve las capturas pendientes, lo que **sube** el conteo de nodos — sobre todo en el final
+     * rico en Roks (Mid-game 2227→4282, ~1.9×; Final 52576→148350, ~2.8×), que es la fase donde la
+     * quiescence extiende las cascadas de conversión. El cap de plies (4) acota el peor caso del final.
      */
     private val nodeBaselines = listOf(
-        NodeBaseline("Mid-game", midGamePosition, 2_227L),
-        NodeBaseline("Final", finalPosition, 52_576L),
+        NodeBaseline("Mid-game", midGamePosition, 4_282L),
+        NodeBaseline("Final", finalPosition, 148_350L),
     )
 
     // ── Print helper ──────────────────────────────────────────────────────────
@@ -337,9 +343,9 @@ class RegressionTest {
     companion object {
         /**
          * Acceptable node count variance between runs at identical code.
-         * 5% absorbs the random tiebreaker effect in [searchBestMove]:
-         * tied-score moves are selected randomly, sending the search down
-         * slightly different paths each run (typically ±1–2% variance).
+         * Con el desempate **determinista** (keep-first) el conteo es reproducible entre corridas;
+         * el 5 % queda como colchón ante variaciones benignas (orden de iteración de estructuras,
+         * futuros micro-cambios de ordenamiento) — ya no absorbe un tiebreak aleatorio.
          */
         private const val NODE_COUNT_TOLERANCE_PCT = 0.05
     }
@@ -347,11 +353,9 @@ class RegressionTest {
     /**
      * [nodesEvaluated] at CHAMPION must not grow significantly after a change.
      *
-     * A tolerance of [NODE_COUNT_TOLERANCE_PCT]% (default 5%) absorbs natural
-     * variance caused by the random tiebreaker in [searchBestMove]: when two
-     * moves score equally, one is chosen at random, which can send the search
-     * down a slightly different path on each run — producing ±1–2% node count
-     * variance even with identical code.
+     * Con el desempate determinista (keep-first en [searchBestMove]) el conteo es
+     * reproducible; la tolerancia de [NODE_COUNT_TOLERANCE_PCT]% (5%) queda como colchón
+     * ante variaciones benignas de ordenamiento, no ante un tiebreak aleatorio.
      *
      * Interpretation:
      *   actual <= baseline * (1 + tolerance) → OK        (noise or improvement)

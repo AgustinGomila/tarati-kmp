@@ -489,6 +489,82 @@ class RoundRobinTest {
         )
     }
 
+    /**
+     * Verifica que CHAMPION mantenga su supremacía sobre HARD gracias a la quiescence
+     * (única diferencia real de habilidad tras gatear el book off: HARD depth-5 sin quiescence
+     * vs CHAMPION depth-7 con quiescence). Sin book (contexto vigente) el estudio previo midió
+     * ~68 % a favor de Champion (engine_strength_plan.md, Fase B reabierta).
+     *
+     * Aserción lenient (Champion no pierde el match) por la ventaja del primer jugador + varianza
+     * de 30 partidas; el número exacto queda en el log.
+     */
+    @Test
+    fun test_champion_dominates_hard_regression() {
+        fun logInfo(message: String) = TestLog.info(message)
+        val tournament = TournamentRunner()
+
+        val result = tournament.runEngineMatch(
+            engineA = personalityEngine("champion"),
+            engineB = personalityEngine("hard"),
+            configA = EvaluationConfig.getByDifficulty(Difficulty.CHAMPION),
+            configB = EvaluationConfig.getByDifficulty(Difficulty.HARD),
+            tournamentConfig = quickConfig.copy(gamesPerMatch = 30),
+            logInfo = ::logInfo,
+        )
+
+        val totalGames = result.winsA + result.winsB + result.draws
+        val championWinRate = result.winsA.toDouble() / totalGames
+        logInfo(
+            "Champion(quiescence) vs Hard(static): ${"%.1f".format(championWinRate * 100)}% " +
+                    "(${result.winsA}-${result.winsB}-${result.draws})",
+        )
+
+        assertTrue(
+            "Champion (quiescence, depth-7) should not lose the head-to-head vs Hard (static, depth-5) " +
+                    "(actual: ${result.winsA}-${result.winsB}-${result.draws}). Quiescence is the tier's real edge.",
+            result.winsA >= result.winsB,
+        )
+    }
+
+    /**
+     * OBS-3 — A/B de `domesticControlScore` en CHAMPION (45 → 55) para desalentar el vaciado temprano
+     * de la base propia (base vacía = blanco de promoción del rival) que induce la personalidad `gambit`.
+     *
+     * Self-play CHAMPION(obs3) vs CHAMPION(baseline), **con `evalNoise=2`** para romper la degeneración
+     * (a evalNoise=0 dos CHAMPION juegan la misma partida). No asevera: el valor está en el número.
+     *
+     * **Resultado 2026-08-05 (40 partidas): 42.5 % (17-21-2) → RECHAZADO.** Conservar la base (dc=55) hizo a
+     * CHAMPION **más débil**, no más fuerte: el vaciado de base / concentración central que OBS-3 señalaba **no es
+     * una debilidad explotable** ni siquiera por un rival igual de fuerte — es parte de la agresión ganadora del
+     * `gambit`. `domesticControlScore` queda en 45. Test conservado como diagnóstico del experimento.
+     */
+    @Test
+    fun test_obs3_domestic_control_ab() {
+        fun logInfo(message: String) = TestLog.info(message)
+        val tournament = TournamentRunner()
+
+        val base = EvaluationConfig.getByDifficulty(Difficulty.CHAMPION)
+            .copy(behavior = EvaluationConfig.getByDifficulty(Difficulty.CHAMPION).behavior.copy(evalNoise = 2.0))
+        val obs3 = base.copy(positional = base.positional.copy(domesticControlScore = 55.0))
+
+        val games = 40
+        val result = tournament.runEngineMatch(
+            engineA = personalityEngine("champion_obs3"),
+            engineB = personalityEngine("champion_base"),
+            configA = obs3,
+            configB = base,
+            tournamentConfig = quickConfig.copy(gamesPerMatch = games),
+            logInfo = ::logInfo,
+        )
+
+        val total = result.winsA + result.winsB + result.draws
+        val rate = if (total > 0) result.winsA.toDouble() / total else 0.0
+        logInfo(
+            "OBS-3 domesticControl 55 vs 45 (CHAMPION, evalNoise=2): " +
+                    "${"%.1f".format(rate * 100)}% (${result.winsA}-${result.winsB}-${result.draws})",
+        )
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // BOOK GATING — el ladder Easy→Champion según el gateo del opening book
     // ════════════════════════════════════════════════════════════════════════
