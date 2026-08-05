@@ -161,14 +161,15 @@ fun MpGameScreen(
         viewModel.setPreMovesEnabled(settings.preMovesEnabled)
     }
 
-    // Turnos de bot: cuando el asiento en turno lo controla un bot, juega tras un retardo. Se
-    // re-evalúa también con [botKick] (nueva partida sobre el mismo asiento inicial, o convertir un
-    // asiento en IA), no solo al cambiar currentSeatIndex → los bots arrancan solos. Al volver el
-    // turno humano, ejecuta el pre-movimiento pendiente (si hay), revalidado en el VM.
+    // Turnos de bot: cuando el asiento en turno lo controla un bot, juega tras un pacing corto para que
+    // las jugadas sean legibles (los tiers bajos calculan casi al instante). Se re-evalúa también con
+    // [botKick] (nueva partida sobre el mismo asiento inicial, o convertir un asiento en IA), no solo al
+    // cambiar currentSeatIndex → los bots arrancan solos. Al volver el turno humano, ejecuta el
+    // pre-movimiento pendiente (si hay), revalidado en el VM.
     LaunchedEffect(state.currentSeatIndex, state.isGameOver, botKick, isTutorialActive) {
         if (isTutorialActive) return@LaunchedEffect
         if (viewModel.isBotTurn()) {
-            delay(550.milliseconds)
+            delay(200.milliseconds)
             viewModel.playBotMove()
         } else if (!state.isGameOver) {
             delay(200.milliseconds)
@@ -284,6 +285,7 @@ fun MpGameScreen(
                         config = config,
                         onSetPlayerCount = onSetPlayerCount,
                         onSetSeatIsAI = viewModel::setSeatIsAI,
+                        onSetSeatBotLevel = viewModel::setSeatBotLevel,
                     )
                 },
                 moveHistory = {

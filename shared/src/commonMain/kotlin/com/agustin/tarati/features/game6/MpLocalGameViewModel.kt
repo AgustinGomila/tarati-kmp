@@ -3,7 +3,8 @@ package com.agustin.tarati.features.game6
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.game.board.Vertex
-import com.agustin.tarati.core.domain.game6.ai.MpGreedyBot
+import com.agustin.tarati.core.domain.game6.ai.MpBot
+import com.agustin.tarati.core.domain.game6.ai.MpBotLevel
 import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
@@ -53,6 +54,8 @@ sealed interface MpUiEvent {
 data class MpConfig(
     val playerCount: Int,
     val seatIsAI: List<Boolean>,
+    /** Fuerza del bot por asiento (tier del ladder). Se indexa por asiento; solo aplica si el asiento es IA. */
+    val seatBotLevels: List<MpBotLevel> = List(MpSetup.MAX_PLAYERS) { MpBotLevel.DEFAULT },
 )
 
 /**
@@ -185,8 +188,17 @@ class MpLocalGameViewModel(
             clamped > current.size -> current + List(clamped - current.size) { true }
             else -> current.take(clamped)
         }
-        _config.value = MpConfig(playerCount = clamped, seatIsAI = resized)
+        _config.value = _config.value.copy(playerCount = clamped, seatIsAI = resized)
         rebuild()
+    }
+
+    /** Fija la fuerza del bot del asiento [index] (tier del ladder). */
+    fun setSeatBotLevel(index: Int, level: MpBotLevel) {
+        val current = _config.value
+        if (index !in current.seatBotLevels.indices) return
+        _config.value = current.copy(
+            seatBotLevels = current.seatBotLevels.toMutableList().also { it[index] = level },
+        )
     }
 
     /** Fija el tipo (Humano/IA) del asiento [index]; efecto inmediato sobre los turnos de bot. */
@@ -330,7 +342,8 @@ class MpLocalGameViewModel(
     /** Aplica el movimiento elegido por el bot para el asiento en turno (si corresponde). */
     fun playBotMove() {
         if (!isBotTurn()) return
-        val move = MpGreedyBot.chooseMove(_state.value, random = random) ?: return
+        val level = _config.value.seatBotLevels.getOrElse(_state.value.currentSeatIndex) { MpBotLevel.DEFAULT }
+        val move = MpBot.chooseMove(_state.value, level, random = random) ?: return
         applyAndClear(move)
     }
 

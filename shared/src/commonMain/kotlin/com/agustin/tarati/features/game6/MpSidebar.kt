@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +53,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.agustin.tarati.core.domain.game6.ai.MpBotLevel
+import com.agustin.tarati.core.domain.game6.ai.displayNameRes
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMoveCell
@@ -219,6 +223,7 @@ fun MpPlayerConfig(
     config: MpConfig,
     onSetPlayerCount: (Int) -> Unit,
     onSetSeatIsAI: (index: Int, isAI: Boolean) -> Unit,
+    onSetSeatBotLevel: (index: Int, level: MpBotLevel) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
@@ -236,11 +241,13 @@ fun MpPlayerConfig(
                 enabled = enabled,
                 alwaysOn = alwaysOn,
                 isAI = isAI,
+                botLevel = config.seatBotLevels.getOrElse(index) { MpBotLevel.DEFAULT },
                 onToggleEnabled = { checked ->
                     // Habilitar el asiento index → count = index+1; deshabilitar → count = index.
                     onSetPlayerCount(if (checked) index + 1 else index)
                 },
                 onToggleType = { onSetSeatIsAI(index, !isAI) },
+                onSetBotLevel = { level -> onSetSeatBotLevel(index, level) },
             )
         }
     }
@@ -252,8 +259,10 @@ private fun MpSeatRow(
     enabled: Boolean,
     alwaysOn: Boolean,
     isAI: Boolean,
+    botLevel: MpBotLevel,
     onToggleEnabled: (Boolean) -> Unit,
     onToggleType: () -> Unit,
+    onSetBotLevel: (MpBotLevel) -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().height(38.dp).alpha(if (enabled) 1f else 0.5f),
@@ -270,13 +279,66 @@ private fun MpSeatRow(
             )
         }
         MpColorDisc(PlayerColor.fromIndex(index))
-        Text(
-            text = localizedString(Res.string.game6_player_n, PlayerColor.fromIndex(index).letter.toString()),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
+        // El lugar de la etiqueta del jugador aloja el selector de dificultad si el asiento es IA
+        // (poco espacio → reemplaza al nombre); para humanos, muestra el nombre del asiento.
+        if (enabled && isAI) {
+            MpDifficultySelector(
+                level = botLevel,
+                onSelect = onSetBotLevel,
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Text(
+                text = localizedString(Res.string.game6_player_n, PlayerColor.fromIndex(index).letter.toString()),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+        }
         if (enabled) {
             MpPlayerTypeChip(isAI = isAI, onToggle = onToggleType)
+        }
+    }
+}
+
+/**
+ * Selector compacto de dificultad de un asiento-bot: texto con el tier actual + flecha, que abre un
+ * menú con los cuatro niveles del ladder ([MpBotLevel]). Ocupa el lugar del nombre del jugador.
+ */
+@Composable
+private fun MpDifficultySelector(
+    level: MpBotLevel,
+    onSelect: (MpBotLevel) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .clickable { expanded = true }
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = localizedString(level.displayNameRes),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Icon(
+                TaratiIcons.ArrowDropDown,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            MpBotLevel.entries.forEach { opt ->
+                DropdownMenuItem(
+                    text = { Text(localizedString(opt.displayNameRes), color = MaterialTheme.colorScheme.onSurface) },
+                    onClick = { onSelect(opt); expanded = false },
+                )
+            }
         }
     }
 }
