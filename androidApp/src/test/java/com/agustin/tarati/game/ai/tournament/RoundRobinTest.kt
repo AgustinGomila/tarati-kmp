@@ -565,6 +565,37 @@ class RoundRobinTest {
         )
     }
 
+    /**
+     * Sonda de variedad: aggressive vs baseline al **evalNoise=0** (determinista) da 0-30 en
+     * `test_personality_round_robin` (aggressive pierde ambos colores). ¿Es debilidad real o el
+     * determinismo amplificó un déficit chico a 0% fijando una línea perdedora? Se re-mide con
+     * `evalNoise=2` (variedad). No asevera.
+     */
+    @Test
+    fun test_personality_variety_probe() {
+        fun logInfo(message: String) = TestLog.info(message)
+        val tournament = TournamentRunner()
+
+        fun withNoise(c: EvaluationConfig) = c.copy(behavior = c.behavior.copy(evalNoise = 2.0))
+        val det = defaultDifficulty // MEDIUM depth, como el personality round-robin
+
+        val result = tournament.runEngineMatch(
+            engineA = personalityEngine("aggressive_n"),
+            engineB = personalityEngine("baseline_n"),
+            configA = withNoise(aggressive().copy(difficulty = det)),
+            configB = withNoise(baseline().copy(difficulty = det)),
+            tournamentConfig = quickConfig.copy(gamesPerMatch = 30),
+            logInfo = ::logInfo,
+        )
+        val total = result.winsA + result.winsB + result.draws
+        val rate = if (total > 0) result.winsA.toDouble() / total else 0.0
+        logInfo(
+            "VARIETY PROBE aggressive vs baseline (evalNoise=2): " +
+                    "${"%.1f".format(rate * 100)}% (${result.winsA}-${result.winsB}-${result.draws}) " +
+                    "[determinista fue 0-30]",
+        )
+    }
+
     // ════════════════════════════════════════════════════════════════════════
     // BOOK GATING — el ladder Easy→Champion según el gateo del opening book
     // ════════════════════════════════════════════════════════════════════════

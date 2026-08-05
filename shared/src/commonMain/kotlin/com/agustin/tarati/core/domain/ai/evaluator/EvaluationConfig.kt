@@ -50,6 +50,19 @@ data class EvaluationConfig(
      * Fase B (reabierta).
      */
     val quiescenceEnabled: Boolean = false,
+    /**
+     * Cómo se rompen los empates de score en [com.agustin.tarati.core.domain.ai.engine.MinimaxStrategy]:
+     *  - `false` (default) → **aleatorio** (reservoir sampling entre las jugadas de igual score). Da
+     *    **variedad orgánica** sin costo de fuerza (todas las empatadas son igual de buenas para el motor):
+     *    sorpresa y mejor experiencia de juego. Lo usan EASY/MEDIUM/HARD.
+     *  - `true` → **keep-first determinista** (la primera del orden de `sortMoves`). **Solo CHAMPION**: fija el
+     *    juego afilado (evita abrir con la jugada pasiva — OBS-1) y lo hace reproducible; Champion es el único
+     *    nivel exento de la variación.
+     *
+     * A diferencia de [BehaviorConfig.evalNoise] (que perturba el score y **debilita**), esto solo desempata
+     * entre óptimos → variedad gratis.
+     */
+    val deterministicTiebreak: Boolean = false,
 ) {
     // ── MaterialWeights accessors ────────────────────────────────────────────
     val cobScore: Double get() = material.cobScore
@@ -195,6 +208,9 @@ data class EvaluationConfig(
             // paga cuando evalúa posiciones tranquilas (sin capturas pendientes); es el
             // diferenciador real frente a HARD (depth 5, sin quiescence).
             quiescenceEnabled = true,
+            // Único nivel exento de la variación: desempate determinista (keep-first) → juego afilado
+            // reproducible, sin abrir con la jugada pasiva (OBS-1). Easy/Medium/Hard usan el aleatorio.
+            deterministicTiebreak = true,
         )
 
         /**

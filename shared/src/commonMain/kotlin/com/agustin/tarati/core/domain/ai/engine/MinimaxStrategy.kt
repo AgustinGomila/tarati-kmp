@@ -44,13 +44,15 @@ import kotlin.time.Clock
  * que funciona correctamente incluso en EASY (depth=2) donde la búsqueda corta
  * no puede anticipar la regla por sí sola.
  *
- * ## Desempate determinista
- * Cuando dos movimientos tienen exactamente el mismo score, se conserva el
- * **primero** en el orden de [MoveEvaluator.sortMoves] (que ya prioriza calidad:
- * capturas, killer/history, bonus posicional). Es determinista y prefiere la mejor
- * jugada ordenada entre las empatadas. Reemplaza al reservoir sampling aleatorio
- * previo, que en aperturas simétricas (plagadas de empates) hacía elegir a veces la
- * jugada objetivamente más pasiva y rompía la reproducibilidad de los tests de fuerza.
+ * ## Desempate (variedad orgánica vs. determinismo)
+ * Cuando dos movimientos tienen exactamente el mismo score, el modo lo fija
+ * [EvaluationConfig.deterministicTiebreak]:
+ *  - **aleatorio** (default, EASY/MEDIUM/HARD): reservoir sampling de un elemento entre las empatadas →
+ *    **variedad orgánica** partida a partida (sorpresa, mejor experiencia) sin costo de fuerza (todas las
+ *    empatadas son igual de buenas para el motor; a diferencia de `evalNoise`, no debilita).
+ *  - **keep-first** (`deterministicTiebreak=true`, **solo CHAMPION**): se conserva el primero del orden de
+ *    [MoveEvaluator.sortMoves] (que ya prioriza calidad) → juego afilado reproducible, sin abrir con la jugada
+ *    pasiva (OBS-1). Champion es el único nivel exento de la variación.
  *
  * ## Quiescence en la hoja (gateada por dificultad)
  * Si [EvaluationConfig.quiescenceEnabled] (solo CHAMPION), en la hoja `depth==0` la
@@ -200,6 +202,7 @@ class MinimaxStrategy(
         var bestScore = if (isMaximizing) Double.NEGATIVE_INFINITY else Double.POSITIVE_INFINITY
         var alpha = alphaInit
         var beta = betaInit
+        var tiedCount = 0
         // Last-resort move used only when every legal move causes triple-repetition defeat.
         var repetitionFallback: Move? = null
 
@@ -258,16 +261,26 @@ class MinimaxStrategy(
                 moveEvaluator.recordKillerMove(move, depth, context)
             }
 
-            // Desempate determinista: se conserva el PRIMER movimiento que alcanza el mejor
-            // score (los empatados posteriores no lo reemplazan). Como los movimientos ya vienen
-            // ordenados por calidad heurística, el primero es el mejor ordenado entre los empatados.
+            // Desempate: keep-first determinista (CHAMPION) o aleatorio (resto).
+            // - deterministicTiebreak: se conserva el PRIMER movimiento del mejor score (los empatados
+            //   posteriores no lo reemplazan). Como vienen ordenados por calidad heurística, es el mejor
+            //   ordenado entre los empatados → juego afilado reproducible, sin abrir con la jugada pasiva.
+            // - aleatorio (default): reservoir sampling de un elemento entre los empatados → variedad
+            //   orgánica sin costo de fuerza (todas las empatadas son igual de buenas para el motor).
             val isNewBest = if (isMaximizing) score > bestScore else score < bestScore
+            val isTied = score == bestScore
             if (isNewBest) {
                 bestScore = score
                 bestMove = move
+                tiedCount = 1
 
                 if (!causesCutoff) {
                     moveEvaluator.recordHistoryMove(move, depth, context)
+                }
+            } else if (isTied && !config.deterministicTiebreak) {
+                tiedCount++
+                if (Random.nextDouble() < 1.0 / tiedCount) {
+                    bestMove = move
                 }
             }
 
