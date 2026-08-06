@@ -403,10 +403,18 @@ class OnlineGameClient(
                     logger.warn("Ignoring GameStarted for ${message.gameId} — current game is ${current?.gameId}")
                     return
                 }
+                // Sembrar el reloj con el tiempo inicial del control de tiempo para que el visor
+                // aparezca de inmediato al arrancar la partida. GameStarted no trae tiempos, así que
+                // sin esto whiteTimeMs/blackTimeMs seguían en null y el efecto de reloj de
+                // OnlineGameSideEffects (keyed en esos campos) no sincronizaba hasta el primer
+                // GameStateUpdate — el reloj recién se mostraba tras la primera jugada.
+                val initialMs = current.timeControl.initial.takeIf { it > 0 }?.let { it * 1_000L }
                 _currentGame.value = current.copy(
                     gameState = message.initialState,
                     lastMove = null,
                     status = OnlineGameStatus.InProgress,
+                    whiteTimeMs = initialMs,
+                    blackTimeMs = initialMs,
                 )
                 logger.info("Game started: ${message.gameId}")
             }

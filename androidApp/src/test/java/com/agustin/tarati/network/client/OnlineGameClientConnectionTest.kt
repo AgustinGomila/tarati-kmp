@@ -99,6 +99,32 @@ class OnlineGameClientConnectionTest {
     }
 
     @Test
+    fun `GameStarted seeds clock with initial time control`(): TestResult = runTest(dispatcher) {
+        // GameStarted no trae tiempos: el cliente los siembra con el inicial del control de tiempo
+        // (180s → 180000ms) para que el visor del reloj aparezca sin esperar el primer GameStateUpdate.
+        startGame()
+        assertEquals(180_000L, client.currentGame.value?.whiteTimeMs)
+        assertEquals(180_000L, client.currentGame.value?.blackTimeMs)
+    }
+
+    @Test
+    fun `GameStarted leaves clock null for untimed game`(): TestResult = runTest(dispatcher) {
+        fakeMessages.emit(
+            ServerMessage.MatchFound(
+                gameId = gameId,
+                opponentInfo = opponent,
+                yourColor = CobColor.WHITE.description,
+                timeControl = TimeControlInfo(initial = 0, increment = 0, label = "Unlimited"),
+            )
+        )
+        fakeMessages.emit(
+            ServerMessage.GameStarted(gameId = gameId, initialState = GameState.initialGameState()),
+        )
+        assertNull(client.currentGame.value?.whiteTimeMs)
+        assertNull(client.currentGame.value?.blackTimeMs)
+    }
+
+    @Test
     fun `OpponentDisconnected sets opponentConnected to false`(): TestResult = runTest(dispatcher) {
         startGame()
         assertEquals(client.currentGame.value?.opponentConnected, true)

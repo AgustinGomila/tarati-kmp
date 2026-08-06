@@ -25,9 +25,10 @@ import kotlinx.serialization.Serializable
  * @property spectatorCount Número de espectadores observando
  * @property timeControl Configuración de tiempo
  * @property isRated Si la partida afecta el rating
- * @property whiteTimeMs Tiempo restante de blancas en milisegundos, según el último
- *   [GameStateUpdate] del servidor. Null si aún no se recibió ningún update (tiempo completo).
- * @property blackTimeMs Tiempo restante de negras en milisegundos. Null hasta el primer update.
+ * @property whiteTimeMs Tiempo restante de blancas en milisegundos. Se siembra con el tiempo
+ *   inicial del control de tiempo al arrancar la partida (GameStarted) y luego se actualiza con
+ *   cada [GameStateUpdate] del servidor. Null solo en partidas sin control de tiempo.
+ * @property blackTimeMs Tiempo restante de negras en milisegundos. Misma semántica que [whiteTimeMs].
  * @property lastTimeUpdateMs Epoch ms del cliente en que se recibió el último update de tiempos.
  *   Usado para interpolar localmente sin esperar el siguiente mensaje del servidor.
  */
