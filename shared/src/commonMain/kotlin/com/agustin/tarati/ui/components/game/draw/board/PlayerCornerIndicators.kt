@@ -69,9 +69,10 @@ import kotlin.math.roundToInt
  * un badge con icono (Person/SmartToy) y, si hay control de tiempo activo,
  * una cápsula con el tiempo restante en los colores de la pieza del bando.
  *
- * En portrait los elementos de cada bando comparten borde horizontal (arriba/abajo).
- * En landscape comparten borde vertical (izquierda/derecha), alineándose con el
- * territorio del jugador.
+ * El badge marca la esquina del jugador (superior-izquierda y su opuesta
+ * inferior-derecha) y su reloj se apila junto a él hacia el centro vertical:
+ * debajo del badge superior y encima del badge inferior. Así los relojes quedan
+ * fuera de las esquinas inferiores, donde flota la barra de controles online.
  *
  * Sin control de tiempo ([TimeControlMode.Unlimited]) solo se dibujan los badges.
  */
@@ -115,8 +116,8 @@ fun PlayerCornerIndicators(
         val capsuleHeightPx = (badgePx * CAPSULE_HEIGHT_RATIO).roundToInt()
         val capsuleWidthPx = (capsuleHeightPx * CAPSULE_WIDTH_TO_HEIGHT_RATIO).roundToInt()
 
-        // La cápsula se centra verticalmente con el badge (alturas diferentes).
-        val capsuleVerticalOffset = (badgePx - capsuleHeightPx) / 2
+        // Separación entre el badge y la cápsula del reloj al apilarse.
+        val clockBadgeGapPx = with(density) { CLOCK_BADGE_GAP_DP.dp.roundToPx() }
 
         // ── Asignación de colores a cada esquina ──────────────────────────────
         val topLeftColor = topLeftCobColor(boardOrientation)
@@ -132,18 +133,15 @@ fun PlayerCornerIndicators(
         val bottomY = (bgTopLeft.y + bgSize.height - badgePx - insetPx).roundToInt()
 
         val rightXForClock = (bgTopLeft.x + bgSize.width - capsuleWidthPx - insetPx).roundToInt()
-        val topClockY = topY + capsuleVerticalOffset
-        val bottomClockY = bottomY + capsuleVerticalOffset
 
-        // En portrait badge y reloj del mismo bando van en el mismo borde horizontal.
-        // En landscape van en el mismo borde vertical (lado del tablero del jugador).
-        val isLandscape = boardOrientation == BoardOrientation.LANDSCAPE_WHITE ||
-                boardOrientation == BoardOrientation.LANDSCAPE_BLACK
-
-        val topLeftClockX = if (isLandscape) leftX else rightXForClock
-        val topLeftClockY = if (isLandscape) bottomClockY else topClockY
-        val bottomRightClockX = if (isLandscape) rightXForClock else leftX
-        val bottomRightClockY = if (isLandscape) topClockY else bottomClockY
+        // El reloj se apila con su badge hacia el centro vertical, en cualquier
+        // orientación: debajo del badge superior y encima del badge inferior. Así
+        // los relojes no caen en las esquinas inferiores, donde flota la barra de
+        // controles online, y cada uno queda alineado al borde exterior de su badge.
+        val topLeftClockX = leftX
+        val topLeftClockY = topY + badgePx + clockBadgeGapPx
+        val bottomRightClockX = rightXForClock
+        val bottomRightClockY = bottomY - capsuleHeightPx - clockBadgeGapPx
 
         // ── Badges ────────────────────────────────────────────────────────────
         PlayerBadge(
@@ -484,6 +482,9 @@ private const val BG_MARGIN_FACTOR = 0.1f
 
 /** Distancia en dp desde el borde del fondo hasta el borde exterior del elemento. */
 private const val INSET_DP = 8
+
+/** Separación en dp entre el badge y la cápsula del reloj al apilarse. */
+private const val CLOCK_BADGE_GAP_DP = 4
 
 private const val PIECE_SIZE_FACTOR = 0.08f
 private const val ICON_TO_BADGE_RATIO = 0.4f
