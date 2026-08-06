@@ -10,6 +10,7 @@ import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.header
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
@@ -117,6 +118,14 @@ class TaratiWebSocketClient(
          * @property message Mensaje de error
          */
         data class Error(val message: String) : ConnectionState()
+
+        /**
+         * El servidor cerró esta conexión porque se abrió otra con la misma cuenta
+         * (cierre `VIOLATED_POLICY`). A diferencia de [Disconnected], **no** debe
+         * disparar la reconexión automática — de lo contrario dos dispositivos con el
+         * mismo usuario se expulsan mutuamente en bucle.
+         */
+        data object Replaced : ConnectionState()
     }
 
     /**
@@ -143,6 +152,9 @@ class TaratiWebSocketClient(
 
         // Lanzar conexión en background job sobre el scope del cliente.
         connectionJob = scope.launch {
+            // True si el servidor cerró por VIOLATED_POLICY (reemplazo por otra conexión
+            // de la misma cuenta). Determina el estado terminal en el finally.
+            var replacedByNewer = false
             try {
                 httpClient.webSocket(
                     urlString = "$serverUrl/ws/game",
@@ -172,6 +184,17 @@ class TaratiWebSocketClient(
                     } catch (e: Exception) {
                         logger.debug("Listening stopped: ${e.message}")
                     }
+
+                    // Distinguir "reemplazado por otra conexión de la misma cuenta" de una
+                    // caída de red o un rechazo de auth: solo el reemplazo debe evitar la
+                    // auto-reconexión. El servidor usa VIOLATED_POLICY tanto para el reemplazo
+                    // como para el token faltante/ inválido, así que se matchea también el
+                    // texto exacto del motivo. closeReason ya está resuelto tras salir del loop.
+                    replacedByNewer = runCatching {
+                        val reason = closeReason.await()
+                        reason?.code == CloseReason.Codes.VIOLATED_POLICY.code &&
+                                reason.message == REPLACED_CLOSE_MESSAGE
+                    }.getOrDefault(false)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -184,7 +207,9 @@ class TaratiWebSocketClient(
                 // el estado correcto y completó el handshake. Solo marcar Disconnected
                 // cuando la conexión llegó a establecerse y luego se cerró.
                 if (_connectionState.value !is ConnectionState.Error) {
-                    _connectionState.value = ConnectionState.Disconnected
+                    _connectionState.value =
+                        if (replacedByNewer) ConnectionState.Replaced
+                        else ConnectionState.Disconnected
                 }
                 heartbeatJob?.cancel()
                 session = null
@@ -332,6 +357,11 @@ class TaratiWebSocketClient(
     private companion object {
         // Tiempo máximo de espera del handshake WebSocket inicial.
         val CONNECT_TIMEOUT = 5.seconds
+
+        // Texto exacto del motivo de cierre que envía el servidor al reemplazar una conexión
+        // por otra de la misma cuenta (ConnectionManager.handleConnection). Debe coincidir
+        // literalmente para no confundirlo con un cierre VIOLATED_POLICY por fallo de auth.
+        const val REPLACED_CLOSE_MESSAGE = "Replaced by a newer connection"
     }
 }
 

@@ -7,6 +7,8 @@ import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
 import com.agustin.tarati.features.online.auth.IAuthViewModel
 import com.agustin.tarati.features.online.auth.validToken
 import com.agustin.tarati.network.client.TaratiWebSocketClient
+import com.agustin.tarati.shared.generated.resources.Res
+import com.agustin.tarati.shared.generated.resources.connection_replaced_by_other_device
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -131,6 +134,22 @@ class ConnectionViewModel(
      */
     private fun syncWebSocketState(wsState: TaratiWebSocketClient.ConnectionState) {
         logger.debug("wsState: ${wsState::class.simpleName}")
+
+        // Reemplazo por otra conexión de la misma cuenta (web + desktop, p. ej.): el servidor
+        // cerró este WS con VIOLATED_POLICY. NO reconectar — de lo contrario ambos dispositivos
+        // se expulsan en bucle. Cortar cualquier intento en curso y avisar al usuario.
+        if (wsState is TaratiWebSocketClient.ConnectionState.Replaced) {
+            if (_connectionState.value == ConnectionState.Offline) return  // disconnect intencional
+            logger.debug("Connection replaced by another device — not reconnecting")
+            reconnectJob?.cancel()
+            reconnectJob = null
+            viewModelScope.launch {
+                val msg = runCatching { getString(Res.string.connection_replaced_by_other_device) }
+                    .getOrDefault("Session is open on another device")
+                _connectionState.value = ConnectionState.Error(message = msg)
+            }
+            return
+        }
 
         // Durante reconexión automática, solo la conexión exitosa cambia el estado.
         if (_connectionState.value is ConnectionState.Reconnecting) {

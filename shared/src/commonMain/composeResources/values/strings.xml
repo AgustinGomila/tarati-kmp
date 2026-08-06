@@ -289,6 +289,7 @@
     <string name="connect">Connect</string>
     <string name="connecting">Connecting…</string>
     <string name="reconnecting">Reconnecting…</string>
+    <string name="connection_replaced_by_other_device">Session opened on another device</string>
     <string name="retry">Retry</string>
     <string name="refresh">Refresh</string>
     <string name="disconnect">Disconnect</string>
