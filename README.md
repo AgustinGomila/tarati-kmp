@@ -15,7 +15,7 @@
 
 **Multiplatform implementation (Android · Desktop · Web) of the strategy game Tarati**
 
-[Play Online](https://tarati.tech) · [Google Play](#download) · [Core Rules](#core-rules) · [Multiplayer](#multiplayer-mode--tarati-six-26-players) · [Technologies](#technologies) · [Download Desktop](#desktop)
+[Play Online](https://tarati.tech) · [Google Play](#download) · [Core Rules](#core-rules) · [Multiplayer](#multiplayer-mode--tarati-six-26-players) · [Technologies](#technologies) · [Download Desktop](#desktop) · [Documentation](docs/README.md)
 
 </div>
 
@@ -246,6 +246,12 @@ Intuitive interface built with Jetpack Compose / Compose Multiplatform.
 - Self-contained — no Java runtime required
 - 50–100 MB free space
 
+### Code signing
+
+Windows installers are code-signed for free by [SignPath.io](https://signpath.io),
+with a certificate provided by the [SignPath Foundation](https://signpath.io/open-source)
+program for open-source projects.
+
 ### itch.io
 
 All desktop installers and the Android APK are also published on itch.io:
@@ -444,6 +450,13 @@ cut/stalemate, greedy bot) and the multiplayer server (tables, sessions, persist
 
 ---
 
+## Documentation
+
+Technical documentation — online architecture, server integration context, the AGP 9 migration log and store
+listing copy — lives in [`docs/`](docs/README.md).
+
+---
+
 ## Credits
 
 - **Original concept**: George Spencer-Brown — *Laws of Form*
@@ -456,7 +469,7 @@ Tarati is grounded in George Spencer-Brown's *Laws of Form*, which introduces a 
 entirely on the concept of distinction.
 
 - [Louis Kauffman — Laws of Form (video)](https://youtu.be/UqMl_Wb04nU)
-- [LoF Conference 2019](https://www.youtube.com/playlist?list=PLl8xLayCI7YcFU3huTvSPC11xBFioxtpo)
+- [LoF24: Divyamaan Sahoo — How to Play Tarati](https://www.youtube.com/watch?v=HUCVEcbehaM)
 - [LoF Mini Course by Leon Conrad](https://www.youtube.com/playlist?list=PLoK3NtWr5NbqEOdjQrWaq1sDweF7NJ5NB)
 
 ---

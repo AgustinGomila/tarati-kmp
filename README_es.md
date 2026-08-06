@@ -15,7 +15,7 @@
 
 **Implementación multiplataforma (Android · Desktop · Web) del juego de estrategia Tarati**
 
-[Jugar Online](https://tarati.tech) · [Google Play](#descargar) · [Reglas](#reglas) · [Multijugador](#modo-multijugador--tarati-six-26-jugadores) · [Tecnologías](#tecnologías) · [Descargar Desktop](#desktop)
+[Jugar Online](https://tarati.tech) · [Google Play](#descargar) · [Reglas](#reglas) · [Multijugador](#modo-multijugador--tarati-six-26-jugadores) · [Tecnologías](#tecnologías) · [Descargar Desktop](#desktop) · [Documentación](docs/README.md)
 
 </div>
 
@@ -255,6 +255,12 @@ Interfaz intuitiva construida con Jetpack Compose / Compose Multiplatform.
 - Autocontenido — no requiere runtime de Java
 - 50–100 MB de espacio libre
 
+### Firma de código
+
+Los instaladores de Windows están firmados digitalmente de forma gratuita por
+[SignPath.io](https://signpath.io), con un certificado provisto por el programa
+[SignPath Foundation](https://signpath.io/open-source) para proyectos de código abierto.
+
 ### itch.io
 
 Todos los instaladores de escritorio y el APK de Android también están publicados en itch.io:
@@ -453,6 +459,13 @@ notación, cortes/estancamiento, bot greedy) y el servidor multijugador (mesas, 
 
 ---
 
+## Documentación
+
+La documentación técnica — arquitectura del sistema online, contexto de integración del servidor, la bitácora de
+migración a AGP 9 y los textos de tiendas — vive en [`docs/`](docs/README.md).
+
+---
+
 ## Créditos
 
 - **Concepto original**: George Spencer-Brown — *Laws of Form*
@@ -465,7 +478,7 @@ Tarati está fundamentado en *Laws of Form* de George Spencer-Brown, que introdu
 construido íntegramente sobre el concepto de distinción.
 
 - [Louis Kauffman — Laws of Form (video)](https://youtu.be/UqMl_Wb04nU)
-- [Conferencia LoF 2019](https://www.youtube.com/playlist?list=PLl8xLayCI7YcFU3huTvSPC11xBFioxtpo)
+- [LoF24: Divyamaan Sahoo — Cómo jugar Tarati](https://www.youtube.com/watch?v=HUCVEcbehaM)
 - [Mini Curso LoF por Leon Conrad](https://www.youtube.com/playlist?list=PLoK3NtWr5NbqEOdjQrWaq1sDweF7NJ5NB)
 
 ---
