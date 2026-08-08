@@ -5,6 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.agustin.tarati.core.data.database.DATABASE_NAME
 import com.agustin.tarati.core.data.database.MIGRATION_1_2
 import com.agustin.tarati.core.data.database.MIGRATION_2_3
+import com.agustin.tarati.core.data.database.MIGRATION_3_4
 import com.agustin.tarati.core.data.database.TaratiDatabase
 import kotlinx.coroutines.Dispatchers
 import java.io.File
@@ -39,7 +40,7 @@ fun createDesktopDatabase(): TaratiDatabase {
     )
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
 }
 

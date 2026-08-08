@@ -157,6 +157,9 @@ class WasmSettingsRepository : SettingsRepository {
     private val _preMoves = MutableStateFlow(bool(K_PRE_MOVES, true))
     override val preMovesEnabled: StateFlow<Boolean> = _preMoves.asStateFlow()
 
+    private val _showEvalBar = MutableStateFlow(bool(K_SHOW_EVAL_BAR, true))
+    override val showEvaluationBar: StateFlow<Boolean> = _showEvalBar.asStateFlow()
+
     private val _onlineTc = MutableStateFlow(str(K_ONLINE_TC, TimeControl.BLITZ.key) ?: TimeControl.BLITZ.key)
     override val onlineTimeControl: StateFlow<String> = _onlineTc.asStateFlow()
 
@@ -292,6 +295,10 @@ class WasmSettingsRepository : SettingsRepository {
         _preMoves.value = enabled; set(K_PRE_MOVES, enabled)
     }
 
+    override suspend fun setShowEvaluationBar(enabled: Boolean) {
+        _showEvalBar.value = enabled; set(K_SHOW_EVAL_BAR, enabled)
+    }
+
     override suspend fun setOnlineTimeControl(timeControl: String) {
         _onlineTc.value = timeControl; set(K_ONLINE_TC, timeControl)
     }
@@ -336,6 +343,7 @@ class WasmSettingsRepository : SettingsRepository {
         private const val K_MANUALLY_ROTATED = "w_manually_rotated"
         private const val K_TIME_CONTROL = "w_time_control"
         private const val K_PRE_MOVES = "w_pre_moves"
+        private const val K_SHOW_EVAL_BAR = "w_show_eval_bar"
         private const val K_ONLINE_TC = "w_online_tc"
         private const val K_ONLINE_RATED = "w_online_rated"
         private const val K_ONLINE_SPECTATING = "w_online_spectating"

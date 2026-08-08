@@ -43,10 +43,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.data.database.dto.GameDto
 import com.agustin.tarati.core.data.database.dto.MatchDto
-import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
-import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNotation
-import com.agustin.tarati.core.domain.game.play.HistoryEntry
+import com.agustin.tarati.core.data.database.dto.toHistoryEntries
 import com.agustin.tarati.core.domain.game.play.StableHistoryList
+import com.agustin.tarati.features.analysis.GameAnalysisSection
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.move_history
@@ -55,23 +54,6 @@ import com.agustin.tarati.shared.generated.resources.total_moves
 import com.agustin.tarati.ui.components.TooltipIconButton
 import com.agustin.tarati.ui.components.movelist.MoveHistoryList
 import com.agustin.tarati.ui.theme.TaratiIcons
-
-/**
- * Replays [gameDto]'s move history from [GameDto.initialBoardPosition] to produce
- * a list of [HistoryEntry] objects, one per move. Used by [CollapsibleMoveHistoryCard]
- * and [MoveHistoryCard] to build the
- * [StableHistoryList] required by [MoveHistoryList].
- */
-private fun buildMoveHistoryEntries(gameDto: GameDto): List<HistoryEntry> {
-    var state = runCatching {
-        parseBoardNotation(gameDto.initialBoardPosition)
-    }.getOrElse { initialGameState() }
-
-    return gameDto.moveHistory.map { move ->
-        state = state.applyMove(move)
-        HistoryEntry(move, state)
-    }
-}
 
 /** Duration for expand/collapse panel transitions (ms). */
 private const val EXPAND_DURATION_MS = 300
@@ -142,6 +124,18 @@ private fun LandscapeLayout(
                 header = matchDto.header,
             ) { newHeader ->
                 onMatchDtoChange(matchDto.copy(header = newHeader))
+            }
+
+            if (!isEditing) {
+                GameAnalysisSection(
+                    gameDto = matchDto.game,
+                    gameId = matchDto.id ?: matchDto.game.hashCode().toString(),
+                    currentMoveIndex = currentMoveIndex,
+                    onMoveClick = { currentMoveIndex = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                )
             }
         }
 
@@ -247,6 +241,16 @@ private fun PortraitLayout(
                     onMoveIndexChange = { currentMoveIndex = it },
                     topPanelExpanded = isInfoExpanded,
                     bottomPanelExpanded = isMoveHistoryExpanded,
+                )
+
+                GameAnalysisSection(
+                    gameDto = matchDto.game,
+                    gameId = matchDto.id ?: matchDto.game.hashCode().toString(),
+                    currentMoveIndex = currentMoveIndex,
+                    onMoveClick = { currentMoveIndex = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
                 )
 
                 // Movimientos colapsable en portrait con padding para evitar FAB
@@ -379,7 +383,7 @@ fun CollapsibleMoveHistoryCard(
                 ),
             ) {
                 val history = remember(gameDto) {
-                    StableHistoryList(buildMoveHistoryEntries(gameDto))
+                    StableHistoryList(gameDto.toHistoryEntries())
                 }
 
                 MoveHistoryList(

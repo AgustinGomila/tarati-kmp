@@ -82,6 +82,7 @@ import com.agustin.tarati.shared.generated.resources.settings
 import com.agustin.tarati.shared.generated.resources.settings_achievements
 import com.agustin.tarati.shared.generated.resources.settings_install_app
 import com.agustin.tarati.shared.generated.resources.settings_online
+import com.agustin.tarati.shared.generated.resources.show_evaluation_bar
 import com.agustin.tarati.shared.generated.resources.sound
 import com.agustin.tarati.shared.generated.resources.sound_disabled
 import com.agustin.tarati.shared.generated.resources.sound_effects
@@ -197,6 +198,16 @@ fun SettingsScreen(
                 )
 
                 SettingsCategory(title = Res.string.appearance)
+                ToggleSetting(
+                    icon = TaratiIcons.Leaderboard,
+                    title = Res.string.show_evaluation_bar,
+                    checked = settingsState.showEvaluationBar,
+                    onCheckedChange = { enabled -> viewModel.setShowEvaluationBar(enabled) },
+                )
+                ThemeSetting(
+                    theme = settingsState.appTheme,
+                    onThemeChange = events::onThemeChange,
+                )
                 if (onNavigateToStore != null) {
                     Row(
                         modifier = Modifier
@@ -225,10 +236,6 @@ fun SettingsScreen(
                         )
                     }
                 }
-                ThemeSetting(
-                    theme = settingsState.appTheme,
-                    onThemeChange = events::onThemeChange,
-                )
                 PaletteSetting(
                     paletteName = settingsState.palette,
                     availablePalettes = allPalettesForSelector,

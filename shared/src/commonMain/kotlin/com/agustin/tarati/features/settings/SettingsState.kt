@@ -45,4 +45,6 @@ data class SettingsState(
     val timeControl: TimeControlMode = TimeControlMode.Unlimited,
     /** Whether pre-move selection is enabled during the AI's turn. */
     val preMovesEnabled: Boolean = true,
+    /** Whether the live evaluation bar is shown alongside the board. */
+    val showEvaluationBar: Boolean = true,
 )

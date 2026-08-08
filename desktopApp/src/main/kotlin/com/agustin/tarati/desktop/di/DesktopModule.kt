@@ -1,8 +1,13 @@
 package com.agustin.tarati.desktop.di
 
 import com.agustin.tarati.core.data.database.TaratiDatabase
+import com.agustin.tarati.core.data.database.dao.AnalysisDao
 import com.agustin.tarati.core.data.database.dao.GameDao
+import com.agustin.tarati.core.data.repositories.RoomAnalysisCacheRepository
 import com.agustin.tarati.core.data.repositories.RoomGameRepository
+import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
+import com.agustin.tarati.core.domain.analysis.AnalysisRunner
+import com.agustin.tarati.core.domain.analysis.DefaultAnalysisRunner
 import com.agustin.tarati.core.domain.repository.GameRepository
 import com.agustin.tarati.desktop.data.createDesktopDatabase
 import com.agustin.tarati.di.sharedModules
@@ -116,6 +121,11 @@ val desktopDataModule: Module = module {
 
     // GameDao — extracted from database
     single<GameDao> { get<TaratiDatabase>().gameDao() }
+
+    // AnalysisDao + caché de análisis persistente (Room)
+    single<AnalysisDao> { get<TaratiDatabase>().analysisDao() }
+    single<AnalysisCacheRepository> { RoomAnalysisCacheRepository(get()) }
+    single<AnalysisRunner> { DefaultAnalysisRunner() }
 
     // Repository — Room implementation with disk persistence
     single<GameRepository> { RoomGameRepository(get()) }

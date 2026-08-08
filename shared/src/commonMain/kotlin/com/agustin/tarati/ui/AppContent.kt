@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.utils.FeatureFlags
 import com.agustin.tarati.features.achievements.AchievementsScreen
+import com.agustin.tarati.features.analysis.AnalysisPanel
 import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
@@ -88,6 +89,7 @@ import com.agustin.tarati.services.notifications.UIMessage
 import com.agustin.tarati.services.notifications.UIMessageBus
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.accept
+import com.agustin.tarati.shared.generated.resources.analysis_title
 import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.game6_invite_body
 import com.agustin.tarati.shared.generated.resources.game6_invite_declined
@@ -104,6 +106,7 @@ import com.agustin.tarati.ui.components.navigation.NavGraph
 import com.agustin.tarati.ui.components.navigation.injectGameViewModel
 import com.agustin.tarati.ui.layout.CompanionPanelController
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Achievements
+import com.agustin.tarati.ui.layout.CompanionPanelDestination.Analysis
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.GameDetails
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Leaderboard
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Library
@@ -118,6 +121,7 @@ import com.agustin.tarati.ui.layout.CompanionPanelDestination.Settings
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Store
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.Supporter
 import com.agustin.tarati.ui.layout.CompanionPanelDestination.TournamentDetail
+import com.agustin.tarati.ui.layout.CompanionPanelHeader
 import com.agustin.tarati.ui.layout.DisplayMode
 import com.agustin.tarati.ui.layout.LocalCompanionPanelController
 import com.agustin.tarati.ui.layout.LocalScreenLayout
@@ -509,6 +513,20 @@ private fun CompanionPane(
         )
 
         Achievements -> AchievementsScreen(onBack = controller::back)
+
+        Analysis -> {
+            val analysisGameState by gameViewModel.gameState.collectAsState()
+            Column(modifier = Modifier.fillMaxSize()) {
+                CompanionPanelHeader(
+                    title = localizedString(Res.string.analysis_title),
+                    onClose = controller::close,
+                )
+                AnalysisPanel(
+                    gameState = analysisGameState,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
 
         OnlineSettings -> OnlineSettingsScreen(
             onNavigateBack = controller::back,

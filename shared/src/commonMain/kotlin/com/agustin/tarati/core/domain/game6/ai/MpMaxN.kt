@@ -1,5 +1,6 @@
 package com.agustin.tarati.core.domain.game6.ai
 
+import com.agustin.tarati.core.domain.game6.ai.MpMaxN.NODE_BUDGET
 import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.board.BoardGraph
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor

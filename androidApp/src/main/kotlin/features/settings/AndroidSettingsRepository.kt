@@ -122,6 +122,9 @@ class AndroidSettingsRepository(
     override val preMovesEnabled: Flow<Boolean> =
         dataStore.data.map { prefs -> prefs[PRE_MOVES_ENABLED_KEY] ?: PRE_MOVES_ENABLED_DEFAULT }
 
+    override val showEvaluationBar: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[SHOW_EVAL_BAR_KEY] ?: SHOW_EVAL_BAR_DEFAULT }
+
     override val onlineTimeControl: Flow<String> =
         dataStore.data.map { prefs -> prefs[ONLINE_TIME_CONTROL_KEY] ?: ONLINE_TIME_CONTROL_DEFAULT }
 
@@ -250,6 +253,10 @@ class AndroidSettingsRepository(
         dataStore.edit { it[PRE_MOVES_ENABLED_KEY] = enabled }
     }
 
+    override suspend fun setShowEvaluationBar(enabled: Boolean) {
+        dataStore.edit { it[SHOW_EVAL_BAR_KEY] = enabled }
+    }
+
     override suspend fun setOnlineTimeControl(timeControl: String) {
         dataStore.edit { it[ONLINE_TIME_CONTROL_KEY] = timeControl }
     }
@@ -300,6 +307,7 @@ class AndroidSettingsRepository(
         // Time control & pre-moves
         val TIME_CONTROL_KEY: Preferences.Key<String> = stringPreferencesKey("time_control")
         val PRE_MOVES_ENABLED_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("pre_moves_enabled")
+        val SHOW_EVAL_BAR_KEY: Preferences.Key<Boolean> = booleanPreferencesKey("show_evaluation_bar")
 
         // Online matchmaking
         val ONLINE_TIME_CONTROL_KEY: Preferences.Key<String> = stringPreferencesKey("online_time_control")
@@ -326,6 +334,7 @@ class AndroidSettingsRepository(
 
         // Time control & pre-moves defaults
         const val PRE_MOVES_ENABLED_DEFAULT: Boolean = true
+        const val SHOW_EVAL_BAR_DEFAULT: Boolean = true
 
         // Online matchmaking defaults
         const val ONLINE_TIME_CONTROL_DEFAULT: String = "blitz"

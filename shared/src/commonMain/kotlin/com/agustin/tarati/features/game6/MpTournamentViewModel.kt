@@ -166,12 +166,13 @@ class MpTournamentViewModel(
     }
 
     /** Ejecuta una acción sobre el torneo seleccionado; en OK reemplaza el detalle, en error emite el código. */
-    private fun selectedAction(op: suspend (token: String, id: String) -> Result<MpTournamentDto>): Unit = action { token ->
-        val id = _selected.value?.id ?: return@action
-        op(token, id)
-            .onSuccess { _selected.value = it; refreshOnce() }
-            .onFailure { _errors.tryEmit(it.message ?: "action_failed") }
-    }
+    private fun selectedAction(op: suspend (token: String, id: String) -> Result<MpTournamentDto>): Unit =
+        action { token ->
+            val id = _selected.value?.id ?: return@action
+            op(token, id)
+                .onSuccess { _selected.value = it; refreshOnce() }
+                .onFailure { _errors.tryEmit(it.message ?: "action_failed") }
+        }
 
     private fun action(block: suspend (token: String) -> Unit): Unit = _scope.launchIgnored {
         val token = getToken() ?: return@launchIgnored

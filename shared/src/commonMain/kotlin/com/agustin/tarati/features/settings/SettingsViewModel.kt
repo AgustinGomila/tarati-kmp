@@ -99,7 +99,8 @@ open class SettingsViewModel(
     private val timeSettingsFlow = combine(
         repository.timeControl,
         repository.preMovesEnabled,
-    ) { tc, preMoves -> tc to preMoves }
+        repository.showEvaluationBar,
+    ) { tc, preMoves, showEvalBar -> Triple(tc, preMoves, showEvalBar) }
 
     // Etapa 3 — estado completo
     override val settingsState: StateFlow<SettingsState> = combine(
@@ -114,7 +115,7 @@ open class SettingsViewModel(
             pieceTypeId to timeSettings
         },
     ) { (theme, diff, diffBlack), (user, lang, palette), (board, sound), (pieceTypeId, timeSettings) ->
-        val (timeControl, preMovesEnabled) = timeSettings
+        val (timeControl, preMovesEnabled, showEvaluationBar) = timeSettings
         SettingsState(
             appTheme = theme,
             difficulty = diff,
@@ -127,6 +128,7 @@ open class SettingsViewModel(
             pieceTypeId = pieceTypeId,
             timeControl = timeControl,
             preMovesEnabled = preMovesEnabled,
+            showEvaluationBar = showEvaluationBar,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -292,6 +294,10 @@ open class SettingsViewModel(
 
     override fun setTimeControl(mode: TimeControlMode) {
         viewModelScope.launch { repository.setTimeControl(mode) }
+    }
+
+    override fun setShowEvaluationBar(enabled: Boolean) {
+        viewModelScope.launch { repository.setShowEvaluationBar(enabled) }
     }
 
     override fun setPreMovesEnabled(enabled: Boolean) {

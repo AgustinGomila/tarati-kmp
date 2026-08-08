@@ -127,7 +127,10 @@ fun GameScreen(
     val scope = rememberCoroutineScope()
     val bus: UIMessageBus = koinInject()
     val screenLayout = LocalScreenLayout.current
-    val companionDestination = LocalCompanionPanelController.current.destination
+    val companion = LocalCompanionPanelController.current
+    val companionDestination = companion.destination
+    // Portrait: overlay colapsable del análisis. En Expanded el análisis va al panel lateral.
+    var showAnalysisPortrait by remember { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
@@ -648,6 +651,16 @@ fun GameScreen(
                 // Undo/redo grisados mientras corre la online o se especta; activos offline o al
                 // terminar la online (para navegar su desarrollo). Mismo criterio que el sidebar.
                 navigationEnabled = !isOnlineGame && spectatingState == null,
+                showEvaluationBar = settingsState.showEvaluationBar,
+                onAnalysis = {
+                    if (screenLayout == ScreenLayout.Expanded) {
+                        companion.toggle(CompanionPanelDestination.Analysis)
+                    } else {
+                        showAnalysisPortrait = !showAnalysisPortrait
+                    }
+                },
+                showAnalysisPanel = showAnalysisPortrait && screenLayout != ScreenLayout.Expanded,
+                onCloseAnalysisPanel = { showAnalysisPortrait = false },
                 // ── Online components ─────────────────────────────────────────
                 onlineContent = if (isOnlineGame || spectatingState != null) ({
                     OnlineGameBar(

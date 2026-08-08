@@ -151,6 +151,7 @@ val heavyTestPatterns: Set<String> = setOf(
     "**/*DifficultyDiagnosticTest*.class",
     "**/*OpeningBookAbTest*.class",
     "**/*MpEngineStrengthTest*.class",
+    "**/*SideToMoveAdvantageTest*.class",
 )
 
 if (skipHeavyTests) {

@@ -67,8 +67,10 @@ class MpOnlineClient(
     val inviteResolved: SharedFlow<String> = _inviteResolved.asSharedFlow()
 
     /** Clasificación en vivo de un torneo MP (Arena) — actualizada tras cada mesa y al finalizar. */
-    private val _tournamentStandings = MutableSharedFlow<MpServerMessage.TournamentStandingsUpdated>(extraBufferCapacity = 8)
-    val tournamentStandings: SharedFlow<MpServerMessage.TournamentStandingsUpdated> = _tournamentStandings.asSharedFlow()
+    private val _tournamentStandings =
+        MutableSharedFlow<MpServerMessage.TournamentStandingsUpdated>(extraBufferCapacity = 8)
+    val tournamentStandings: SharedFlow<MpServerMessage.TournamentStandingsUpdated> =
+        _tournamentStandings.asSharedFlow()
 
     /** Fin de un torneo MP (clasificación final) o cancelación (`tournamentId`). */
     private val _tournamentFinished = MutableSharedFlow<MpServerMessage.TournamentFinished>(extraBufferCapacity = 4)

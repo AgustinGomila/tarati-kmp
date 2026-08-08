@@ -69,10 +69,15 @@ class MpMaxNTest {
         val move = MpMaxN.chooseMove(state, MpBotLevel.HARD, random = Random(3)) ?: return
         val after = MpRules.applyMove(state, move)
         val myThreatExposure = MpRules.legalMovesFor(after, after.seats[1])
-            .maxOfOrNull { m -> MpRules.captureTargets(after.pieces, m).count { after.pieces[it]?.owner == after.seats[0].color } }
+            .maxOfOrNull { m ->
+                MpRules.captureTargets(after.pieces, m).count { after.pieces[it]?.owner == after.seats[0].color }
+            }
             ?: 0
         // Desde la apertura, ninguna respuesta del rival debería capturar 2+ piezas de una:
         // la búsqueda evita dejar una captura múltiple servida.
-        assertTrue("La jugada no cuelga una captura múltiple del rival (exposición=$myThreatExposure)", myThreatExposure < 2)
+        assertTrue(
+            "La jugada no cuelga una captura múltiple del rival (exposición=$myThreatExposure)",
+            myThreatExposure < 2
+        )
     }
 }

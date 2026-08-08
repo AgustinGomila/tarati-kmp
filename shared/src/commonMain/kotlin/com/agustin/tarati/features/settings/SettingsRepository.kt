@@ -9,6 +9,7 @@ import com.agustin.tarati.ui.components.game.draw.pieces.ConversionAnimationStyl
 import com.agustin.tarati.ui.components.game.draw.pieces.PieceTypes
 import com.agustin.tarati.ui.theme.AppTheme
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 /**
@@ -110,6 +111,16 @@ interface SettingsRepository {
      */
     val preMovesEnabled: Flow<Boolean>
 
+    /**
+     * Whether the live evaluation bar is shown next to the board. Default `true`.
+     *
+     * Provista con implementación por defecto (`flowOf(true)`) para no romper las
+     * implementaciones y fakes existentes; las plataformas la sobreescriben con
+     * persistencia real.
+     */
+    val showEvaluationBar: Flow<Boolean>
+        get() = flowOf(true)
+
     // ── Online matchmaking preferences ────────────────────────────────────────
 
     /**
@@ -191,6 +202,9 @@ interface SettingsRepository {
 
     /** Persiste el flag de pre-movimientos. */
     suspend fun setPreMovesEnabled(enabled: Boolean)
+
+    /** Persiste el flag de la barra de evaluación. Default no-op (ver [showEvaluationBar]). */
+    suspend fun setShowEvaluationBar(enabled: Boolean) {}
 
     // ── Online matchmaking setters ─────────────────────────────────────────────
 

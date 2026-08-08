@@ -1,5 +1,8 @@
 package com.agustin.tarati.web.di
 
+import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
+import com.agustin.tarati.core.domain.analysis.AnalysisRunner
+import com.agustin.tarati.core.domain.analysis.InMemoryAnalysisCacheRepository
 import com.agustin.tarati.core.domain.repository.GameRepository
 import com.agustin.tarati.di.sharedModules
 import com.agustin.tarati.features.game.IGameModel
@@ -23,6 +26,7 @@ import com.agustin.tarati.web.WasmSettingsRepository
 import com.agustin.tarati.web.WasmSettingsViewModel
 import com.agustin.tarati.web.WasmUrlLauncher
 import com.agustin.tarati.web.WebSoundService
+import com.agustin.tarati.web.worker.WorkerAnalysisRunner
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -63,6 +67,9 @@ val webDataModule: Module = module {
     single<SettingsRepository> { WasmSettingsRepository() }
     single<AuthRepository> { WasmAuthRepository() }
     single<GameRepository> { NoOpGameRepository() }
+    single<AnalysisCacheRepository> { InMemoryAnalysisCacheRepository() }
+    // El análisis corre en un Web Worker (fuera del hilo principal del navegador).
+    single<AnalysisRunner> { WorkerAnalysisRunner() }
 }
 
 val webViewModelModule: Module = module {

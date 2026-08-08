@@ -8,8 +8,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -35,6 +37,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.ai.api.IAIEngine
+import com.agustin.tarati.core.domain.analysis.PositionAnalyzer
 import com.agustin.tarati.core.domain.game.board.BoardOrientation
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game.board.toBoardOrientation
@@ -46,6 +49,7 @@ import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.domain.game.play.StableHistoryList
 import com.agustin.tarati.core.domain.tutorial.TutorialState
 import com.agustin.tarati.core.utils.logging.LoggingFactory.getLogger
+import com.agustin.tarati.features.analysis.AnalysisCard
 import com.agustin.tarati.features.online.connection.ConnectionState
 import com.agustin.tarati.features.online.game.SpectatingState
 import com.agustin.tarati.features.online.ui.OnlineSearchBar
@@ -70,6 +74,7 @@ import com.agustin.tarati.ui.components.editor.IEditBoardManager
 import com.agustin.tarati.ui.components.game.BoardEvents
 import com.agustin.tarati.ui.components.game.CreateBoard
 import com.agustin.tarati.ui.components.game.CreateBoardState
+import com.agustin.tarati.ui.components.game.EvaluationBar
 import com.agustin.tarati.ui.components.game.animation.BoardAnimationViewModel
 import com.agustin.tarati.ui.components.game.animation.BoardGeometryViewModel
 import com.agustin.tarati.ui.components.game.animation.IBoardAnimationViewModel
@@ -98,6 +103,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -261,6 +268,13 @@ fun MainContent(
     showTurnIndicator: Boolean = true,
     /** `false` grisa undo/redo/saltar del FAB (online en curso / espectador); ver [BottomGameBar]. */
     navigationEnabled: Boolean = true,
+    /** Whether the live evaluation bar overlay is shown next to the board. */
+    showEvaluationBar: Boolean = true,
+    /** Acción del botón de análisis del strip (Expanded → companion, portrait → panel colapsable). */
+    onAnalysis: (() -> Unit)? = null,
+    /** Portrait: si el panel de análisis colapsable está abierto sobre el tablero. */
+    showAnalysisPanel: Boolean = false,
+    onCloseAnalysisPanel: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -592,6 +606,27 @@ fun MainContent(
                 }
             }
 
+            // ── EvaluationBar: overlay del análisis en vivo (borde izquierdo) ──
+            // Sibling del Box: se dibuja sobre el tablero sin alterar su layout.
+            // Es función pura de gameState → sirve en todos los modos (local, IA,
+            // online, espectador). Estática (depth 0): costo nulo, no compite con
+            // la IA ni con la animación. La barra es canónica (Blancas abajo); la
+            // etiqueta muestra el % del bando líder, independiente de la orientación.
+            if (showEvaluationBar && !isEditing && !isTutorialActive) {
+                val analyzer = remember { PositionAnalyzer() }
+                val eval = remember(gameState) { analyzer.evaluate(gameState) }
+                val leadingPct = (max(eval.winProbWhite, 1f - eval.winProbWhite) * 100f).roundToInt()
+                EvaluationBar(
+                    winProbWhite = eval.winProbWhite,
+                    label = "$leadingPct%",
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 8.dp)
+                        .width(14.dp)
+                        .fillMaxHeight(0.6f),
+                )
+            }
+
             // ── BottomGameBar: overlay flotante sobre el tablero ──────────────
             // Se muestra en cualquier orientación, fuera de modo edición y tutorial.
             // Al ser el último hijo de este Box, se renderiza sobre el tablero
@@ -607,9 +642,24 @@ fun MainContent(
                     modifier = Modifier.fillMaxSize(),
                     isLandscape = isLandscape,
                     navigationEnabled = navigationEnabled,
+                    onAnalysis = onAnalysis,
                     onHistoryOpenChange = { isHistoryPanelOpen = it },
                     onFabExpandedChange = { isFabExpanded = it },
                     onlineContent = onlineContent?.let { { it() } },
+                )
+            }
+
+            // ── AnalysisCard: overlay colapsable de análisis (portrait) ───────
+            // Emerge sobre el tablero, por encima del FAB. En Expanded el análisis
+            // va al panel lateral (companion), así que este overlay solo se usa en
+            // pantallas compactas (lo decide GameScreen vía showAnalysisPanel).
+            if (showAnalysisPanel && !isEditing && !isTutorialActive) {
+                AnalysisCard(
+                    gameState = gameState,
+                    onClose = onCloseAnalysisPanel,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),
                 )
             }
         }

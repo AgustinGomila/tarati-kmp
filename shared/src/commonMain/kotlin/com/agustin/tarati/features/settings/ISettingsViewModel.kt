@@ -48,6 +48,9 @@ interface ISettingsViewModel {
     /** Habilita o deshabilita la selección de pre-movimientos. */
     fun setPreMovesEnabled(enabled: Boolean)
 
+    /** Muestra u oculta la barra de evaluación en vivo junto al tablero. */
+    fun setShowEvaluationBar(enabled: Boolean)
+
     /**
      * Inicia el flujo de compra de Google Play para un tipo de pieza premium.
      * Requiere una [android.app.Activity] en primer plano para mostrar el diálogo de pago.

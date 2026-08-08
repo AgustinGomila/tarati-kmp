@@ -7,17 +7,20 @@ import androidx.room.RoomDatabaseConstructor
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import com.agustin.tarati.core.data.database.dao.AnalysisDao
 import com.agustin.tarati.core.data.database.dao.GameDao
+import com.agustin.tarati.core.data.database.entities.GameAnalysisEntity
 import com.agustin.tarati.core.data.database.entities.GameEntity
 
 @Database(
-    entities = [GameEntity::class],
-    version = 3,
+    entities = [GameEntity::class, GameAnalysisEntity::class],
+    version = 4,
     exportSchema = true,
 )
 @ConstructedBy(TaratiDatabaseConstructor::class)
 abstract class TaratiDatabase : RoomDatabase() {
     abstract fun gameDao(): GameDao
+    abstract fun analysisDao(): AnalysisDao
 }
 
 // Constructor multiplataforma requerido por Room en targets sin reflexión (iOS).
@@ -48,6 +51,23 @@ val MIGRATION_2_3: Migration =
             val standardInitial = "C1w/C2w/C7b/C8b/D1w/D2w/D3b/D4b w"
             connection.execSQL(
                 "ALTER TABLE games ADD COLUMN initialBoardPosition TEXT NOT NULL DEFAULT '$standardInitial'"
+            )
+        }
+    }
+
+val MIGRATION_3_4: Migration =
+    object : Migration(3, 4) {
+        override fun migrate(connection: SQLiteConnection) {
+            // Caché del análisis post-partida (Etapa 3). Tabla nueva, sin datos a migrar.
+            connection.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS game_analysis (
+                    gameId TEXT NOT NULL PRIMARY KEY,
+                    version INTEGER NOT NULL,
+                    payload TEXT NOT NULL,
+                    analyzedAt INTEGER NOT NULL
+                )
+                """.trimIndent(),
             )
         }
     }

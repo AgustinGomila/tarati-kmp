@@ -9,9 +9,15 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import com.agustin.tarati.core.data.database.MIGRATION_1_2
 import com.agustin.tarati.core.data.database.MIGRATION_2_3
+import com.agustin.tarati.core.data.database.MIGRATION_3_4
 import com.agustin.tarati.core.data.database.TaratiDatabase
+import com.agustin.tarati.core.data.database.dao.AnalysisDao
 import com.agustin.tarati.core.data.database.dao.GameDao
+import com.agustin.tarati.core.data.repositories.RoomAnalysisCacheRepository
 import com.agustin.tarati.core.data.repositories.RoomGameRepository
+import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
+import com.agustin.tarati.core.domain.analysis.AnalysisRunner
+import com.agustin.tarati.core.domain.analysis.DefaultAnalysisRunner
 import com.agustin.tarati.core.domain.repository.GameRepository
 import com.agustin.tarati.di.sharedModules
 import com.agustin.tarati.features.game.AndroidGameViewModel
@@ -68,11 +74,14 @@ val databaseModule: Module = module {
             get(),
             TaratiDatabase::class.java,
             "tarati-db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
     single<GameDao> { get<TaratiDatabase>().gameDao() }
     single<GameRepository> { RoomGameRepository(get()) }
+    single<AnalysisDao> { get<TaratiDatabase>().analysisDao() }
+    single<AnalysisCacheRepository> { RoomAnalysisCacheRepository(get()) }
+    single<AnalysisRunner> { DefaultAnalysisRunner() }
 }
 
 // ── DataStore ─────────────────────────────────────────────────────────────────

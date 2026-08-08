@@ -50,6 +50,7 @@ import com.agustin.tarati.core.domain.game.play.StableHistoryList
 import com.agustin.tarati.services.localization.LocalizedText
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
+import com.agustin.tarati.shared.generated.resources.analysis_title
 import com.agustin.tarati.shared.generated.resources.close
 import com.agustin.tarati.shared.generated.resources.jump_to_current_position
 import com.agustin.tarati.shared.generated.resources.move_controls
@@ -112,6 +113,8 @@ fun BottomGameBar(
     initialHistoryExpanded: Boolean = false,
     /** `false` grisa undo/redo/saltar (online en curso / espectador); activo offline o online-terminada. */
     navigationEnabled: Boolean = true,
+    /** Acción del botón de análisis en el strip. Si es `null`, el botón no se muestra. */
+    onAnalysis: (() -> Unit)? = null,
     onlineContent: @Composable (() -> Unit)? = null,
 ) {
     val moves = history.getMoves()
@@ -241,6 +244,7 @@ fun BottomGameBar(
                         onHistoryOpenChange(false)
                         onFabExpandedChange(false)
                     },
+                    onAnalysis = onAnalysis,
                 )
             }
         }
@@ -274,6 +278,7 @@ fun FabOrStrip(
     onRedoClick: () -> Unit,
     onHistoryToggle: () -> Unit,
     onClose: () -> Unit,
+    onAnalysis: (() -> Unit)? = null,
 ) {
     Box(contentAlignment = Alignment.CenterEnd) {
 
@@ -321,6 +326,7 @@ fun FabOrStrip(
                 onRedoClick = onRedoClick,
                 onHistoryToggle = onHistoryToggle,
                 onClose = onClose,
+                onAnalysis = onAnalysis,
             )
         }
     }
@@ -341,6 +347,7 @@ fun ControlStrip(
     onRedoClick: () -> Unit,
     onHistoryToggle: () -> Unit,
     onClose: () -> Unit,
+    onAnalysis: (() -> Unit)? = null,
 ) {
     Surface(
         shape = RoundedCornerShape(28.dp),
@@ -401,6 +408,19 @@ fun ControlStrip(
                     else TaratiIcons.MenuBook,
                     contentDescription = localizedString(Res.string.move_history),
                 )
+            }
+
+            // Toggle análisis
+            if (onAnalysis != null) {
+                TooltipFilledTonalIconButton(
+                    tooltip = localizedString(Res.string.analysis_title),
+                    onClick = onAnalysis,
+                ) {
+                    Icon(
+                        imageVector = TaratiIcons.Leaderboard,
+                        contentDescription = localizedString(Res.string.analysis_title),
+                    )
+                }
             }
 
             // Cerrar (colapsar volviendo al FAB)

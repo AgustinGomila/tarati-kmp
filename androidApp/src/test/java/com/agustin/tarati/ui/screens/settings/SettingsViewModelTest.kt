@@ -128,6 +128,7 @@ class SettingsViewModelTest {
         // ── Time control ───────────────────────────────────────────────────────
         coEvery { mockSettingsRepository.timeControl } returns MutableStateFlow(TimeControlMode.Unlimited)
         coEvery { mockSettingsRepository.preMovesEnabled } returns MutableStateFlow(true)
+        coEvery { mockSettingsRepository.showEvaluationBar } returns MutableStateFlow(true)
 
         startKoin {
             modules(

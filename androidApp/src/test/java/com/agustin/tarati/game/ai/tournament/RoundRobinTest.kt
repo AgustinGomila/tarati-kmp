@@ -215,11 +215,15 @@ class RoundRobinTest {
      * Champion must outperform Easy; the ordering need not be strict but higher
      * difficulties should cluster at the top.
      *
-     * Note on white advantage: Tarati has a strong first-mover advantage — white wins
-     * most games at matched skill levels, producing 50-50 splits in head-to-head.
-     * Skill differences only manifest clearly when the depth gap is large enough to
-     * overcome this advantage (e.g. Easy depth-2 vs Medium depth-4). Increasing
-     * gamesPerMatch and tracking white/black wins separately reveals the true gradient.
+     * Note on side-to-move advantage: Tarati has a strong, depth-dependent **second-mover
+     * (Black) advantage** at matched skill — NOT a first-mover one. At shallow search it is
+     * near-even (Medium/depth-3 self-play ≈ 47/53), but it grows sharply with depth: Hard
+     * (depth-5) self-play ≈ 93% Black and Champion (depth-7) ≈ 88% Black, both with random
+     * tiebreak. This matches production bot-vs-bot data (~64% Black overall; ~87% Black in
+     * Champion-vs-Champion over 30k games). See [SideToMoveAdvantageTest] and the write-up in
+     * docs/internal/game_dynamics.md. Because same-strength matchups are so color-skewed, skill
+     * gradients only read cleanly when colors alternate (they do here) and the depth gap is large
+     * (e.g. Easy depth-2 vs Champion depth-7). Track white/black wins separately to see it.
      */
     @Test
     fun test_difficulty_round_robin() {
@@ -495,8 +499,10 @@ class RoundRobinTest {
      * vs CHAMPION depth-7 con quiescence). Sin book (contexto vigente) el estudio previo midió
      * ~68 % a favor de Champion (engine_strength_plan.md, Fase B reabierta).
      *
-     * Aserción lenient (Champion no pierde el match) por la ventaja del primer jugador + varianza
-     * de 30 partidas; el número exacto queda en el log.
+     * Aserción lenient (Champion no pierde el match): el match alterna colores, pero la fuerte
+     * ventaja del **segundo jugador (Negras)** — ~88-93% a esta profundidad, ver
+     * [SideToMoveAdvantageTest] — sumada a la varianza de 30 partidas hace ruidoso el head-to-head
+     * a igualdad de habilidad. El número exacto queda en el log.
      */
     @Test
     fun test_champion_dominates_hard_regression() {

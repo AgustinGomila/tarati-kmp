@@ -94,7 +94,8 @@ class DesktopSettingsViewModel(
     private val timeSettingsFlow = combine(
         repository.timeControl,
         repository.preMovesEnabled,
-    ) { tc, preMoves -> tc to preMoves }
+        repository.showEvaluationBar,
+    ) { tc, preMoves, showEvalBar -> Triple(tc, preMoves, showEvalBar) }
 
     override val settingsState: StateFlow<SettingsState> = combine(
         combine(repository.isDarkTheme, repository.difficulty, repository.difficultyBlack) { dark, diff, diffBlack ->
@@ -108,7 +109,7 @@ class DesktopSettingsViewModel(
             pieceTypeId to timeSettings
         },
     ) { (dark, diff, diffBlack), (user, lang, palette), (board, sound), (pieceTypeId, timeSettings) ->
-        val (timeControl, preMovesEnabled) = timeSettings
+        val (timeControl, preMovesEnabled, showEvaluationBar) = timeSettings
         SettingsState(
             appTheme = if (dark) AppTheme.MODE_NIGHT else AppTheme.MODE_AUTO,
             difficulty = diff,
@@ -121,6 +122,7 @@ class DesktopSettingsViewModel(
             pieceTypeId = pieceTypeId,
             timeControl = timeControl,
             preMovesEnabled = preMovesEnabled,
+            showEvaluationBar = showEvaluationBar,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -262,6 +264,10 @@ class DesktopSettingsViewModel(
 
     override fun setPreMovesEnabled(enabled: Boolean) {
         viewModelScope.launch { repository.setPreMovesEnabled(enabled) }
+    }
+
+    override fun setShowEvaluationBar(enabled: Boolean) {
+        viewModelScope.launch { repository.setShowEvaluationBar(enabled) }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

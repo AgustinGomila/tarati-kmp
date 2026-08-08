@@ -153,6 +153,9 @@ class DesktopSettingsRepository : SettingsRepository {
     private val _preMovesEnabled = MutableStateFlow(prefs.getBoolean(KEY_PRE_MOVES_ENABLED, true))
     override val preMovesEnabled: StateFlow<Boolean> = _preMovesEnabled.asStateFlow()
 
+    private val _showEvaluationBar = MutableStateFlow(prefs.getBoolean(KEY_SHOW_EVAL_BAR, true))
+    override val showEvaluationBar: StateFlow<Boolean> = _showEvaluationBar.asStateFlow()
+
     private val _onlineTimeControl = MutableStateFlow(prefs.get(KEY_ONLINE_TIME_CONTROL, TimeControl.BLITZ.key))
     override val onlineTimeControl: StateFlow<String> = _onlineTimeControl.asStateFlow()
 
@@ -337,6 +340,12 @@ class DesktopSettingsRepository : SettingsRepository {
         flush()
     }
 
+    override suspend fun setShowEvaluationBar(enabled: Boolean) {
+        _showEvaluationBar.value = enabled
+        prefs.putBoolean(KEY_SHOW_EVAL_BAR, enabled)
+        flush()
+    }
+
     override suspend fun setOnlineTimeControl(timeControl: String) {
         _onlineTimeControl.value = timeControl
         prefs.put(KEY_ONLINE_TIME_CONTROL, timeControl)
@@ -409,6 +418,7 @@ class DesktopSettingsRepository : SettingsRepository {
         private const val KEY_MANUALLY_ROTATED = "manually_rotated"
         private const val KEY_TIME_CONTROL = "time_control"
         private const val KEY_PRE_MOVES_ENABLED = "pre_moves_enabled"
+        private const val KEY_SHOW_EVAL_BAR = "show_evaluation_bar"
         private const val KEY_ONLINE_TIME_CONTROL = "online_time_control"
         private const val KEY_ONLINE_RATED = "online_rated"
         private const val KEY_ONLINE_SPECTATING_ALLOWED = "online_spectating_allowed"
