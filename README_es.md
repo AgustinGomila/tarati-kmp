@@ -278,6 +278,9 @@ Todos los instaladores de escritorio y el APK de Android también están publica
 - **Paletas de colores intercambiables** — incluyendo paletas de temporada y temas especiales
 - **Tipos de pieza personalizables** — selector visual con animación
 - **Biblioteca de partidas** — historial completo con navegación por movimientos
+- **Análisis de partidas (estilo ajedrez)** — barra de evaluación en vivo, probabilidad de victoria con desglose
+  por término y gráfico post-partida con clasificación de jugadas (mejor, imprecisión, error, blunder). En todos
+  los modos —vs IA, local u online— y plataformas (incluida la web), sin necesidad de cuenta
 - **Tutorial interactivo** — burbujas de guía superpuestas al tablero
 - **Logros** — cross-platform, sincronizados al servidor; integración Google Play Games en Android
 - **Soporte bilingüe** — español e inglés con selector in-app

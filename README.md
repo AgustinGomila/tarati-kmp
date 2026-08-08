@@ -269,6 +269,9 @@ All desktop installers and the Android APK are also published on itch.io:
 - **Swappable color palettes** — including seasonal themes and special palettes
 - **Customizable piece types** — visual selector with animation
 - **Game library** — full history with move-by-move navigation
+- **Game analysis (chess-style)** — live evaluation bar, win-probability breakdown by term, and a post-game graph
+  with move classification (best, inaccuracy, mistake, blunder). Available in every mode — vs AI, local or online —
+  on all platforms (web included), no account required
 - **Interactive tutorial** — guide bubbles overlaid on the board
 - **Achievements** — cross-platform, synced to server; Google Play Games integration on Android
 - **Bilingual support** — Spanish and English with in-app selector
