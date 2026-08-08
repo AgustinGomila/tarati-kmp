@@ -17,12 +17,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.data.database.dto.GameDto
 import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
 import com.agustin.tarati.core.domain.analysis.AnalysisRunner
 import com.agustin.tarati.core.domain.analysis.GameAnalysis
+import com.agustin.tarati.core.domain.analysis.MoveClassifier
+import com.agustin.tarati.core.domain.analysis.MoveQuality
+import com.agustin.tarati.core.domain.game.pieces.CobColor
+import com.agustin.tarati.core.domain.game.play.GameState.Companion.parseBoardNotation
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.analysis_analyze_game
@@ -32,6 +37,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+
+/** Colores de los marcadores de calidad en el gráfico (rojo/naranja/amarillo). */
+private val BlunderColor = Color(0xFFD32F2F)
+private val MistakeColor = Color(0xFFF57C00)
+private val InaccuracyColor = Color(0xFFFBC02D)
+
+private fun markerColorFor(quality: MoveQuality): Color? = when (quality) {
+    MoveQuality.BLUNDER -> BlunderColor
+    MoveQuality.MISTAKE -> MistakeColor
+    MoveQuality.INACCURACY -> InaccuracyColor
+    else -> null
+}
 
 private sealed interface AnalysisUi {
     data object Idle : AnalysisUi
@@ -68,6 +85,10 @@ fun GameAnalysisSection(
     val moves = gameDto.moveHistory
     if (moves.isEmpty()) return
     val scope = rememberCoroutineScope()
+    val firstMoverWhite = remember(gameDto) {
+        runCatching { parseBoardNotation(gameDto.initialBoardPosition).currentTurn == CobColor.WHITE }
+            .getOrDefault(true)
+    }
 
     var uiState by remember(gameId) { mutableStateOf<AnalysisUi>(AnalysisUi.Idle) }
     val progressFlow = remember(gameId) { MutableStateFlow(0f) }
@@ -124,14 +145,22 @@ fun GameAnalysisSection(
                 )
             }
 
-            is AnalysisUi.Ready -> EvalGraph(
-                series = state.analysis.series.map { it.winProbWhite },
-                currentIndex = currentMoveIndex + 1,
-                onSelectIndex = { pointIndex -> onMoveClick((pointIndex - 1).coerceIn(0, moves.lastIndex)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-            )
+            is AnalysisUi.Ready -> {
+                val markers = remember(state.analysis, firstMoverWhite) {
+                    MoveClassifier.classify(state.analysis) { i -> (i % 2 == 0) == firstMoverWhite }
+                        .mapNotNull { c -> markerColorFor(c.quality)?.let { (c.moveIndex + 1) to it } }
+                        .toMap()
+                }
+                EvalGraph(
+                    series = state.analysis.series.map { it.winProbWhite },
+                    currentIndex = currentMoveIndex + 1,
+                    onSelectIndex = { pointIndex -> onMoveClick((pointIndex - 1).coerceIn(0, moves.lastIndex)) },
+                    markers = markers,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                )
+            }
         }
     }
 }

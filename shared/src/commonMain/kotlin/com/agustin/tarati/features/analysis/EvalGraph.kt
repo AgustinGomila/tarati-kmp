@@ -34,6 +34,7 @@ fun EvalGraph(
     currentIndex: Int,
     onSelectIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    markers: Map<Int, Color> = emptyMap(),
 ) {
     if (series.size < 2) return
     val lastIndex = series.lastIndex
@@ -79,6 +80,16 @@ fun EvalGraph(
             }
         }
         drawPath(curve, lineColor, style = Stroke(width = 2f))
+
+        // Marcadores de calidad (blunder/mistake/inaccuracy) sobre el punto correspondiente,
+        // con halo blanco para contraste sobre el área/curva.
+        markers.forEach { (i, color) ->
+            if (i in 0..lastIndex) {
+                val center = Offset(xAt(i), yAt(series[i]))
+                drawCircle(color = GraphWhite, radius = 5f, center = center)
+                drawCircle(color = color, radius = 4f, center = center)
+            }
+        }
 
         // Marcador del punto actual.
         val mx = xAt(currentIndex.coerceIn(0, lastIndex))
