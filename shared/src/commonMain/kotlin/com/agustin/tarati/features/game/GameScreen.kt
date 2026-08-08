@@ -115,6 +115,13 @@ fun GameScreen(
     onGamesLibrary: () -> Unit,
     onOnlineLobby: () -> Unit = {},
     onSaveGame: (match: MatchDto) -> Unit,
+    /**
+     * Abre el análisis completo de la partida actual (detalle con gráfico por-ply + clasificación).
+     * [offlineMatch] es un [MatchDto] temporal armado desde el estado en memoria (partida offline);
+     * [onlineGameId] no-null indica preferir el detalle persistente remoto. El caller resuelve la
+     * navegación (companion en Expanded / ruta en portrait). Ver `openGameAnalysis`.
+     */
+    onNavigateToAnalysisDetails: (offlineMatch: MatchDto, onlineGameId: String?) -> Unit = { _, _ -> },
     /** Navega a LoginScreen. [postLoginAction] es una suspend lambda que NavGraph ejecuta tras el login. */
     onNavigateToLogin: (postLoginAction: suspend () -> Unit) -> Unit = {},
     /**
@@ -192,28 +199,28 @@ fun GameScreen(
     val humanLabel = stringResource(Res.string.player_human)
     val whiteDifficultyLabel = stringResource(screenState.evalConfigWhite.difficulty.displayNameRes)
     val blackDifficultyLabel = stringResource(screenState.evalConfigBlack.difficulty.displayNameRes)
+    // Labels de cada banda usando el contexto de localización y el estado de configuración
+    // (whiteIsAI, blackIsAI, dificultad, nombre). El ViewModel recibe los strings ya resueltos
+    // para no acoplarse a Context. Reusados por guardar y por el análisis completo offline.
+    val whitePlayerLabel = buildPlayerLabel(
+        aiLabel = aiLabel,
+        humanLabel = humanLabel,
+        difficultyLabel = whiteDifficultyLabel,
+        isAI = screenState.whiteIsAI,
+        isCurrentUser = playerSide == WHITE,
+        userName = settingsState.userName,
+    )
+    val blackPlayerLabel = buildPlayerLabel(
+        aiLabel = aiLabel,
+        humanLabel = humanLabel,
+        difficultyLabel = blackDifficultyLabel,
+        isAI = screenState.blackIsAI,
+        isCurrentUser = playerSide == CobColor.BLACK,
+        userName = settingsState.userName,
+    )
     val saveCurrentGame: () -> Unit = {
-        // Computar los labels usando el contexto de localización y el estado
-        // de configuración de cada banda (whiteIsAI, blackIsAI, dificultad, nombre).
-        // El ViewModel recibe los strings ya resueltos para no acoplarse a Context.
-        val whiteLabel = buildPlayerLabel(
-            aiLabel = aiLabel,
-            humanLabel = humanLabel,
-            difficultyLabel = whiteDifficultyLabel,
-            isAI = screenState.whiteIsAI,
-            isCurrentUser = playerSide == WHITE,
-            userName = settingsState.userName,
-        )
-        val blackLabel = buildPlayerLabel(
-            aiLabel = aiLabel,
-            humanLabel = humanLabel,
-            difficultyLabel = blackDifficultyLabel,
-            isAI = screenState.blackIsAI,
-            isCurrentUser = playerSide == CobColor.BLACK,
-            userName = settingsState.userName,
-        )
         scope.launch {
-            onSaveGame(viewModel.exportGameToMatchDto(whiteLabel, blackLabel))
+            onSaveGame(viewModel.exportGameToMatchDto(whitePlayerLabel, blackPlayerLabel))
             bus.toast(UIMessage.Toast(message = gameSavedMessage))
         }
     }
@@ -654,13 +661,25 @@ fun GameScreen(
                 showEvaluationBar = settingsState.showEvaluationBar,
                 onAnalysis = {
                     if (screenLayout == ScreenLayout.Expanded) {
-                        companion.toggle(CompanionPanelDestination.Analysis)
+                        // Toggle con back-stack: cerrar el análisis vuelve al panel de origen
+                        // (Lobby, Perfil, Torneo…) o al tablero si se abrió desde él.
+                        if (companion.destination == CompanionPanelDestination.Analysis) {
+                            companion.back()
+                        } else {
+                            companion.navigate(CompanionPanelDestination.Analysis)
+                        }
                     } else {
                         showAnalysisPortrait = !showAnalysisPortrait
                     }
                 },
                 showAnalysisPanel = showAnalysisPortrait && screenLayout != ScreenLayout.Expanded,
                 onCloseAnalysisPanel = { showAnalysisPortrait = false },
+                onOpenAnalysisDetails = {
+                    onNavigateToAnalysisDetails(
+                        viewModel.exportGameToMatchDto(whitePlayerLabel, blackPlayerLabel),
+                        currentOnlineGame?.gameId,
+                    )
+                },
                 // ── Online components ─────────────────────────────────────────
                 onlineContent = if (isOnlineGame || spectatingState != null) ({
                     OnlineGameBar(

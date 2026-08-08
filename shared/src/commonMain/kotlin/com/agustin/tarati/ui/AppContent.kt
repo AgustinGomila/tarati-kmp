@@ -46,6 +46,7 @@ import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.utils.FeatureFlags
 import com.agustin.tarati.features.achievements.AchievementsScreen
 import com.agustin.tarati.features.analysis.AnalysisPanel
+import com.agustin.tarati.features.analysis.openGameAnalysis
 import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
@@ -89,7 +90,9 @@ import com.agustin.tarati.services.notifications.UIMessage
 import com.agustin.tarati.services.notifications.UIMessageBus
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.accept
+import com.agustin.tarati.shared.generated.resources.analysis_black
 import com.agustin.tarati.shared.generated.resources.analysis_title
+import com.agustin.tarati.shared.generated.resources.analysis_white
 import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.game6_invite_body
 import com.agustin.tarati.shared.generated.resources.game6_invite_declined
@@ -384,6 +387,7 @@ private fun CompanionPane(
     gamesLibraryViewModel: IGamesLibraryViewModel = koinViewModel<GamesLibraryViewModel>(),
     onlineLobbyViewModel: IOnlineLobbyViewModel = koinViewModel<OnlineLobbyViewModel>(),
     gameDetailsViewModel: IGameDetailsViewModel = koinViewModel<GameDetailsViewModel>(),
+    onlineGameViewModel: IOnlineGameViewModel = koinInject(),
     clipboardHelper: GameClipboardHelper = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
@@ -516,13 +520,31 @@ private fun CompanionPane(
 
         Analysis -> {
             val analysisGameState by gameViewModel.gameState.collectAsState()
+            val onlineGame by onlineGameViewModel.currentGame.collectAsState()
+            // Labels genéricos para el detalle temporal offline (el caller no tiene el estado por-banda).
+            val whiteLabel = localizedString(Res.string.analysis_white)
+            val blackLabel = localizedString(Res.string.analysis_black)
             Column(modifier = Modifier.fillMaxSize()) {
                 CompanionPanelHeader(
                     title = localizedString(Res.string.analysis_title),
-                    onClose = controller::close,
+                    // back (no close): cerrar el análisis vuelve al panel de origen (Lobby, Perfil…).
+                    onClose = controller::back,
                 )
                 AnalysisPanel(
                     gameState = analysisGameState,
+                    onOpenFullAnalysis = {
+                        scope.launch {
+                            openGameAnalysis(
+                                onlineGameId = onlineGame?.gameId,
+                                buildOfflineMatch = {
+                                    gameViewModel.exportGameToMatchDto(whiteLabel, blackLabel)
+                                },
+                                loadOnlineMatch = onlineLobbyViewModel::loadAndPreviewGame,
+                                updateCurrentMatch = gameDetailsViewModel::updateCurrentMatchDto,
+                                navigateToDetails = { id -> controller.navigate(GameDetails(id)) },
+                            )
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

@@ -275,6 +275,8 @@ fun MainContent(
     /** Portrait: si el panel de análisis colapsable está abierto sobre el tablero. */
     showAnalysisPanel: Boolean = false,
     onCloseAnalysisPanel: () -> Unit = {},
+    /** Si no-null, el panel de análisis muestra el botón de análisis completo (→ detalle). */
+    onOpenAnalysisDetails: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
@@ -657,6 +659,7 @@ fun MainContent(
                 AnalysisCard(
                     gameState = gameState,
                     onClose = onCloseAnalysisPanel,
+                    onOpenFullAnalysis = onOpenAnalysisDetails,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(start = 16.dp, end = 16.dp, bottom = 88.dp),

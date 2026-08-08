@@ -26,6 +26,7 @@ fun AnalysisCard(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     maxHeight: Dp = 340.dp,
+    onOpenFullAnalysis: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = modifier,
@@ -42,6 +43,7 @@ fun AnalysisCard(
             AnalysisPanel(
                 gameState = gameState,
                 modifier = Modifier.heightIn(max = maxHeight),
+                onOpenFullAnalysis = onOpenFullAnalysis,
             )
         }
     }

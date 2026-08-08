@@ -291,6 +291,7 @@
     <string name="analysis_black_advantage_note">En Tarati, las Negras tienen ventaja estructural a alto nivel.</string>
     <string name="analysis_analyze_game">Analizar partida</string>
     <string name="analysis_analyzing">Analizando…</string>
+    <string name="analysis_view_full">Análisis completo de la partida</string>
     <string name="time_control_unlimited">Sin límite</string>
     <string name="time_control_sudden_death_label">%1$d min</string>
     <string name="time_control_fischer_label">%1$d + %2$d (Fischer)</string>

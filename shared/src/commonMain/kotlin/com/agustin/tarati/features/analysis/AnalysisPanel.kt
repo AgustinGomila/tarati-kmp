@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,6 +45,7 @@ import com.agustin.tarati.shared.generated.resources.analysis_metric_material
 import com.agustin.tarati.shared.generated.resources.analysis_metric_mobility
 import com.agustin.tarati.shared.generated.resources.analysis_metric_pressure
 import com.agustin.tarati.shared.generated.resources.analysis_metric_upgrade
+import com.agustin.tarati.shared.generated.resources.analysis_view_full
 import com.agustin.tarati.shared.generated.resources.analysis_white
 import com.agustin.tarati.ui.components.game.EvaluationBar
 import kotlin.math.abs
@@ -63,11 +65,16 @@ private val BlackFavorColor = Color(0xFFC62828)
  * Es una función pura de [gameState] — sirve para cualquier modo. Usado por el
  * destino `Analysis` del panel lateral (Expanded) y por el panel colapsable en
  * portrait.
+ *
+ * @param onOpenFullAnalysis Si no-null, muestra un botón que abre el detalle/análisis
+ *   completo de la partida (gráfico por-ply + clasificación de jugadas). El caller decide
+ *   el destino (detalle temporal offline o persistente remoto). Ver [openGameAnalysis].
  */
 @Composable
 fun AnalysisPanel(
     gameState: GameState,
     modifier: Modifier = Modifier,
+    onOpenFullAnalysis: (() -> Unit)? = null,
 ) {
     val analyzer = remember { PositionAnalyzer() }
     val eval = remember(gameState) { analyzer.evaluate(gameState) }
@@ -133,6 +140,16 @@ fun AnalysisPanel(
             fontStyle = FontStyle.Italic,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+
+        // ── Acceso al análisis completo (gráfico por-ply + clasificación) ─────
+        if (onOpenFullAnalysis != null) {
+            FilledTonalButton(
+                onClick = onOpenFullAnalysis,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(localizedString(Res.string.analysis_view_full))
+            }
+        }
     }
 }
 

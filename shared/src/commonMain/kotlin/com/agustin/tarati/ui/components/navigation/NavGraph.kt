@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.savedstate.read
 import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.features.achievements.AchievementsScreen
+import com.agustin.tarati.features.analysis.openGameAnalysis
 import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
@@ -217,6 +218,22 @@ fun NavGraph(
                                     navController.navigate(ScreenDestinations.OnlineLobbyDest.route)
                             },
                             onSaveGame = { match -> gamesLibraryViewModel.saveCurrentGame(match) },
+                            onNavigateToAnalysisDetails = { offlineMatch, onlineId ->
+                                scope.launch {
+                                    openGameAnalysis(
+                                        onlineGameId = onlineId,
+                                        buildOfflineMatch = { offlineMatch },
+                                        loadOnlineMatch = onlineLobbyViewModel::loadAndPreviewGame,
+                                        updateCurrentMatch = gameDetailsViewModel::updateCurrentMatchDto,
+                                        navigateToDetails = { id ->
+                                            if (layout == ScreenLayout.Expanded)
+                                                companion.navigate(CompanionPanelDestination.GameDetails(id))
+                                            else
+                                                navController.navigate("game_details/$id")
+                                        },
+                                    )
+                                }
+                            },
                             onNavigateToLogin = { suspendAction -> onShowLogin(suspendAction) },
                             initialMatchmaking = pendingMatchmaking.value.also { pendingMatchmaking.value = null },
                         )
