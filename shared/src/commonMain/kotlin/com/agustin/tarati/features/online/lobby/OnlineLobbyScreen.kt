@@ -159,7 +159,13 @@ fun OnlineLobbyScreen(
 
     // Auto-conexión como invitado al primer acceso al Lobby.
     LaunchedEffect(Unit) {
-        if (authViewModel.authState.value !is com.agustin.tarati.features.online.auth.AuthState.Authenticated) {
+        // No crear un invitado sobre una restauración de sesión en curso: esperar a que el estado
+        // de auth se estabilice (deje de estar Authenticating) antes de decidir. Evita la carrera
+        // en que el silent refresh transitorio (Authenticating) se toma por "sin sesión" y crea un
+        // invitado que pisa la sesión real y deja una conexión/usuario invitado colgado.
+        val settled = authViewModel.authState
+            .first { it !is com.agustin.tarati.features.online.auth.AuthState.Authenticating }
+        if (settled !is com.agustin.tarati.features.online.auth.AuthState.Authenticated) {
             val settingsName = settings.userName.first().trim()
                 .takeIf { n -> n.length in 3..20 && n.matches(Regex("[A-Za-z0-9_]+")) }
             val result = authViewModel.loginAsGuest(settingsName)

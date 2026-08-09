@@ -168,6 +168,9 @@ class AuthViewModel(
         rememberMe: Boolean,
     ): Result<String> {
         logger.debug("loginWithServer: $username, rememberMe=$rememberMe")
+        // Capturar antes de cambiar el estado: si la sesión activa es un invitado, se elimina
+        // tras el upgrade para no dejar un usuario/presencia invitado colgado.
+        val previousGuestToken = currentGuestTokenOrNull()
         _authState.value = AuthState.Authenticating
 
         return try {
@@ -177,6 +180,7 @@ class AuthViewModel(
                 val tokens = response.body<AuthResponseDto>().tokens
                 persistTokens(tokens.accessToken, tokens.refreshToken, rememberMe)
                 authenticateWithToken(tokens.accessToken).map { tokens.accessToken }
+                    .also { if (it.isSuccess) cleanupPreviousGuest(previousGuestToken) }
             } else {
                 val msg = errorMessage(response, fallback = "Login failed")
                 _authState.value = AuthState.Error(message = msg)
@@ -284,6 +288,7 @@ class AuthViewModel(
         rememberMe: Boolean,
     ): Result<String> {
         logger.debug("registerWithServer: $username, rememberMe=$rememberMe")
+        val previousGuestToken = currentGuestTokenOrNull()
         _authState.value = AuthState.Authenticating
 
         return try {
@@ -300,6 +305,7 @@ class AuthViewModel(
                 val tokens = response.body<AuthResponseDto>().tokens
                 persistTokens(tokens.accessToken, tokens.refreshToken, rememberMe)
                 authenticateWithToken(tokens.accessToken).map { tokens.accessToken }
+                    .also { if (it.isSuccess) cleanupPreviousGuest(previousGuestToken) }
             } else {
                 val msg = errorMessage(response, fallback = "Registration failed")
                 _authState.value = AuthState.Error(message = msg)
@@ -555,6 +561,30 @@ class AuthViewModel(
         }
     }
 
+    /** Token de acceso de la sesión activa si —y solo si— es un invitado; si no, null. */
+    private fun currentGuestTokenOrNull(): String? =
+        _accessToken?.takeIf { currentUser?.isGuest == true }
+
+    /**
+     * Elimina en el servidor el invitado del que se hace "upgrade" al iniciar sesión o registrarse.
+     * Evita dejar un usuario/presencia invitado colgado (el WS invitado ya lo cierra el flujo de
+     * login en la UI). Best-effort: usa el propio token del invitado y no interrumpe el login si falla.
+     * Se lanza en [viewModelScope] para no bloquear el retorno de la autenticación.
+     */
+    private fun cleanupPreviousGuest(guestToken: String?) {
+        if (guestToken == null) return
+        viewModelScope.launch {
+            try {
+                val response = authApi.deleteAccount(guestToken)
+                logger.debug("Previous guest cleaned up (HTTP ${response.status.value})")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.debug("Previous guest cleanup failed: ${e.message}")
+            }
+        }
+    }
+
     private fun parseTokenExpiry(token: String): Long? =
         runCatching { decodeJwtPayload(token).exp?.let { it * 1000L } }.getOrNull()
 
@@ -571,15 +601,20 @@ class AuthViewModel(
 
     /** Decodifica el payload (claims) de un JWT. Lanza si el formato es inválido. */
     private fun decodeJwtPayload(token: String): JwtPayload {
-        val parts = token.split(".")
+        val parts = token.trim().split(".")
         require(parts.size >= 2) { "Invalid JWT format" }
         return jwtJson.decodeFromString(base64UrlDecode(parts[1]))
     }
 
-    /** Decodifica Base64 URL-safe (sin padding, como los segmentos de un JWT) a texto UTF-8. */
+    /**
+     * Decodifica Base64 URL-safe (sin padding, como los segmentos de un JWT) a texto UTF-8.
+     * Se filtran los caracteres de espacio/salto de línea: el alfabeto base64url no los incluye,
+     * y un token con whitespace espurio (p. ej. copiado/almacenado con un `\n`) haría que
+     * `decode` lanzara `IllegalArgumentException: Invalid symbol` en vez de degradar limpio.
+     */
     private fun base64UrlDecode(input: String): String =
         Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL)
-            .decode(input)
+            .decode(input.filterNot { it.isWhitespace() })
             .decodeToString()
 }
 
