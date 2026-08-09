@@ -42,6 +42,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.agustin.tarati.core.domain.ai.services.displayNameRes
+import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.utils.FeatureFlags
 import com.agustin.tarati.features.achievements.AchievementsScreen
@@ -51,6 +53,7 @@ import com.agustin.tarati.features.detail.GameDetailsScreen
 import com.agustin.tarati.features.detail.GameDetailsViewModel
 import com.agustin.tarati.features.detail.IGameDetailsViewModel
 import com.agustin.tarati.features.game.IGameModel
+import com.agustin.tarati.features.game.buildPlayerLabel
 import com.agustin.tarati.features.game6.GameMode
 import com.agustin.tarati.features.game6.GameModeController
 import com.agustin.tarati.features.game6.LocalGameModeController
@@ -90,14 +93,14 @@ import com.agustin.tarati.services.notifications.UIMessage
 import com.agustin.tarati.services.notifications.UIMessageBus
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.accept
-import com.agustin.tarati.shared.generated.resources.analysis_black
 import com.agustin.tarati.shared.generated.resources.analysis_title
-import com.agustin.tarati.shared.generated.resources.analysis_white
 import com.agustin.tarati.shared.generated.resources.cancel
 import com.agustin.tarati.shared.generated.resources.game6_invite_body
 import com.agustin.tarati.shared.generated.resources.game6_invite_declined
 import com.agustin.tarati.shared.generated.resources.game6_invite_expired
 import com.agustin.tarati.shared.generated.resources.game6_invite_title
+import com.agustin.tarati.shared.generated.resources.player_ai
+import com.agustin.tarati.shared.generated.resources.player_human
 import com.agustin.tarati.shared.generated.resources.social_challenge_declined
 import com.agustin.tarati.shared.generated.resources.social_challenge_expired
 import com.agustin.tarati.shared.generated.resources.social_challenge_from
@@ -128,6 +131,7 @@ import com.agustin.tarati.ui.layout.CompanionPanelHeader
 import com.agustin.tarati.ui.layout.DisplayMode
 import com.agustin.tarati.ui.layout.LocalCompanionPanelController
 import com.agustin.tarati.ui.layout.LocalScreenLayout
+import org.jetbrains.compose.resources.stringResource
 import com.agustin.tarati.ui.layout.ScreenLayout
 import com.agustin.tarati.ui.layout.screenLayoutFor
 import com.agustin.tarati.ui.theme.AppTheme
@@ -521,9 +525,33 @@ private fun CompanionPane(
         Analysis -> {
             val analysisGameState by gameViewModel.gameState.collectAsState()
             val onlineGame by onlineGameViewModel.currentGame.collectAsState()
-            // Labels genéricos para el detalle temporal offline (el caller no tiene el estado por-banda).
-            val whiteLabel = localizedString(Res.string.analysis_white)
-            val blackLabel = localizedString(Res.string.analysis_black)
+            // Labels reales por-banda para el detalle temporal offline (IA (Dificultad) / nombre
+            // de usuario / Humano), en paridad con GameScreen — así el PGN copiado refleja el tipo
+            // de jugador correcto, incluidas partidas IA-vs-IA.
+            val whiteIsAI by gameViewModel.whiteIsAI.collectAsState()
+            val blackIsAI by gameViewModel.blackIsAI.collectAsState()
+            val playerSide by gameViewModel.playerSide.collectAsState()
+            val userName by gameViewModel.userName.collectAsState()
+            val difficultyWhite by gameViewModel.difficultyWhite.collectAsState()
+            val difficultyBlack by gameViewModel.difficultyBlack.collectAsState()
+            val aiLabel = stringResource(Res.string.player_ai)
+            val humanLabel = stringResource(Res.string.player_human)
+            val whiteLabel = buildPlayerLabel(
+                aiLabel = aiLabel,
+                humanLabel = humanLabel,
+                difficultyLabel = stringResource(difficultyWhite.displayNameRes),
+                isAI = whiteIsAI,
+                isCurrentUser = playerSide == CobColor.WHITE,
+                userName = userName,
+            )
+            val blackLabel = buildPlayerLabel(
+                aiLabel = aiLabel,
+                humanLabel = humanLabel,
+                difficultyLabel = stringResource(difficultyBlack.displayNameRes),
+                isAI = blackIsAI,
+                isCurrentUser = playerSide == CobColor.BLACK,
+                userName = userName,
+            )
             Column(modifier = Modifier.fillMaxSize()) {
                 CompanionPanelHeader(
                     title = localizedString(Res.string.analysis_title),
@@ -597,14 +625,7 @@ private fun CompanionPane(
                 controller.close()
             },
             onCopyMoveHistory = { matchDto ->
-                scope.launch {
-                    clipboardHelper.copyMoveHistory(
-                        moves = matchDto.game.moveHistory,
-                        gameState = gameViewModel.gameState.value,
-                        playerSide = gameViewModel.playerSide.value,
-                        aiEnabled = gameViewModel.aIEnabled.value,
-                    )
-                }
+                scope.launch { clipboardHelper.copyMatch(matchDto) }
             },
             onBack = controller::back,
             viewModel = gameDetailsViewModel,

@@ -57,8 +57,11 @@ object AnalysisConfig {
      * fórmula de evaluación) para invalidar las cachés viejas en disco.
      *
      * v2: `evaluateSearched` promedia las paridades par/impar (turn-independent).
+     * v3: `evaluateSearched` puntúa las posiciones terminales en óptica absoluta de
+     *     Blancas (antes salían en óptica del jugador al turno → el punto final del
+     *     gráfico salía negro cuando ganaban Blancas con Negras al turno).
      */
-    const val ANALYSIS_VERSION: Int = 2
+    const val ANALYSIS_VERSION: Int = 3
 
     /**
      * Nivel usado para la búsqueda del gráfico: el que iguala [GRAPH_SEARCH_DEPTH]

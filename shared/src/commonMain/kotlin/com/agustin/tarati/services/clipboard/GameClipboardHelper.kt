@@ -1,5 +1,7 @@
 package com.agustin.tarati.services.clipboard
 
+import com.agustin.tarati.core.data.database.dto.MatchDto
+import com.agustin.tarati.core.data.database.dto.PGNHeader
 import com.agustin.tarati.core.data.database.dto.PGNHeader.Companion.generatePGNMoveHistory
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.play.GameState
@@ -28,6 +30,21 @@ class GameClipboardHelper(
                 appendFen = true,
                 positionHistory = positionHistory,
             )
+        return iClipboardService.copyText("tarati-pgn", pgnText)
+    }
+
+    /**
+     * Copia el PGN de una partida **ya materializada** ([matchDto]) usando su propio header
+     * y su historial/posición final — no el estado del juego en vivo. Correcto para copiar
+     * desde el detalle de partida: refleja exactamente los datos que muestra la pantalla
+     * (labels reales por-banda, resultado), incluidas partidas IA-vs-IA y online.
+     */
+    suspend fun copyMatch(matchDto: MatchDto): Boolean {
+        val pgnText = PGNHeader.buildPgn(
+            header = matchDto.header,
+            moves = matchDto.game.moveHistory,
+            finalPosition = matchDto.game.boardPosition,
+        )
         return iClipboardService.copyText("tarati-pgn", pgnText)
     }
 

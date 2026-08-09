@@ -318,14 +318,7 @@ fun NavGraph(
                     }
                 },
                 onCopyMoveHistory = { matchDto ->
-                    scope.launch {
-                        clipboardHelper.copyMoveHistory(
-                            moves = matchDto.game.moveHistory,
-                            gameState = gameViewModel.gameState.value,
-                            playerSide = gameViewModel.playerSide.value,
-                            aiEnabled = gameViewModel.aIEnabled.value,
-                        )
-                    }
+                    scope.launch { clipboardHelper.copyMatch(matchDto) }
                 },
                 onBack = { navController.popBackStack() },
                 viewModel = gameDetailsViewModel,

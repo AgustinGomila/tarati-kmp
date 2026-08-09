@@ -77,6 +77,33 @@ data class PGNHeader(
             }
         }
 
+        /**
+         * Serializa un PGN completo desde un [header] ya resuelto + su [moves] + el FEN
+         * final ([finalPosition]).
+         *
+         * Fuente de verdad para partidas ya materializadas (detalle, biblioteca, análisis):
+         * copia el header **tal como se muestra** —labels reales por-banda, resultado— en vez
+         * de re-derivarlo del estado del juego en vivo (que puede ser otra partida y solo sabe
+         * expresar "Human"/"AI"). El resultado se toma del propio [header].
+         */
+        fun buildPgn(
+            header: PGNHeader,
+            moves: List<Move>,
+            finalPosition: String? = null,
+        ): String =
+            buildString {
+                appendLine(header.toPGNString())
+                appendLine()
+                append(generateMoveNotation(moves))
+                if (header.result != UNDEFINED.getValue()) {
+                    append(" ${header.result}")
+                }
+                if (!finalPosition.isNullOrBlank()) {
+                    appendLine()
+                    appendLine(finalPosition)
+                }
+            }.trim()
+
         private fun generateMoveNotation(moveHistory: List<Move>): String =
             buildString {
                 moveHistory.groupByTurns().chunked(2).forEachIndexed { index, turnPair ->

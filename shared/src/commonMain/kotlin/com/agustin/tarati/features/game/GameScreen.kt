@@ -857,7 +857,7 @@ private fun createAiThinkingDependencies(
  * @param isCurrentUser True si esta banda corresponde al jugador en el dispositivo.
  * @param userName      Nombre configurado en ajustes (puede estar vacío).
  */
-private fun buildPlayerLabel(
+fun buildPlayerLabel(
     aiLabel: String,
     humanLabel: String,
     difficultyLabel: String,

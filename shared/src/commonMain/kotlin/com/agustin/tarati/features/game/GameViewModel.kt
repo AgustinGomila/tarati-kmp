@@ -298,12 +298,13 @@ abstract class GameViewModel(
     override fun exportGameToMatchDto(whiteLabel: String, blackLabel: String): MatchDto {
         val gameState = gameManager.gameState.value
         val moveHistory = gameManager.history.value
+        val winner = gameState.getWinner(aiEngine.positionHistory)
 
         val header = PGNHeader(
             white = whiteLabel,
             black = blackLabel,
-            result = gameState.getWinner(aiEngine.positionHistory)?.getMatchResult()?.getValue()
-                ?: MatchResult.UNDEFINED.getValue(),
+            result = winner?.getMatchResult()?.getValue() ?: MatchResult.UNDEFINED.getValue(),
+            termination = if (winner != null) "Normal" else PGNHeader().termination,
         )
 
         val initialState = gameManager.initialGameState
@@ -313,8 +314,7 @@ abstract class GameViewModel(
             game = GameDto(
                 initialBoardPosition = initialState.toPositionNotation(),
                 boardPosition = gameState.toPositionNotation(),
-                matchResult = gameState.getWinner(aiEngine.positionHistory)?.getMatchResult()
-                    ?: MatchResult.UNDEFINED,
+                matchResult = winner?.getMatchResult() ?: MatchResult.UNDEFINED,
                 moveHistory = moveHistory.getMoves(),
             ),
         )

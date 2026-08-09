@@ -3,6 +3,7 @@ package com.agustin.tarati.core.domain.analysis
 import com.agustin.tarati.core.domain.ai.engine.BoardEvaluator
 import com.agustin.tarati.core.domain.ai.engine.TaratiAI
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
+import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
 
@@ -69,6 +70,24 @@ class PositionAnalyzer(
      * Limitación aceptada para el gráfico: no reconstruye el historial real de repeticiones.
      */
     suspend fun evaluateSearched(state: GameState): SearchedEval {
+        // Posición terminal: el motor la puntúa desde la óptica del jugador al turno
+        // (convención que el nodo padre invierte durante la búsqueda). Aquí la posición
+        // terminal es la raíz —sin padre que invierta el signo—, así que se puntúa en
+        // óptica absoluta de Blancas: +winningScore si ganan Blancas, − si ganan Negras,
+        // eval estático (tablas). Sin esto, un Mit de Blancas con Negras al turno da un
+        // score negativo → el último punto del gráfico sale completamente negro.
+        if (state.isGameOver()) {
+            val score = when (state.getWinner()) {
+                CobColor.WHITE -> config.winningScore
+                CobColor.BLACK -> -config.winningScore
+                else -> 0.0
+            }
+            return SearchedEval(
+                scoreWhitePov = score,
+                winProbWhite = WinProbability.winProbabilityWhite(score),
+                bestMove = null,
+            )
+        }
         searchEngine.clearHistory()
         val primary = searchEngine.getNextMove(state, AnalysisConfig.graphDifficulty)
         searchEngine.clearHistory()
