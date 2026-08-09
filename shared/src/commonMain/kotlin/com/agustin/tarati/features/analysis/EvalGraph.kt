@@ -17,6 +17,7 @@ import kotlin.math.roundToInt
 
 private val GraphWhite = Color(0xFFF5F5F5)
 private val GraphBlack = Color(0xFF2B2B2B)
+private val GraphBlackMoveMark = Color(0x33808080)
 
 /**
  * Gráfico de evaluación de la partida (estilo ajedrez): eje X = número de punto
@@ -29,6 +30,9 @@ private val GraphBlack = Color(0xFF2B2B2B)
  *
  * [series] son los `winProbWhite` en `[0,1]`, uno por punto. Índices de la serie:
  * `0` = posición inicial; `i+1` = posición tras el movimiento `i`.
+ *
+ * [blackMoveMarks] son los índices de la serie que resultan de un movimiento de
+ * Negras; en cada uno se dibuja una línea vertical grisada suave para destacarlos.
  */
 @Composable
 fun EvalGraph(
@@ -37,6 +41,7 @@ fun EvalGraph(
     onSelectIndex: (Int) -> Unit,
     modifier: Modifier = Modifier,
     markers: Map<Int, Color> = emptyMap(),
+    blackMoveMarks: Set<Int> = emptySet(),
 ) {
     if (series.size < 2) return
     val lastIndex = series.lastIndex
@@ -74,6 +79,14 @@ fun EvalGraph(
 
         // Línea media (50/50).
         drawLine(GraphBlack.copy(alpha = 0.3f), Offset(0f, h / 2f), Offset(w, h / 2f), strokeWidth = 1f)
+
+        // Líneas verticales grisadas suaves que destacan los movimientos de Negras.
+        blackMoveMarks.forEach { i ->
+            if (i in 0..lastIndex) {
+                val x = xAt(i)
+                drawLine(GraphBlackMoveMark, Offset(x, 0f), Offset(x, h), strokeWidth = 1f)
+            }
+        }
 
         // Curva del win% resaltada.
         val curve = Path().apply {

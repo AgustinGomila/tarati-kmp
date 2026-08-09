@@ -17,6 +17,7 @@ import com.agustin.tarati.core.domain.game.manager.GameManagerState
 import com.agustin.tarati.core.domain.game.manager.gameManagerState
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.getMatchResult
+import com.agustin.tarati.core.domain.game.play.GameEndReason
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.GameStatus
 import com.agustin.tarati.core.domain.game.play.MatchResult
@@ -298,13 +299,15 @@ abstract class GameViewModel(
     override fun exportGameToMatchDto(whiteLabel: String, blackLabel: String): MatchDto {
         val gameState = gameManager.gameState.value
         val moveHistory = gameManager.history.value
-        val winner = gameState.getWinner(aiEngine.positionHistory)
+        val matchState = gameState.getMatchState(aiEngine.positionHistory)
+        val winner = matchState.winner
+        val isGameOver = matchState.gameEndReason != GameEndReason.PLAYING
 
         val header = PGNHeader(
             white = whiteLabel,
             black = blackLabel,
             result = winner?.getMatchResult()?.getValue() ?: MatchResult.UNDEFINED.getValue(),
-            termination = if (winner != null) "Normal" else PGNHeader().termination,
+            termination = if (isGameOver) matchState.gameEndReason.key else PGNHeader().termination,
         )
 
         val initialState = gameManager.initialGameState

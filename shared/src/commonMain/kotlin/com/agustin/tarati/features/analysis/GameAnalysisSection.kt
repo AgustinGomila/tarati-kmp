@@ -187,11 +187,19 @@ fun GameAnalysisSection(
                 val counts = remember(classifications) {
                     classifications.groupingBy { it.quality }.eachCount()
                 }
+                // Puntos de la serie (p = índice del movimiento p-1) resultantes de un
+                // movimiento de Negras: misma convención de color que MoveClassifier.
+                val blackMoveMarks = remember(state.analysis, firstMoverWhite) {
+                    (1 until state.analysis.series.size)
+                        .filter { p -> ((p - 1) % 2 == 0) != firstMoverWhite }
+                        .toSet()
+                }
                 EvalGraph(
                     series = state.analysis.series.map { it.winProbWhite },
                     currentIndex = currentMoveIndex + 1,
                     onSelectIndex = { pointIndex -> onMoveClick((pointIndex - 1).coerceIn(0, moves.lastIndex)) },
                     markers = markers,
+                    blackMoveMarks = blackMoveMarks,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
