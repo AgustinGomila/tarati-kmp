@@ -3,6 +3,8 @@ package com.agustin.tarati.core.domain.analysis
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.analysis.AnalysisConfig.GRAPH_SEARCH_DEPTH
+import com.agustin.tarati.core.domain.analysis.AnalysisConfig.GRAPH_SEARCH_DEPTH_ALT
+import com.agustin.tarati.core.domain.analysis.AnalysisConfig.WIN_PROB_K
 import com.agustin.tarati.core.domain.analysis.AnalysisConfig.canonicalCobScore
 import com.agustin.tarati.core.domain.analysis.AnalysisConfig.evalConfig
 

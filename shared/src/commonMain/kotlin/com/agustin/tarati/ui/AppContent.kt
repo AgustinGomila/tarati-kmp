@@ -131,7 +131,6 @@ import com.agustin.tarati.ui.layout.CompanionPanelHeader
 import com.agustin.tarati.ui.layout.DisplayMode
 import com.agustin.tarati.ui.layout.LocalCompanionPanelController
 import com.agustin.tarati.ui.layout.LocalScreenLayout
-import org.jetbrains.compose.resources.stringResource
 import com.agustin.tarati.ui.layout.ScreenLayout
 import com.agustin.tarati.ui.layout.screenLayoutFor
 import com.agustin.tarati.ui.theme.AppTheme
@@ -139,6 +138,7 @@ import com.agustin.tarati.ui.theme.PaletteManager
 import com.agustin.tarati.ui.theme.TaratiTheme
 import com.agustin.tarati.ui.theme.availablePalettes
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
