@@ -282,6 +282,11 @@
     <string name="analysis_analyze_game">Analyze game</string>
     <string name="analysis_analyzing">Analyzing…</string>
     <string name="analysis_view_full">Full game analysis</string>
+    <string name="analysis_quality_best">Best</string>
+    <string name="analysis_quality_good">Good</string>
+    <string name="analysis_quality_inaccuracy">Inaccuracy</string>
+    <string name="analysis_quality_mistake">Mistake</string>
+    <string name="analysis_quality_blunder">Blunder</string>
     <string name="time_control_unlimited">Unlimited</string>
     <string name="time_control_sudden_death_label">%1$d min</string>
     <string name="time_control_fischer_label">%1$d + %2$d (Fischer)</string>

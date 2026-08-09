@@ -53,22 +53,31 @@ class PositionAnalyzer(
     }
 
     /**
-     * Evaluación con **búsqueda superficial** ([AnalysisConfig.graphDifficulty], depth 3):
-     * corre un minimax con los pesos canónicos y devuelve el score resultante + la mejor
-     * jugada. Ve táctica que la evaluación estática no (p. ej. un Mit a dos jugadas), por eso
-     * la usa el gráfico post-partida.
+     * Evaluación con **búsqueda superficial** promediando dos paridades de profundidad
+     * ([AnalysisConfig.graphDifficulty] y [AnalysisConfig.graphDifficultyAlt], depth 3 y 2):
+     * corre el minimax con los pesos canónicos y devuelve el score promedio + la mejor jugada.
+     * Ve táctica que la evaluación estática no (p. ej. un Mit a dos jugadas), por eso la usa el
+     * gráfico post-partida.
      *
-     * Cada llamada resetea el historial del motor para que las posiciones no se contaminen
-     * entre sí. Limitación aceptada para el gráfico: no reconstruye el historial real de
-     * repeticiones de la partida.
+     * **Por qué el promedio**: el score de un minimax de un solo lado no es *turn-independent*
+     * en un juego de conversión (una profundidad impar favorece al que mueve, una par al rival);
+     * sin promediar, la curva del gráfico oscila ~±20 puntos de win% **en cada ply**, haciendo
+     * que toda jugada parezca un error. Promediar par+impar cancela ese sesgo de tempo.
+     *
+     * La **mejor jugada** se toma de la búsqueda [AnalysisConfig.graphDifficulty] (la más profunda).
+     * Cada llamada resetea el historial del motor para que las posiciones no se contaminen entre sí.
+     * Limitación aceptada para el gráfico: no reconstruye el historial real de repeticiones.
      */
     suspend fun evaluateSearched(state: GameState): SearchedEval {
         searchEngine.clearHistory()
-        val result = searchEngine.getNextMove(state, AnalysisConfig.graphDifficulty)
+        val primary = searchEngine.getNextMove(state, AnalysisConfig.graphDifficulty)
+        searchEngine.clearHistory()
+        val alt = searchEngine.getNextMove(state, AnalysisConfig.graphDifficultyAlt)
+        val score = (primary.score + alt.score) / 2.0
         return SearchedEval(
-            scoreWhitePov = result.score,
-            winProbWhite = WinProbability.winProbabilityWhite(result.score),
-            bestMove = result.move,
+            scoreWhitePov = score,
+            winProbWhite = WinProbability.winProbabilityWhite(score),
+            bestMove = primary.move,
         )
     }
 }

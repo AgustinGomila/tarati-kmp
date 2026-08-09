@@ -39,11 +39,26 @@ object AnalysisConfig {
     const val GRAPH_SEARCH_DEPTH: Int = 3
 
     /**
+     * Segunda profundidad, de **paridad opuesta** ([GRAPH_SEARCH_DEPTH] − 1), usada para
+     * promediar los dos scores en [PositionAnalyzer.evaluateSearched] y cancelar el sesgo
+     * de turno del search de un solo lado.
+     *
+     * En un juego de conversión de piezas, el score de un minimax de un solo lado **no es
+     * turn-independent**: una profundidad **impar** termina la línea con el que mueve (favorece
+     * al que mueve), una **par** con el rival (favorece al que no mueve). Promediar ambas
+     * paridades da una curva estable (medido: ~3× menos oscilación ply-a-ply). Depth 2 =
+     * [Difficulty.EASY]; solo cambia la profundidad, los pesos siguen siendo [evalConfig].
+     */
+    const val GRAPH_SEARCH_DEPTH_ALT: Int = GRAPH_SEARCH_DEPTH - 1
+
+    /**
      * Versión del análisis persistido. **Incrementar** cuando cambie algo que
      * altere los resultados (pesos de [evalConfig], [WIN_PROB_K], profundidad,
      * fórmula de evaluación) para invalidar las cachés viejas en disco.
+     *
+     * v2: `evaluateSearched` promedia las paridades par/impar (turn-independent).
      */
-    const val ANALYSIS_VERSION: Int = 1
+    const val ANALYSIS_VERSION: Int = 2
 
     /**
      * Nivel usado para la búsqueda del gráfico: el que iguala [GRAPH_SEARCH_DEPTH]
@@ -52,4 +67,8 @@ object AnalysisConfig {
      */
     val graphDifficulty: Difficulty =
         Difficulty.entries.firstOrNull { it.depth == GRAPH_SEARCH_DEPTH } ?: Difficulty.MEDIUM
+
+    /** Nivel de la profundidad hermana [GRAPH_SEARCH_DEPTH_ALT] (paridad opuesta). Depth 2 = [Difficulty.EASY]. */
+    val graphDifficultyAlt: Difficulty =
+        Difficulty.entries.firstOrNull { it.depth == GRAPH_SEARCH_DEPTH_ALT } ?: Difficulty.EASY
 }
