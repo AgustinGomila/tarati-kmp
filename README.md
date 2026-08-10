@@ -322,6 +322,10 @@ Tarati/
 
 ### Project Structure
 
+> The tree below is an overview. The **canonical, full structure** (modules, KMP source sets and package
+> layering) lives in [`docs/architecture/project_structure.md`](docs/architecture/project_structure.md) —
+> keep it in sync when moving folders.
+
 ```
 shared/commonMain/
 ├── core/

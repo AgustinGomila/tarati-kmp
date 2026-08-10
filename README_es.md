@@ -331,6 +331,10 @@ Tarati/
 
 ### Estructura del Proyecto
 
+> El árbol de abajo es un resumen. La **estructura canónica y completa** (módulos, source sets KMP y
+> organización de paquetes) vive en [`docs/architecture/project_structure.md`](docs/architecture/project_structure.md) —
+> mantenela sincronizada al mover carpetas.
+
 ```
 shared/commonMain/
 ├── core/
