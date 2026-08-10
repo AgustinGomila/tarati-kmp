@@ -11,5 +11,4 @@ data class EdgeHighlight(
     override val postDelay: Long = 0L,
     override val persistent: Boolean = false,
     val action: HighlightAction = HighlightAction.MOVE,
-    val messageResId: Int? = null,
 ) : BaseHighlight

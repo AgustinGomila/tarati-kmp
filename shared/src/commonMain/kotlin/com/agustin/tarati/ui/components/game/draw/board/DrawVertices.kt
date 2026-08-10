@@ -83,11 +83,6 @@ fun DrawScope.drawVertexHighlight(
         pulseRadius = baseRadius * pulse,
         colors = colors,
     )
-
-    // TODO: Si hay mensaje, dibujar texto (opcional)
-    highlight.messageResId?.let {
-        // drawContext.canvas.nativeCanvas.drawText(...)
-    }
 }
 
 /**

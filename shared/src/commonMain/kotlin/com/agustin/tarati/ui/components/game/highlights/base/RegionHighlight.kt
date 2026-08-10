@@ -11,5 +11,4 @@ data class RegionHighlight(
     override val postDelay: Long = 0,
     override val persistent: Boolean = false,
     val action: HighlightAction = HighlightAction.MOVE,
-    val messageResId: Int? = null,
 ) : BaseHighlight
