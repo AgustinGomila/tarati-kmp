@@ -14,8 +14,8 @@ class SearchContext(
     var cutoffs: Int = 0
     var cacheHits: Int = 0
 
-    // Tracks when the last animation yield occurred. Updated by MinimaxStrategy
-    // so that yieldForAnimation() is called at most once per YIELD_INTERVAL_MS.
+    // Tracks when the last cooperative yield occurred. Updated by MinimaxStrategy
+    // so that cooperativeYield() is called at most once per YIELD_INTERVAL_MS.
     var lastYieldTimeMs: Long = startTimeMs
 }
 

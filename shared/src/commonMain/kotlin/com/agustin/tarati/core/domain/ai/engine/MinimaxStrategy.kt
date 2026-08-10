@@ -78,7 +78,7 @@ import kotlin.time.Clock
  * mientras reduce drásticamente los nodos en posiciones de alta movilidad.
  *
  * ## Cooperative scheduling (WASM)
- * [searchBestMove] calls [yieldForAnimation] after each root-level move when
+ * [searchBestMove] calls [cooperativeYield] after each root-level move when
  * [yieldIntervalMs] has elapsed. In WASM this dispatches a macrotask via
  * setTimeout, allowing requestAnimationFrame to fire between root moves and
  * keeping the animation smooth during deep searches.
@@ -301,7 +301,7 @@ class MinimaxStrategy(
             if (isRoot) {
                 val now = Clock.System.now().toEpochMilliseconds()
                 if (now - context.lastYieldTimeMs >= yieldIntervalMs) {
-                    yieldForAnimation()
+                    cooperativeYield()
                     context.lastYieldTimeMs = Clock.System.now().toEpochMilliseconds()
                 }
             }

@@ -37,6 +37,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.ai.api.IAIEngine
+import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.analysis.PositionAnalyzer
 import com.agustin.tarati.core.domain.game.board.BoardOrientation
 import com.agustin.tarati.core.domain.game.board.Vertex
@@ -125,7 +126,7 @@ fun GameEffects(
     isManuallyRotated: Boolean,
     gameState: GameState,
     aiThinkingDependencies: AiThinkingDependencies,
-    onAITurn: (gameState: GameState) -> Unit,
+    onAITurn: (gameState: GameState, difficulty: Difficulty) -> Unit,
     onBoardOrientationChanged: (BoardOrientation) -> Unit,
     isTutorialActive: Boolean,
     tutorialState: TutorialState,
@@ -167,18 +168,16 @@ fun GameEffects(
 
         if (gameState.isGameOver(aiEngine.positionHistory)) return@LaunchedEffect
 
-        // Apply the difficulty config for the side that is about to move before
-        // requesting a move calculation — this is how per-side difficulty works
-        // in AI vs AI: each time the turn changes the engine is reconfigured.
-        aiEngine.setConfig(aiThinkingDependencies.currentTurnConfig)
-
         // WASM: give the animation system time to render the previous move before
-        // the AI search occupies the main thread. AiThinkingDependencies does not
-        // include isAIThinking, so this delay is not cancelled by the mid-think
-        // state changes. On Android/Desktop AI_MOVE_DELAY_MS = 0 (background thread).
+        // the AI search runs. AiThinkingDependencies does not include isAIThinking, so
+        // this delay is not cancelled by the mid-think state changes. On Android/Desktop
+        // AI_MOVE_DELAY_MS = 0.
         if (AI_MOVE_DELAY_MS > 0L) delay(AI_MOVE_DELAY_MS.milliseconds)
 
-        onAITurn(gameState)
+        // La config de la dificultad del lado que mueve se aplica dentro del AiMoveRunner (que
+        // reconstruye la config canónica desde la Difficulty) — así también viaja al Web Worker
+        // de la IA, que corre sobre una instancia aislada del motor.
+        onAITurn(gameState, aiThinkingDependencies.currentTurnConfig.difficulty)
     }
 
     // Efecto para drawer y tutorial

@@ -63,7 +63,7 @@ val sharedViewModelModule: Module = module {
     viewModel { BoardAnimationViewModel(get()) }
     viewModel { BoardSelectionViewModel() }
     viewModel { ClockViewModel() } bind IClockService::class
-    viewModel { AIViewModel(get()) }
+    viewModel { AIViewModel(get(), get()) }
     viewModel { (animatorCoordinator: AnimationCoordinator) ->
         TutorialViewModel(animatorCoordinator, get())
     }

@@ -440,7 +440,7 @@ fun GameScreen(
             boardHash = gameManagerState.gameState.hashBoard(),
             orientationSide = onlinePlayerSide,
         ),
-        onAITurn = { gameState -> aiViewModel.requestAIMove(gameState) },
+        onAITurn = { gameState, difficulty -> aiViewModel.requestAIMove(gameState, difficulty) },
         onBoardOrientationChanged = viewModel::updateBoardOrientation,
         isTutorialActive = screenState.isTutorialActive,
         tutorialState = tutorialState,

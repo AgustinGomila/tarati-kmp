@@ -1,7 +1,7 @@
 package com.agustin.tarati.core.domain.analysis
 
+import com.agustin.tarati.core.domain.ai.engine.cooperativeYield
 import com.agustin.tarati.core.domain.game.play.GameState
-import kotlinx.coroutines.yield
 import kotlinx.serialization.Serializable
 
 /**
@@ -30,9 +30,9 @@ data class GameAnalysis(
  * superficial, depth 3), produciendo la serie de probabilidades para el gráfico de
  * evaluación post-partida.
  *
- * Cede el hilo entre plies ([yield]) para no congelar la UI ni el frame de animación
- * en WASM durante el análisis, e informa el progreso `[0,1]` vía [onProgress]. La
- * cancelación de la corrutina corta el análisis limpiamente (yield la propaga).
+ * Cede el hilo entre plies con [cooperativeYield] para no congelar la UI en el hilo principal
+ * (fallback) ni el hilo de fondo en nativo; en un Web Worker es no-op (corre sincrónico, sin
+ * reprogramar la corrutina — ver [cooperativeYield]). Informa el progreso `[0,1]` vía [onProgress].
  */
 object GameAnalyzer {
     suspend fun analyze(
@@ -51,13 +51,13 @@ object GameAnalyzer {
 
         val initial = analyzer.evaluateSearched(initialState).toPlyEval()
         tick()
-        yield()
+        cooperativeYield()
 
         val perMove = ArrayList<PlyEval>(perMoveStates.size)
         for (state in perMoveStates) {
             perMove.add(analyzer.evaluateSearched(state).toPlyEval())
             tick()
-            yield()
+            cooperativeYield()
         }
         return GameAnalysis(initial, perMove)
     }

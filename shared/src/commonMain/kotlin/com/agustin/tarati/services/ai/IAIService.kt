@@ -1,5 +1,6 @@
 package com.agustin.tarati.services.ai
 
+import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
 import kotlinx.coroutines.flow.SharedFlow
@@ -26,8 +27,11 @@ interface IAIService {
      * Launches the AI computation in [AIViewModel.viewModelScope].
      * Safe to call from a Composable context — does not require a coroutine scope
      * from the composition. Ignored if the engine is already thinking.
+     *
+     * [difficulty] is the difficulty of the side about to move; the runner rebuilds the
+     * canonical config from it (and, on Web, ships it to the engine worker).
      */
-    fun requestAIMove(gameState: GameState)
+    fun requestAIMove(gameState: GameState, difficulty: Difficulty)
 
     /**
      * Current position history from the AI engine.

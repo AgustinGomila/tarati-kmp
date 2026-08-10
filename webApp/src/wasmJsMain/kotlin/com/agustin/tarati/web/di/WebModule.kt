@@ -1,5 +1,9 @@
 package com.agustin.tarati.web.di
 
+import com.agustin.tarati.core.domain.ai.runner.AiMoveRunner
+import com.agustin.tarati.core.domain.ai.runner.DefaultAiMoveRunner
+import com.agustin.tarati.core.domain.game6.ai.DefaultMpBotRunner
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
 import com.agustin.tarati.core.domain.analysis.AnalysisRunner
 import com.agustin.tarati.core.domain.analysis.InMemoryAnalysisCacheRepository
@@ -26,7 +30,9 @@ import com.agustin.tarati.web.WasmSettingsRepository
 import com.agustin.tarati.web.WasmSettingsViewModel
 import com.agustin.tarati.web.WasmUrlLauncher
 import com.agustin.tarati.web.WebSoundService
+import com.agustin.tarati.web.worker.WorkerAiMoveRunner
 import com.agustin.tarati.web.worker.WorkerAnalysisRunner
+import com.agustin.tarati.web.worker.WorkerMpBotRunner
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.js.Js
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -68,8 +74,11 @@ val webDataModule: Module = module {
     single<AuthRepository> { WasmAuthRepository() }
     single<GameRepository> { NoOpGameRepository() }
     single<AnalysisCacheRepository> { InMemoryAnalysisCacheRepository() }
-    // El análisis corre en un Web Worker (fuera del hilo principal del navegador).
+    // El análisis y la IA en vivo corren en el mismo Web Worker (fuera del hilo principal del
+    // navegador); cada uno cae al hilo principal si el worker no está disponible.
     single<AnalysisRunner> { WorkerAnalysisRunner() }
+    single<AiMoveRunner> { WorkerAiMoveRunner(DefaultAiMoveRunner(get())) }
+    single<MpBotRunner> { WorkerMpBotRunner(DefaultMpBotRunner()) }
 }
 
 val webViewModelModule: Module = module {

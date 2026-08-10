@@ -3,8 +3,9 @@ package com.agustin.tarati.features.game6
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.agustin.tarati.core.domain.game.board.Vertex
-import com.agustin.tarati.core.domain.game6.ai.MpBot
+import com.agustin.tarati.core.domain.game6.ai.DefaultMpBotRunner
 import com.agustin.tarati.core.domain.game6.ai.MpBotLevel
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
@@ -73,6 +74,12 @@ data class MpConfig(
 class MpLocalGameViewModel(
     private val random: Random = Random.Default,
     private val cut: MpCutConfig = MpCutConfig.Default,
+    /**
+     * Calcula las jugadas de los bots. El default corre en [kotlinx.coroutines.Dispatchers.Default]
+     * (hilo real en nativo); en Web se inyecta el runner basado en Web Worker para sacar la búsqueda
+     * del hilo principal del navegador. Usa el [random] del VM para el desempate (determinismo en tests).
+     */
+    private val botRunner: MpBotRunner = DefaultMpBotRunner(random),
 ) {
     private val _config = MutableStateFlow(defaultConfig())
     val config: StateFlow<MpConfig> = _config.asStateFlow()
@@ -339,12 +346,21 @@ class MpLocalGameViewModel(
         return !_isEditing.value && !s.isGameOver && s.currentSeatIndex in activeBotSeats && isAtTip()
     }
 
-    /** Aplica el movimiento elegido por el bot para el asiento en turno (si corresponde). */
-    fun playBotMove() {
+    /**
+     * Aplica el movimiento elegido por el bot para el asiento en turno (si corresponde). Es `suspend`:
+     * el cálculo se delega a [MpBotRunner] (hilo real en nativo, Web Worker en la web). Como el cómputo
+     * es asíncrono, se revalida a la vuelta que el estado no haya cambiado y que siga siendo turno de
+     * bot antes de aplicar (la pantalla ya cancela el efecto ante cambios de clave, esto es la red de
+     * seguridad ante una carrera).
+     */
+    suspend fun playBotMove() {
         if (!isBotTurn()) return
-        val level = _config.value.seatBotLevels.getOrElse(_state.value.currentSeatIndex) { MpBotLevel.DEFAULT }
-        val move = MpBot.chooseMove(_state.value, level, random = random) ?: return
-        applyAndClear(move)
+        val snapshot = _state.value
+        val level = _config.value.seatBotLevels.getOrElse(snapshot.currentSeatIndex) { MpBotLevel.DEFAULT }
+        val move = botRunner.chooseMove(snapshot, level) ?: return
+        if (_state.value == snapshot && isBotTurn()) {
+            applyAndClear(move)
+        }
     }
 
     /**
@@ -352,7 +368,7 @@ class MpLocalGameViewModel(
      * pre-movimiento sólo se habilita en el caso análogo al single (hot-seat con 2+ humanos no tiene
      * ventana de espera). Los índices de [MpConfig.seatIsAI] están alineados con [MpGameState.seats].
      */
-    fun humanSeatColor(): PlayerColor? {
+    private fun humanSeatColor(): PlayerColor? {
         val ai = _config.value.seatIsAI
         val humanIndices = ai.indices.filter { !ai[it] }
         if (humanIndices.size != 1) return null

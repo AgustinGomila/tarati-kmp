@@ -32,6 +32,7 @@ import com.agustin.tarati.features.game6.MpGameDetailScreen
 import com.agustin.tarati.features.game6.MpGameScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.features.game6.MpLocalGameViewModel
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel
@@ -129,7 +130,8 @@ fun NavGraph(
     // GameScreenDest) para que la partida en curso y la config del Sidebar (nº jugadores, humano/IA)
     // sobrevivan tanto el cambio de modo Single↔Multi como la navegación a otras pantallas
     // (Settings/Logros) y vuelta — igual que el juego single vive en `gameViewModel` (scope Activity).
-    val mpViewModel = remember { MpLocalGameViewModel() }
+    val mpBotRunner = koinInject<MpBotRunner>()
+    val mpViewModel = remember { MpLocalGameViewModel(botRunner = mpBotRunner) }
 
     NavHost(
         navController = navController,

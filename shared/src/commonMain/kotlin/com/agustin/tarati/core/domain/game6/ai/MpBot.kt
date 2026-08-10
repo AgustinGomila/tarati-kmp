@@ -4,6 +4,7 @@ import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.board.BoardGraph
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
+import kotlinx.serialization.Serializable
 import kotlin.random.Random
 
 /**
@@ -11,8 +12,11 @@ import kotlin.random.Random
  * Análogo al `Difficulty` del juego 1 (Easy→Champion). [EASY] es la evaluación a 1 ply (greedy puro);
  * los tiers superiores buscan más plies.
  *
+ * `@Serializable`: viaja en el job del engine worker (Web) para el offload de [MpBotRunner].
+ *
  * @property depth plies (jugadas de asiento) que mira la búsqueda.
  */
+@Serializable
 enum class MpBotLevel(val depth: Int) {
     EASY(1),
     MEDIUM(2),

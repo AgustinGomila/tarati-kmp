@@ -15,6 +15,10 @@ import com.agustin.tarati.core.data.database.dao.AnalysisDao
 import com.agustin.tarati.core.data.database.dao.GameDao
 import com.agustin.tarati.core.data.repositories.RoomAnalysisCacheRepository
 import com.agustin.tarati.core.data.repositories.RoomGameRepository
+import com.agustin.tarati.core.domain.ai.runner.AiMoveRunner
+import com.agustin.tarati.core.domain.ai.runner.DefaultAiMoveRunner
+import com.agustin.tarati.core.domain.game6.ai.DefaultMpBotRunner
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
 import com.agustin.tarati.core.domain.analysis.AnalysisRunner
 import com.agustin.tarati.core.domain.analysis.DefaultAnalysisRunner
@@ -82,6 +86,10 @@ val databaseModule: Module = module {
     single<AnalysisDao> { get<TaratiDatabase>().analysisDao() }
     single<AnalysisCacheRepository> { RoomAnalysisCacheRepository(get()) }
     single<AnalysisRunner> { DefaultAnalysisRunner() }
+    // La IA en vivo corre en un hilo real (Dispatchers.Default) sobre el motor singleton.
+    single<AiMoveRunner> { DefaultAiMoveRunner(get()) }
+    // Bots del multijugador (game6) también en hilo real.
+    single<MpBotRunner> { DefaultMpBotRunner() }
 }
 
 // ── DataStore ─────────────────────────────────────────────────────────────────

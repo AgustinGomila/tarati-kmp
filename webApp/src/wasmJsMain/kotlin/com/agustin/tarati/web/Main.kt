@@ -15,22 +15,25 @@ import com.agustin.tarati.services.sound.ISoundService
 import com.agustin.tarati.services.sound.LocalSoundService
 import com.agustin.tarati.ui.AppContent
 import com.agustin.tarati.web.di.webModules
-import com.agustin.tarati.web.worker.isAnalysisWorkerContext
-import com.agustin.tarati.web.worker.startAnalysisWorker
+import com.agustin.tarati.web.worker.EngineWorkerClient
+import com.agustin.tarati.web.worker.isEngineWorkerContext
+import com.agustin.tarati.web.worker.startEngineWorker
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.delay
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.dsl.koinConfiguration
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     // Si este mismo bundle se carga dentro de un Web Worker (`new Worker('tarati.js')`),
-    // NO arrancamos Compose: corremos el loop de análisis y salimos. Debe ser lo primero,
-    // antes de tocar `window`/DOM (que no existen en un worker).
-    if (isAnalysisWorkerContext()) {
-        startAnalysisWorker()
+    // NO arrancamos Compose: corremos el loop del engine worker (análisis + IA) y salimos. Debe
+    // ser lo primero, antes de tocar `window`/DOM (que no existen en un worker).
+    if (isEngineWorkerContext()) {
+        startEngineWorker()
         return
     }
 
@@ -61,6 +64,14 @@ fun main() {
             // Oculta el splash HTML apenas la primera composición commitea (ya hay
             // primer frame), empalmando con el splash propio de la app sin parpadeo.
             LaunchedEffect(Unit) { signalAppReady() }
+
+            // Precalienta el engine worker (IA/análisis) en segundo plano, diferido para no competir
+            // con el arranque: así la primera jugada vs IA no paga el cold-start del worker (carga del
+            // bundle + compilación WASM). Si el worker no está disponible, es un no-op (fallback vigente).
+            LaunchedEffect(Unit) {
+                delay(2000.milliseconds)
+                EngineWorkerClient.warmUp()
+            }
 
             val settingsViewModel: ISettingsViewModel = koinViewModel<WasmSettingsViewModel>()
             val soundService: ISoundService = koinInject()
