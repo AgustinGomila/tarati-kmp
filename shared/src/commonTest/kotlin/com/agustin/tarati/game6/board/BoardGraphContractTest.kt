@@ -4,10 +4,10 @@ import com.agustin.tarati.core.domain.game.board.GameBoard
 import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.board.BoardGraph
 import com.agustin.tarati.core.domain.game6.board.GameBoardGraph
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Contrato de [BoardGraph]: invariantes que toda implementación debe cumplir, verificados sobre
@@ -28,8 +28,8 @@ class BoardGraphContractTest {
         boards.forEach { (name, board) ->
             board.vertices.forEach { vertex ->
                 assertTrue(
-                    "$name: la adyacencia debe contener a ${vertex.name}",
                     board.adjacencyMap.containsKey(vertex),
+                    "$name: la adyacencia debe contener a ${vertex.name}",
                 )
             }
         }
@@ -40,12 +40,12 @@ class BoardGraphContractTest {
         boards.forEach { (name, board) ->
             board.edges.forEach { edge ->
                 assertTrue(
-                    "$name: ${edge.from.name} debe conectar con ${edge.to.name}",
                     board.isAdjacent(edge.from, edge.to),
+                    "$name: ${edge.from.name} debe conectar con ${edge.to.name}",
                 )
                 assertTrue(
-                    "$name: ${edge.to.name} debe conectar con ${edge.from.name}",
                     board.isAdjacent(edge.to, edge.from),
+                    "$name: ${edge.to.name} debe conectar con ${edge.from.name}",
                 )
             }
         }
@@ -56,9 +56,9 @@ class BoardGraphContractTest {
         boards.forEach { (name, board) ->
             board.vertices.forEach { vertex ->
                 assertEquals(
-                    "$name: neighborsOf(${vertex.name}) debe coincidir con adjacencyMap",
                     board.adjacencyMap[vertex] ?: emptyList<Any>(),
                     board.neighborsOf(vertex),
+                    "$name: neighborsOf(${vertex.name}) debe coincidir con adjacencyMap",
                 )
             }
         }
@@ -70,8 +70,8 @@ class BoardGraphContractTest {
             board.vertices.forEach { a ->
                 board.neighborsOf(a).forEach { b ->
                     assertTrue(
-                        "$name: isAdjacent(${a.name}, ${b.name}) debe ser simétrico",
                         board.isAdjacent(b, a),
+                        "$name: isAdjacent(${a.name}, ${b.name}) debe ser simétrico",
                     )
                 }
             }
@@ -83,8 +83,8 @@ class BoardGraphContractTest {
         boards.forEach { (name, board) ->
             board.vertices.forEach { vertex ->
                 assertFalse(
-                    "$name: ${vertex.name} no debe ser adyacente a sí mismo",
                     board.isAdjacent(vertex, vertex),
+                    "$name: ${vertex.name} no debe ser adyacente a sí mismo",
                 )
             }
         }
@@ -97,7 +97,7 @@ class BoardGraphContractTest {
             val ghost = com.agustin.tarati.core.domain.game.board.Vertex(
                 com.agustin.tarati.core.domain.game.board.Zone('Z'), 99,
             )
-            assertTrue("$name: vértice desconocido no tiene vecinos", board.neighborsOf(ghost).isEmpty())
+            assertTrue(board.neighborsOf(ghost).isEmpty(), "$name: vértice desconocido no tiene vecinos")
         }
     }
 

@@ -6,8 +6,8 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.core.domain.game6.rules.MpTransforms
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 /** Tests de la rotación de perspectiva del estado multijugador (D13). */
 class MpTransformsTest {
@@ -30,7 +30,7 @@ class MpTransformsTest {
         val rotated = MpTransforms.rotate60(state)
         state.pieces.forEach { (vertex, piece) ->
             val target = Board25.rotate60(vertex)
-            assertEquals("Pieza de ${vertex.name} → ${target.name}", piece, rotated.pieces[target])
+            assertEquals(piece, rotated.pieces[target], "Pieza de ${vertex.name} → ${target.name}")
         }
     }
 
@@ -57,7 +57,7 @@ class MpTransformsTest {
         val state = MpSetup.initialState(6)
         var s = state
         repeat(6) { s = MpTransforms.rotate60(s) }
-        assertEquals("R^6 = identidad sobre el estado", state, s)
+        assertEquals(state, s, "R^6 = identidad sobre el estado")
     }
 
     @Test
@@ -67,7 +67,7 @@ class MpTransformsTest {
         val rotated = MpTransforms.rotate60(MpSetup.initialState(6))
         rotated.seats.forEach { seat ->
             Board25.baseById(seat.baseId).startSquare.forEach { vertex ->
-                assertEquals("Base ${seat.baseId}: ${vertex.name}", seat.color, rotated.pieces[vertex]?.owner)
+                assertEquals(seat.color, rotated.pieces[vertex]?.owner, "Base ${seat.baseId}: ${vertex.name}")
             }
         }
     }
@@ -85,7 +85,7 @@ class MpTransformsTest {
     @Test
     fun rotateN_normalizesTimes() {
         val state = MpSetup.initialState(5)
-        assertEquals("6 giros = identidad", state, MpTransforms.rotate(state, 6))
+        assertEquals(state, MpTransforms.rotate(state, 6), "6 giros = identidad")
         // Un giro negativo equivale a 5 positivos (inverso de la simetría de orden 6).
         assertEquals(MpTransforms.rotate(state, 5), MpTransforms.rotate(state, -1))
     }
@@ -117,7 +117,7 @@ class MpTransformsTest {
             val r = MpTransforms.rotationToBottom(state, seat.color)
             val rotated = MpTransforms.rotate(state, r)
             val myBaseId = rotated.seats.first { it.color == seat.color }.baseId
-            assertEquals("Color ${seat.color} debería quedar al Sur", southBaseId, myBaseId)
+            assertEquals(southBaseId, myBaseId, "Color ${seat.color} debería quedar al Sur")
         }
     }
 

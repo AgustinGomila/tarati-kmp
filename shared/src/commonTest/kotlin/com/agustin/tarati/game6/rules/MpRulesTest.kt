@@ -11,11 +11,12 @@ import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Tests del motor de reglas multijugador (MpRules): salida de base, movimiento omnidireccional,
@@ -46,16 +47,16 @@ class MpRulesTest {
     @Test
     fun pieceStillInBase_cannotUseDRing() {
         val moves = MpRules.legalMoves(MpSetup.initialState(2))
-        assertFalse("D1→D18 (anillo) prohibido al inicio", moves.contains(MpMove(v("D1"), v("D18"))))
-        assertFalse("D2→D3 (anillo) prohibido al inicio", moves.contains(MpMove(v("D2"), v("D3"))))
+        assertFalse(moves.contains(MpMove(v("D1"), v("D18"))), "D1→D18 (anillo) prohibido al inicio")
+        assertFalse(moves.contains(MpMove(v("D2"), v("D3"))), "D2→D3 (anillo) prohibido al inicio")
     }
 
     @Test
     fun exitingBase_setsHasLeftBase() {
         val after = MpRules.applyMove(MpSetup.initialState(2), MpMove(v("D1"), v("C1")))
-        assertNull("La pieza salió de D1", after.pieces[v("D1")])
-        assertTrue("La pieza en C1 marcó hasLeftBase", after.pieces.getValue(v("C1")).hasLeftBase)
-        assertEquals("Turno pasa al siguiente jugador", 1, after.currentSeatIndex)
+        assertNull(after.pieces[v("D1")], "La pieza salió de D1")
+        assertTrue(after.pieces.getValue(v("C1")).hasLeftBase, "La pieza en C1 marcó hasLeftBase")
+        assertEquals(1, after.currentSeatIndex, "Turno pasa al siguiente jugador")
     }
 
     @Test
@@ -68,8 +69,8 @@ class MpRulesTest {
             ),
         )
         val moves = MpRules.legalMoves(state)
-        assertTrue("C1→D18 permitido (anillo)", moves.contains(MpMove(v("C1"), v("D18"))))
-        assertTrue("C1→D1 permitido (retroceso)", moves.contains(MpMove(v("C1"), v("D1"))))
+        assertTrue(moves.contains(MpMove(v("C1"), v("D18"))), "C1→D18 permitido (anillo)")
+        assertTrue(moves.contains(MpMove(v("C1"), v("D1"))), "C1→D1 permitido (retroceso)")
     }
 
     // ---- Captura por conversión + pre-adyacencia (§2.3) ----
@@ -85,9 +86,9 @@ class MpRulesTest {
             ),
         )
         val after = MpRules.applyMove(state, MpMove(v("B3"), v("A1")))
-        assertEquals("Pieza movida", P1, after.pieces.getValue(v("A1")).owner)
-        assertEquals("B1 capturado por conversión", P1, after.pieces.getValue(v("B1")).owner)
-        assertEquals("B2 protegido por pre-adyacencia", P2, after.pieces.getValue(v("B2")).owner)
+        assertEquals(P1, after.pieces.getValue(v("A1")).owner, "Pieza movida")
+        assertEquals(P1, after.pieces.getValue(v("B1")).owner, "B1 capturado por conversión")
+        assertEquals(P2, after.pieces.getValue(v("B2")).owner, "B2 protegido por pre-adyacencia")
     }
 
     @Test
@@ -112,7 +113,7 @@ class MpRulesTest {
             ),
         )
         val after = MpRules.applyMove(state, MpMove(v("B3"), v("A1")))
-        assertEquals("Sin captura: enemigo pre-adyacente", P2, after.pieces.getValue(v("B2")).owner)
+        assertEquals(P2, after.pieces.getValue(v("B2")).owner, "Sin captura: enemigo pre-adyacente")
         assertEquals(1, after.pieceCount(P2))
     }
 
@@ -127,7 +128,7 @@ class MpRulesTest {
             ),
         )
         val after = MpRules.applyMove(state, MpMove(v("B3"), v("A1")))
-        assertTrue("Partida terminada", after.isGameOver)
+        assertTrue(after.isGameOver, "Partida terminada")
         assertEquals(MpEndReason.LAST_STANDING, after.result?.reason)
         assertEquals(listOf(P1), after.result?.winners)
         assertEquals(SeatStatus.RETIRED, after.seats.first { it.color == P2 }.status)
@@ -183,15 +184,17 @@ class MpRulesTest {
         assertTrue(after.isGameOver)
         assertEquals(MpEndReason.LAST_STANDING, after.result?.reason)
         assertEquals(listOf(P1), after.result?.winners)
-        assertFalse("Las piezas del retirado salen del tablero", after.pieces.containsKey(v("A1")))
+        assertFalse(after.pieces.containsKey(v("A1")), "Las piezas del retirado salen del tablero")
     }
 
     // ---- Validación ----
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun applyMove_rejectsIllegalMove() {
         // D1→D18 es ilegal al inicio (anillo D con pieza en base).
-        MpRules.applyMove(MpSetup.initialState(2), MpMove(v("D1"), v("D18")))
+        assertFailsWith<IllegalArgumentException> {
+            MpRules.applyMove(MpSetup.initialState(2), MpMove(v("D1"), v("D18")))
+        }
     }
 
     @Test

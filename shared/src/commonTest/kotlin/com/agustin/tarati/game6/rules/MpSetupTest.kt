@@ -4,9 +4,10 @@ import com.agustin.tarati.core.domain.game6.board.Board25
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 /** Tests de la construcción del estado inicial (MpSetup) — §2.1 del plan. */
 class MpSetupTest {
@@ -16,7 +17,7 @@ class MpSetupTest {
         val state = MpSetup.initialState(6)
         assertEquals(6, state.seats.size)
         assertEquals(6 * 4, state.pieces.size)
-        assertTrue("Todos los asientos activos", state.seats.all { it.status == SeatStatus.ACTIVE })
+        assertTrue(state.seats.all { it.status == SeatStatus.ACTIVE }, "Todos los asientos activos")
         assertEquals(0, state.currentSeatIndex)
         assertEquals(setOf(17, 18, 19, 20, 21, 22), state.seats.map { it.baseId }.toSet())
     }
@@ -28,8 +29,8 @@ class MpSetupTest {
             val square = Board25.baseById(seat.baseId).startSquare
             square.forEach { vertex ->
                 val piece = state.pieces[vertex]
-                assertEquals("Base ${seat.baseId}: ${vertex.name} es de ${seat.color}", seat.color, piece?.owner)
-                assertEquals("Piezas iniciales no salieron de base", false, piece?.hasLeftBase)
+                assertEquals(seat.color, piece?.owner, "Base ${seat.baseId}: ${vertex.name} es de ${seat.color}")
+                assertEquals(false, piece?.hasLeftBase, "Piezas iniciales no salieron de base")
             }
         }
     }
@@ -62,19 +63,19 @@ class MpSetupTest {
     fun selectedBases_areAlwaysDistinct() {
         (2..6).forEach { k ->
             val indices = MpSetup.selectBaseIndices(k)
-            assertEquals("k=$k: $k índices", k, indices.size)
-            assertEquals("k=$k: índices distintos", k, indices.toSet().size)
-            assertTrue("k=$k: índices en rango", indices.all { it in 0..5 })
+            assertEquals(k, indices.size, "k=$k: $k índices")
+            assertEquals(k, indices.toSet().size, "k=$k: índices distintos")
+            assertTrue(indices.all { it in 0..5 }, "k=$k: índices en rango")
         }
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun fewerThanTwoPlayers_throws() {
-        MpSetup.initialState(1)
+        assertFailsWith<IllegalArgumentException> { MpSetup.initialState(1) }
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun moreThanSixPlayers_throws() {
-        MpSetup.initialState(7)
+        assertFailsWith<IllegalArgumentException> { MpSetup.initialState(7) }
     }
 }

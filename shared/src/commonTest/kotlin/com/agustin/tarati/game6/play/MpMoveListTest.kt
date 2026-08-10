@@ -6,13 +6,12 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.play.MpMoveCell
 import com.agustin.tarati.core.domain.game6.play.MpMoveList
-import com.agustin.tarati.core.domain.game6.play.MpMoveRow
 import com.agustin.tarati.core.domain.game6.play.PlayerMove
 import com.agustin.tarati.core.domain.game6.play.Seat
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** Tests del armado de la lista de movimientos columnar (§D7 del plan). */
 class MpMoveListTest {
@@ -33,7 +32,7 @@ class MpMoveListTest {
 
     @Test
     fun emptyHistory_returnsNoRows() {
-        assertEquals(emptyList<MpMoveRow>(), MpMoveList.build(emptyList(), seats(6)))
+        assertEquals(emptyList(), MpMoveList.build(emptyList(), seats(6)))
     }
 
     @Test

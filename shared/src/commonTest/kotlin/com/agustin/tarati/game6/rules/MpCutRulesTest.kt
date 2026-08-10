@@ -16,12 +16,13 @@ import com.agustin.tarati.core.domain.game6.rules.MpCutConfig
 import com.agustin.tarati.core.domain.game6.rules.MpMatch
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Tests del **corte de partida por estancamiento** del juego multijugador (§2.6 del plan): contador
@@ -74,8 +75,8 @@ class MpCutRulesTest {
         ).copy(movesSinceCapture = 5)
 
         val after = MpRules.applyMove(state, MpMove(v("B3"), v("A1")))
-        assertFalse("La partida sigue (4 activos)", after.isGameOver)
-        assertEquals("El B1 se convirtió", P1, after.pieces.getValue(v("B1")).owner)
+        assertFalse(after.isGameOver, "La partida sigue (4 activos)")
+        assertEquals(P1, after.pieces.getValue(v("B1")).owner, "El B1 se convirtió")
         assertEquals(0, after.movesSinceCapture)
     }
 
@@ -148,10 +149,10 @@ class MpCutRulesTest {
         assertEquals(MpEndReason.PIECE_MAJORITY, cut.result?.reason)
         assertEquals(MpCutReason.REPETITION, cut.result?.cut)
         assertEquals(listOf(P1), cut.result?.winners)
-        assertEquals("No altera el turno ni el contador", state.currentSeatIndex, cut.currentSeatIndex)
+        assertEquals(state.currentSeatIndex, cut.currentSeatIndex, "No altera el turno ni el contador")
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun resolveByCut_rejectsFinishedGame() {
         val ongoing = threePlayerState(
             mapOf(
@@ -162,7 +163,9 @@ class MpCutRulesTest {
             ),
         )
         val finished = MpRules.resolveByCut(ongoing, MpCutReason.REPETITION)
-        MpRules.resolveByCut(finished, MpCutReason.REPETITION) // ya terminó → excepción
+        assertFailsWith<IllegalArgumentException> {
+            MpRules.resolveByCut(finished, MpCutReason.REPETITION) // ya terminó → excepción
+        }
     }
 
     // ---- Corte por triple repetición (MpMatch) ----
@@ -189,7 +192,7 @@ class MpCutRulesTest {
         // Dos vueltas completas (8 plies): la 2ª cierra la 3ª aparición de la posición inicial.
         repeat(2) { cycle.forEach { match.applyMove(it) } }
 
-        assertTrue("Cortada por repetición", match.state.isGameOver)
+        assertTrue(match.state.isGameOver, "Cortada por repetición")
         assertEquals(MpCutReason.REPETITION, match.state.result?.cut)
         assertEquals(MpEndReason.SHARED, match.state.result?.reason)
         assertEquals(setOf(P1, P2), match.state.result?.winners?.toSet())
@@ -242,7 +245,7 @@ class MpCutRulesTest {
         val after = MpRules.retire(MpSetup.initialState(3), P3)
         assertTrue(after.isGameOver)
         assertEquals(MpEndReason.SHARED, after.result?.reason)
-        assertNull("Fin natural (no corte por estancamiento)", after.result?.cut)
+        assertNull(after.result?.cut, "Fin natural (no corte por estancamiento)")
     }
 
     @Test
@@ -269,7 +272,7 @@ class MpCutRulesTest {
             match.applyMove(move)
             plies++
         }
-        assertTrue("La auto-partida termina antes del tope de seguridad", match.state.isGameOver)
-        assertTrue("Al terminar hay ganador(es)", (match.state.result ?: return).winners.isNotEmpty())
+        assertTrue(match.state.isGameOver, "La auto-partida termina antes del tope de seguridad")
+        assertTrue((match.state.result ?: return).winners.isNotEmpty(), "Al terminar hay ganador(es)")
     }
 }

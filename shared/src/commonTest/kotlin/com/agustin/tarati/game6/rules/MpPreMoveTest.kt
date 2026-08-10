@@ -9,10 +9,10 @@ import com.agustin.tarati.core.domain.game6.play.MpMove
 import com.agustin.tarati.core.domain.game6.rules.MpPreMove
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * Tests de la FSM pura de pre-movimiento ([MpPreMove]), compartida por el juego multijugador local y
@@ -43,12 +43,11 @@ class MpPreMoveTest {
     fun tapOwnPiece_withoutPreSelection_preSelectsWithTargets() {
         val result = MpPreMove.onTap(state(), humanColor = P1, preMoveFrom = null, to = v("C1"))
         assertTrue(result is MpPreMove.TapResult.PreSelect)
-        result as MpPreMove.TapResult.PreSelect
         assertEquals(v("C1"), result.from)
         // Los destinos son los del pre-movimiento desde C1 (forma legal, admite casillas ocupadas por rivales).
         val expected = MpRules.preMoveTargetsFor(state(), state().seats.first { it.color == P1 }, v("C1"))
         assertEquals(expected, result.targets)
-        assertTrue("C1 tiene destinos legales", result.targets.isNotEmpty())
+        assertTrue(result.targets.isNotEmpty(), "C1 tiene destinos legales")
     }
 
     @Test
@@ -69,7 +68,7 @@ class MpPreMoveTest {
     fun tapOtherOwnPiece_reSelects() {
         val result = MpPreMove.onTap(state(), P1, preMoveFrom = v("C1"), to = v("C2"))
         assertTrue(result is MpPreMove.TapResult.PreSelect)
-        assertEquals(v("C2"), (result as MpPreMove.TapResult.PreSelect).from)
+        assertEquals(v("C2"), result.from)
     }
 
     @Test
@@ -91,7 +90,7 @@ class MpPreMoveTest {
         )
         val result = MpPreMove.onTap(occupied, P1, preMoveFrom = v("C1"), to = v("C12"))
         assertTrue(result is MpPreMove.TapResult.SetPending)
-        assertEquals(MpMove(v("C1"), v("C12")), (result as MpPreMove.TapResult.SetPending).move)
+        assertEquals(MpMove(v("C1"), v("C12")), result.move)
     }
 
     @Test
@@ -99,7 +98,7 @@ class MpPreMoveTest {
         // C1–C12 es arista del dodecágono y C12 está vacío → destino legal.
         val result = MpPreMove.onTap(state(), P1, preMoveFrom = v("C1"), to = v("C12"))
         assertTrue(result is MpPreMove.TapResult.SetPending)
-        assertEquals(MpMove(v("C1"), v("C12")), (result as MpPreMove.TapResult.SetPending).move)
+        assertEquals(MpMove(v("C1"), v("C12")), result.move)
     }
 
     @Test

@@ -11,9 +11,10 @@ import com.agustin.tarati.core.domain.game6.play.PlayerMove
 import com.agustin.tarati.core.domain.game6.play.Seat
 import com.agustin.tarati.core.domain.game6.play.toPositionNotation
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 /** Tests de la notación de texto del juego multijugador (§10 del plan). */
 class MpNotationTest {
@@ -37,9 +38,9 @@ class MpNotationTest {
         PlayerColor.entries.forEach { assertEquals(it, PlayerColor.fromLetter(it.letter)) }
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun fromLetter_rejectsOutOfRange() {
-        PlayerColor.fromLetter('G')
+        assertFailsWith<IllegalArgumentException> { PlayerColor.fromLetter('G') }
     }
 
     // ── Posición (FEN) ───────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ class MpNotationTest {
     @Test
     fun turnLetter_reflectsCurrentSeat() {
         val state = MpSetup.initialState(3).copy(currentSeatIndex = 2) // seat 2 = P3 = c
-        assertTrue("Turno de c", state.toPositionNotation().endsWith(" c"))
+        assertTrue(state.toPositionNotation().endsWith(" c"), "Turno de c")
     }
 
     @Test
@@ -104,9 +105,11 @@ class MpNotationTest {
         assertEquals(PlayerColor.P2, parsed.turn)
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun parsePosition_rejectsMalformed() {
-        MpNotation.parsePosition("C1a-E1A") // sin separador de turno
+        assertFailsWith<IllegalArgumentException> {
+            MpNotation.parsePosition("C1a-E1A") // sin separador de turno
+        }
     }
 
     // ── Movimientos ──────────────────────────────────────────────────────────────
@@ -137,7 +140,7 @@ class MpNotationTest {
 
     @Test
     fun emptyHistory_roundTrips() {
-        assertEquals(emptyList<PlayerMove>(), MpNotation.parseHistory(""))
+        assertEquals(emptyList(), MpNotation.parseHistory(""))
         assertEquals("", MpNotation.serializeHistory(emptyList()))
     }
 }

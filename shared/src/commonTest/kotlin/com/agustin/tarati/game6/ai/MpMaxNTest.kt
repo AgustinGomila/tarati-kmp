@@ -9,12 +9,12 @@ import com.agustin.tarati.core.domain.game6.pieces.PlayerColor.P2
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Tests de correctitud del motor de búsqueda max^n multijugador ([MpMaxN]). */
 class MpMaxNTest {
@@ -29,7 +29,7 @@ class MpMaxNTest {
         val state = MpSetup.initialState(2)
         val move = MpMaxN.chooseMove(state, MpBotLevel.HARD, random = Random(0))
         assertNotNull(move)
-        assertTrue("El movimiento elegido es legal", MpRules.isLegal(state, move ?: return))
+        assertTrue(MpRules.isLegal(state, move), "El movimiento elegido es legal")
     }
 
     @Test
@@ -48,7 +48,7 @@ class MpMaxNTest {
         )
         val move = MpMaxN.chooseMove(state, MpBotLevel.CHAMPION, random = Random(0)) ?: return
         val after = MpRules.applyMove(state, move)
-        assertTrue("La partida termina", after.isGameOver)
+        assertTrue(after.isGameOver, "La partida termina")
         assertEquals(listOf(P1), after.result?.winners)
     }
 
@@ -57,7 +57,7 @@ class MpMaxNTest {
         val state = MpSetup.initialState(3)
         val first = MpMaxN.chooseMove(state, MpBotLevel.MEDIUM, random = Random(42))
         val second = MpMaxN.chooseMove(state, MpBotLevel.MEDIUM, random = Random(42))
-        assertEquals("Misma semilla + mismo estado → misma jugada", first, second)
+        assertEquals(first, second, "Misma semilla + mismo estado → misma jugada")
     }
 
     @Test
@@ -76,8 +76,8 @@ class MpMaxNTest {
         // Desde la apertura, ninguna respuesta del rival debería capturar 2+ piezas de una:
         // la búsqueda evita dejar una captura múltiple servida.
         assertTrue(
+            myThreatExposure < 2,
             "La jugada no cuelga una captura múltiple del rival (exposición=$myThreatExposure)",
-            myThreatExposure < 2
         )
     }
 }

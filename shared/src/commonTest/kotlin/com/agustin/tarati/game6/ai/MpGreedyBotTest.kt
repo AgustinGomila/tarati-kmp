@@ -9,12 +9,12 @@ import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
-import org.junit.Test
 import kotlin.random.Random
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** Tests del bot greedy multijugador (MpGreedyBot) — §8 del plan. */
 class MpGreedyBotTest {
@@ -29,7 +29,7 @@ class MpGreedyBotTest {
         val state = MpSetup.initialState(2)
         val move = MpGreedyBot.chooseMove(state, random = Random(0))
         assertNotNull(move)
-        assertTrue("El movimiento elegido es legal", MpRules.isLegal(state, move ?: return))
+        assertTrue(MpRules.isLegal(state, move), "El movimiento elegido es legal")
     }
 
     @Test
@@ -50,7 +50,7 @@ class MpGreedyBotTest {
         )
         val move = MpGreedyBot.chooseMove(state, random = Random(0)) ?: return
         val after = MpRules.applyMove(state, move)
-        assertTrue("La partida termina", after.isGameOver)
+        assertTrue(after.isGameOver, "La partida termina")
         assertEquals(listOf(P1), after.result?.winners)
     }
 
@@ -66,7 +66,7 @@ class MpGreedyBotTest {
         )
         val move = MpGreedyBot.chooseMove(state, random = Random(0)) ?: return
         val captured = MpRules.captureTargets(state.pieces, move)
-        assertTrue("El bot elige un movimiento que captura B1", captured.contains(v("B1")))
+        assertTrue(captured.contains(v("B1")), "El bot elige un movimiento que captura B1")
     }
 
     @Test
@@ -81,14 +81,14 @@ class MpGreedyBotTest {
         var plies = 0
         val cap = 400
         while (!state.isGameOver && plies < cap) {
-            assertTrue("Jugador activo siempre tiene movimientos", MpRules.legalMoves(state).isNotEmpty())
-            assertEquals("El asiento en turno está activo", SeatStatus.ACTIVE, state.currentSeat.status)
+            assertTrue(MpRules.legalMoves(state).isNotEmpty(), "Jugador activo siempre tiene movimientos")
+            assertEquals(SeatStatus.ACTIVE, state.currentSeat.status, "El asiento en turno está activo")
             val move = MpGreedyBot.chooseMove(state, random = random) ?: return
             state = MpRules.applyMove(state, move)
             plies++
         }
         if (state.isGameOver) {
-            assertTrue("Si terminó, hay ganador", (state.result ?: return).winners.isNotEmpty())
+            assertTrue((state.result ?: return).winners.isNotEmpty(), "Si terminó, hay ganador")
         }
     }
 }
