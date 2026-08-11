@@ -40,8 +40,10 @@ class WorkerAiMoveRunner(
                     )
                 },
                 // La IA no emite progreso: su ventana de inactividad debe superar el límite de
-                // tiempo de búsqueda (CHAMPION ~10 s) para no dar falso "colgado".
-                inactivityTimeoutMs = BEST_MOVE_TIMEOUT_MS,
+                // tiempo de búsqueda para no dar falso "colgado" — pero EASY/MEDIUM buscan <1 s, así
+                // que su ventana es mucho menor que la de HARD/CHAMPION (búsqueda profunda ~10 s).
+                // Ventana más chica = un worker muerto/colgado se detecta y recupera antes.
+                inactivityTimeoutMs = timeoutFor(difficulty),
             )
             MoveEval(score = reply.score, move = reply.move)
         } catch (e: CancellationException) {
@@ -51,7 +53,15 @@ class WorkerAiMoveRunner(
         }
     }
 
+    private fun timeoutFor(difficulty: Difficulty): Long = when (difficulty) {
+        // Búsqueda superficial (<1 s): margen amplio sobre eso + el cold-start del worker recreado (~1-3 s).
+        Difficulty.EASY, Difficulty.MEDIUM -> FAST_TIMEOUT_MS
+        // Búsqueda profunda con `timeLimitMs` ~10 s (MinimaxStrategy): ventana holgada para no falsear.
+        Difficulty.HARD, Difficulty.CHAMPION -> DEEP_TIMEOUT_MS
+    }
+
     private companion object {
-        const val BEST_MOVE_TIMEOUT_MS = 30_000L
+        const val FAST_TIMEOUT_MS = 10_000L
+        const val DEEP_TIMEOUT_MS = 30_000L
     }
 }

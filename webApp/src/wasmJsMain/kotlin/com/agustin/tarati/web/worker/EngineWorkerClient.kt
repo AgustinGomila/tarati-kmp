@@ -4,6 +4,9 @@ package com.agustin.tarati.web.worker
 
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
+import com.agustin.tarati.web.worker.EngineWorkerClient.COOLDOWN
+import com.agustin.tarati.web.worker.EngineWorkerClient.MAX_CONSECUTIVE_FAILURES
+import com.agustin.tarati.web.worker.EngineWorkerClient.WATCHDOG_POLL_MS
 import com.agustin.tarati.web.worker.EngineWorkerClient.broken
 import com.agustin.tarati.web.worker.EngineWorkerClient.ensureWorker
 import com.agustin.tarati.web.worker.EngineWorkerClient.markBroken
@@ -19,6 +22,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 /**
@@ -63,6 +68,10 @@ private external fun workerSetOnError(worker: JsAny, cb: (JsString) -> Unit)
 /** Instala el handler de mensaje ilegible (structured clone fallido) del worker. */
 @JsFun("(worker, cb) => { worker.onmessageerror = () => cb(); }")
 private external fun workerSetOnMessageError(worker: JsAny, cb: () -> Unit)
+
+/** Termina el worker (libera su instancia WASM ~18 MB + event-loop). No falla si ya estaba muerto. */
+@JsFun("(worker) => { try { worker.terminate(); } catch(_) {} }")
+private external fun workerTerminate(worker: JsAny)
 
 /** Aviso en consola solo cuando el worker no está disponible o falla (cae al fallback). */
 @JsFun("(msg) => { console.warn(msg); }")
@@ -127,9 +136,32 @@ internal object EngineWorkerClient {
      */
     private var backgroundedRecently = false
 
+    /**
+     * Circuit-breaker. Un worker que falla se recrea al vuelo, pero si sigue fallando (p. ej. presión
+     * de memoria de WASM, cuya memoria lineal solo crece) la recreación por-jugada degenera en un
+     * storm. Tras [MAX_CONSECUTIVE_FAILURES] fallos seguidos se abre el breaker: durante [COOLDOWN]
+     * los runners van directo al fallback (sin recrear ni esperar el watchdog). Pasado el cooldown se
+     * hace **una** prueba (medio-abierto): si responde, se cierra; si vuelve a fallar, reabre. Un reply
+     * terminal exitoso resetea el conteo.
+     */
+    private var consecutiveFailures = 0
+    private var cooldownMark: TimeMark? = null
+    private var halfOpen = false
+
+    /**
+     * Marca del último reply del worker (de CUALQUIER job: progreso o terminal). Sirve para no matar
+     * un worker sano: si un job se queda sin respuesta pero el worker contestó otros hace poco, el
+     * problema es de ese job (un análisis abandonado que quedó pendiente, un search patológico), no del
+     * worker → se falla solo ese trabajo (fallback) en vez de terminar el worker y tumbar los demás.
+     */
+    private var lastWorkerReplyMark: TimeMark? = null
+
     private class Pending(
         val onProgress: (Float) -> Unit,
         val deferred: CompletableDeferred<WorkerReply>,
+        // Momento de envío; un job pendiente por más de [ZOMBIE_MAX_WALL] es un zombie (nunca lo recibió
+        // el worker), no un cuelgue reciente → jamás debe tumbar el worker.
+        val submitMark: TimeMark = TimeSource.Monotonic.markNow(),
         // Refrescado por cada reply del worker; el watchdog lo consume para detectar inactividad.
         var sawActivity: Boolean = true,
     )
@@ -236,6 +268,14 @@ internal object EngineWorkerClient {
         onProgress: (Float) -> Unit = {},
         inactivityTimeoutMs: Long = WATCHDOG_TIMEOUT_MS,
     ): WorkerReply {
+        // Circuit-breaker: si el worker viene fallando en cadena, no lo recreamos en cada jugada
+        // (evita el storm). Durante el cooldown vamos directo al fallback; al vencer, una única prueba.
+        cooldownMark?.let { mark ->
+            if (mark.elapsedNow() < COOLDOWN) throw WorkerUnavailable()
+            cooldownMark = null
+            halfOpen = true
+        }
+
         // ensureWorker recrea el worker si murió en un fallo previo (recuperable); solo devuelve null
         // si el entorno no soporta workers → fallback definitivo.
         val w = ensureWorker() ?: throw WorkerUnavailable()
@@ -284,6 +324,23 @@ internal object EngineWorkerClient {
                         // próximo submit.
                         silentHealthyMs += elapsedMs
                         if (silentHealthyMs >= inactivityTimeoutMs) {
+                            val workerAlive =
+                                lastWorkerReplyMark?.let { it.elapsedNow() < inactivityTimeoutMs.milliseconds } == true
+                            // Zombie: pendiente hace tanto que no puede ser un cuelgue reciente (un job
+                            // legítimo termina en ≪ este umbral) → el worker nunca lo recibió (p. ej. el
+                            // warmUp cuyo mensaje no se entregó en el cold-start). No debe tumbar el worker.
+                            val zombie = entry.submitMark.elapsedNow() > ZOMBIE_MAX_WALL
+                            if (workerAlive || zombie) {
+                                // El worker sigue vivo (contestó otros jobs) o este job es un zombie viejo:
+                                // falla solo ESTE trabajo (fallback) sin tumbar el worker ni los demás.
+                                consoleWarn(
+                                    "[engine-worker] job sin respuesta " +
+                                            "(${if (zombie) "zombie" else "worker vivo"}) → fallback de ese job",
+                                )
+                                pending.remove(id)
+                                deferred.completeExceptionally(WorkerFailure())
+                                break
+                            }
                             consoleWarn("[engine-worker] el worker dejó de responder → fallback al hilo principal")
                             markBroken()
                             break
@@ -304,12 +361,18 @@ internal object EngineWorkerClient {
 
     private fun onReply(text: String) {
         val reply = runCatching { workerJson.decodeFromString<WorkerReply>(text) }.getOrNull() ?: return
+        // Cualquier reply prueba que el worker está vivo (aunque sea de otro job).
+        lastWorkerReplyMark = TimeSource.Monotonic.markNow()
         val entry = pending[reply.id] ?: return
         entry.sawActivity = true
         when (reply.kind) {
             WorkerReplyKind.PROGRESS -> entry.onProgress(reply.progress)
             WorkerReplyKind.RESULT, WorkerReplyKind.BEST_MOVE, WorkerReplyKind.MP_BEST_MOVE -> {
                 pending.remove(reply.id)
+                // El worker respondió un resultado → sano: cierra el breaker.
+                consecutiveFailures = 0
+                cooldownMark = null
+                halfOpen = false
                 entry.deferred.complete(reply)
             }
             // El worker atrapó una excepción del cómputo: cae al fallback de ESTE trabajo,
@@ -327,13 +390,37 @@ internal object EngineWorkerClient {
      * [permanentlyUnavailable] (creación imposible) apaga el worker de forma definitiva.
      */
     private fun markBroken() {
+        // Idempotente: watchdog y onerror/onmessageerror pueden dispararse para el mismo fallo.
+        if (broken) return
         broken = true
+        // Termina el worker colgado/muerto: libera su instancia WASM y evita workers huérfanos vivos
+        // (que se acumulaban en cada recreación, compitiendo por CPU/memoria y agravando el fallo).
+        worker?.let { runCatching { workerTerminate(it) } }
+        consecutiveFailures++
+        // Abre el breaker si acumuló fallos, o si ya venía medio-abierto y la prueba también falló.
+        if (halfOpen || consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            cooldownMark = TimeSource.Monotonic.markNow()
+            halfOpen = false
+        }
         val entries = pending.values.toList()
         pending.clear()
         entries.forEach { it.deferred.completeExceptionally(WorkerFailure()) }
     }
 
     private const val WORKER_URL = "tarati.js"
+
+    /** Fallos seguidos del worker tras los que se abre el breaker (los runners van al fallback). */
+    private const val MAX_CONSECUTIVE_FAILURES = 3
+
+    /** Ventana en que el breaker abierto no toca el worker; al vencer hace una única prueba. */
+    private val COOLDOWN = 60.seconds
+
+    /**
+     * Antigüedad tras la cual un job pendiente se considera **zombie** (el worker nunca lo recibió, no
+     * un cuelgue reciente): muy por encima de lo que tarda cualquier job legítimo (Champion topa ~10 s
+     * por `timeLimitMs`; el análisis emite progreso). Un zombie jamás tumba el worker.
+     */
+    private val ZOMBIE_MAX_WALL = 45.seconds
 
     /** Ventana por defecto sin señales del worker tras la cual se lo considera colgado. */
     private const val WATCHDOG_TIMEOUT_MS = 15_000L
