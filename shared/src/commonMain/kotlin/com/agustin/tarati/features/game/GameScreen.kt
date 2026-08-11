@@ -660,16 +660,24 @@ fun GameScreen(
                 navigationEnabled = !isOnlineGame && spectatingState == null,
                 showEvaluationBar = settingsState.showEvaluationBar,
                 onAnalysis = {
+                    // Abrir el análisis cancela la secuencia de fin de partida en curso: game_over son
+                    // ~53 grupos de highlights = decenas de segundos de render continuo. Si sigue viva
+                    // mientras corre el análisis, satura el hilo principal y hambrea el pump del engine
+                    // worker en Web (el watchdog lo daría por colgado y caería al fallback). El usuario ya
+                    // pasó de la celebración a analizar, así que interrumpirla es lo correcto.
                     if (screenLayout == ScreenLayout.Expanded) {
                         // Toggle con back-stack: cerrar el análisis vuelve al panel de origen
                         // (Lobby, Perfil, Torneo…) o al tablero si se abrió desde él.
                         if (companion.destination == CompanionPanelDestination.Analysis) {
                             companion.back()
                         } else {
+                            animationViewModel.clearQueue()
                             companion.navigate(CompanionPanelDestination.Analysis)
                         }
                     } else {
-                        showAnalysisPortrait = !showAnalysisPortrait
+                        val opening = !showAnalysisPortrait
+                        if (opening) animationViewModel.clearQueue()
+                        showAnalysisPortrait = opening
                     }
                 },
                 showAnalysisPanel = showAnalysisPortrait && screenLayout != ScreenLayout.Expanded,

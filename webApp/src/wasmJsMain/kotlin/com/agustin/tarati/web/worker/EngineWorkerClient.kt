@@ -246,31 +246,44 @@ internal object EngineWorkerClient {
         workerPost(w, workerJson.encodeToString(buildJob(id)).toJsString())
         return try {
             coroutineScope {
-                var forgivenStalls = 0
                 val watchdog = launch {
+                    // Solo se declara muerto al worker tras acumular una ventana **contigua** de silencio
+                    // con el hilo principal demostrablemente ocioso. Cualquier señal de que el main estuvo
+                    // ocupado —tick que llega tarde (bloqueo o saturación de render), segundo plano, o una
+                    // respuesta del worker— reinicia el acumulador: mientras el hilo principal trabaja, el
+                    // silencio del worker no es informativo (su `onmessage` corre en ese mismo hilo), así que
+                    // matarlo sería un falso positivo. En cambio, con el main ocioso los ticks llegan
+                    // puntuales y el silencio real se acumula hasta el corte.
+                    var silentHealthyMs = 0L
                     while (isActive) {
-                        entry.sawActivity = false
                         val mark = TimeSource.Monotonic.markNow()
-                        delay(inactivityTimeoutMs.milliseconds)
-                        if (!entry.sawActivity) {
-                            // Segundo plano: el navegador estrangula worker/timers y el worker retoma al
-                            // volver a foreground → se perdona **indefinidamente** (no es un cuelgue).
-                            if (isDocumentHidden() || backgroundedRecently) {
-                                backgroundedRecently = false
-                                continue
-                            }
-                            // Stall del event-loop en foreground (animaciones/GC): un `delay` sano se
-                            // entrega casi puntual, así que una ventana real mucho mayor que la pedida
-                            // indica que el hilo principal no pudo procesar el reply. Se perdona, pero
-                            // **acotado**: si persiste, lo más probable es que el worker haya muerto (p. ej.
-                            // recarga de HMR en dev, descarte de pestaña) y hay que recrearlo, no colgar el
-                            // job indefinidamente.
-                            val elapsedMs = mark.elapsedNow().inWholeMilliseconds
-                            val stalled = elapsedMs > inactivityTimeoutMs + STALL_MARGIN_MS
-                            if (stalled && forgivenStalls < MAX_STALL_FORGIVES) {
-                                forgivenStalls++
-                                continue
-                            }
+                        delay(WATCHDOG_POLL_MS.milliseconds)
+                        val elapsedMs = mark.elapsedNow().inWholeMilliseconds
+
+                        // El worker respondió (progreso o resultado) → está vivo, reinicia el conteo.
+                        if (entry.sawActivity) {
+                            entry.sawActivity = false
+                            silentHealthyMs = 0
+                            continue
+                        }
+                        // Segundo plano: el navegador estrangula worker/timers; el silencio no cuenta.
+                        if (isDocumentHidden() || backgroundedRecently) {
+                            backgroundedRecently = false
+                            silentHealthyMs = 0
+                            continue
+                        }
+                        // Tick tardío ⇒ el hilo principal estuvo ocupado (bloqueo o saturación de
+                        // animación/GC): durante ese lapso su pump de mensajes estuvo hambriento, así que el
+                        // silencio del worker es inconcluso → intervalo descartado.
+                        if (elapsedMs > WATCHDOG_POLL_MS + WATCHDOG_DRIFT_MARGIN_MS) {
+                            silentHealthyMs = 0
+                            continue
+                        }
+                        // Tick puntual y sin actividad: silencio genuino con el main ocioso. Se acumula; al
+                        // superar la ventana el worker está realmente colgado → fallback + recreación en el
+                        // próximo submit.
+                        silentHealthyMs += elapsedMs
+                        if (silentHealthyMs >= inactivityTimeoutMs) {
                             consoleWarn("[engine-worker] el worker dejó de responder → fallback al hilo principal")
                             markBroken()
                             break
@@ -329,16 +342,17 @@ internal object EngineWorkerClient {
     private const val WARMUP_TIMEOUT_MS = 60_000L
 
     /**
-     * Margen sobre la ventana pedida a partir del cual se considera que el event-loop del hilo
-     * principal estuvo bloqueado (no el worker): un `delay` sano se entrega casi puntual, así que un
-     * exceso de segundos indica un stall del main, no un cuelgue del worker.
+     * Cadencia del sondeo del watchdog. Fino (sub-segundo) para muestrear seguido la salud del hilo
+     * principal: cuanto más corto, antes se detecta un tick tardío (main ocupado) y se reinicia el
+     * acumulador, evitando falsos positivos durante animaciones/render.
      */
-    private const val STALL_MARGIN_MS = 2_000L
+    private const val WATCHDOG_POLL_MS = 500L
 
     /**
-     * Cuántas ventanas seguidas de stall en foreground se perdonan antes de dar el worker por muerto.
-     * Acota el peor caso ante un worker realmente caído bajo stalls repetidos (p. ej. recargas de HMR
-     * en dev): sin la cota, el watchdog re-armaría indefinidamente y el job quedaría colgado.
+     * Margen sobre [WATCHDOG_POLL_MS] a partir del cual un tick se considera **tardío** → el hilo
+     * principal estuvo ocupado y el silencio del worker es inconcluso. Bajo, para que el jitter de una
+     * app animando (frames pesados, GC, transiciones) reinicie el conteo; pero por encima del jitter
+     * normal de timers en reposo, para no descartar el silencio genuino con el main ocioso.
      */
-    private const val MAX_STALL_FORGIVES = 2
+    private const val WATCHDOG_DRIFT_MARGIN_MS = 150L
 }
