@@ -246,12 +246,6 @@ Intuitive interface built with Jetpack Compose / Compose Multiplatform.
 - Self-contained — no Java runtime required
 - 50–100 MB free space
 
-### Code signing
-
-Windows installers are code-signed for free by [SignPath.io](https://signpath.io),
-with a certificate provided by the [SignPath Foundation](https://signpath.io/open-source)
-program for open-source projects.
-
 ### itch.io
 
 All desktop installers and the Android APK are also published on itch.io:
