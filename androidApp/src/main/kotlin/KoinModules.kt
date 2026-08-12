@@ -58,6 +58,7 @@ import com.google.android.gms.games.PlayGames
 import features.settings.AndroidSettingsViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
@@ -193,6 +194,12 @@ val androidServiceModule: Module = module {
             }
             install(ContentNegotiation) {
                 json(taratiClientJson)
+            }
+            // Acota las llamadas REST para que no queden colgadas ante un servidor inalcanzable
+            // (black-hole). El WebSocket (misma instancia de client) se exime por-request con
+            // requestTimeoutMillis = INFINITE (ver WebSocketClient).
+            install(HttpTimeout) {
+                requestTimeoutMillis = 20_000
             }
         }
     }

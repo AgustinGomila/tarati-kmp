@@ -6,6 +6,8 @@ import com.agustin.tarati.features.online.auth.AuthRepository
 import com.agustin.tarati.network.protocol.ClientMessage
 import com.agustin.tarati.network.protocol.ServerMessage
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeoutConfig
+import io.ktor.client.plugins.timeout
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
@@ -159,6 +161,10 @@ class TaratiWebSocketClient(
                 httpClient.webSocket(
                     urlString = "$serverUrl/ws/game",
                     request = {
+                        // El HttpClient tiene un requestTimeoutMillis global que acota los REST; el
+                        // WebSocket es una conexión de larga vida y debe quedar EXENTO — si no, el
+                        // plugin HttpTimeout la cerraría al vencer ese timeout.
+                        timeout { requestTimeoutMillis = HttpTimeoutConfig.INFINITE_TIMEOUT_MS }
                         header("Authorization", "Bearer $authToken")
                         // El browser WebSocket API no puede enviar headers custom —
                         // incluir token también como query param para WASM/web.
