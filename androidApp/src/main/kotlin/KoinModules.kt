@@ -17,11 +17,11 @@ import com.agustin.tarati.core.data.repositories.RoomAnalysisCacheRepository
 import com.agustin.tarati.core.data.repositories.RoomGameRepository
 import com.agustin.tarati.core.domain.ai.runner.AiMoveRunner
 import com.agustin.tarati.core.domain.ai.runner.DefaultAiMoveRunner
-import com.agustin.tarati.core.domain.game6.ai.DefaultMpBotRunner
-import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.core.domain.analysis.AnalysisCacheRepository
 import com.agustin.tarati.core.domain.analysis.AnalysisRunner
 import com.agustin.tarati.core.domain.analysis.DefaultAnalysisRunner
+import com.agustin.tarati.core.domain.game6.ai.DefaultMpBotRunner
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.core.domain.repository.GameRepository
 import com.agustin.tarati.di.sharedModules
 import com.agustin.tarati.features.game.AndroidGameViewModel

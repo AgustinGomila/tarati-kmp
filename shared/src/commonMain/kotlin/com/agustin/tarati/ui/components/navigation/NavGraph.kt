@@ -18,6 +18,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.savedstate.read
 import com.agustin.tarati.core.domain.game.play.GameStatus
+import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.features.achievements.AchievementsScreen
 import com.agustin.tarati.features.analysis.openGameAnalysis
 import com.agustin.tarati.features.detail.GameDetailsScreen
@@ -32,7 +33,6 @@ import com.agustin.tarati.features.game6.MpGameDetailScreen
 import com.agustin.tarati.features.game6.MpGameScreen
 import com.agustin.tarati.features.game6.MpLeaderboardScreen
 import com.agustin.tarati.features.game6.MpLobbyScreen
-import com.agustin.tarati.core.domain.game6.ai.MpBotRunner
 import com.agustin.tarati.features.game6.MpLocalGameViewModel
 import com.agustin.tarati.features.library.GamesLibraryScreen
 import com.agustin.tarati.features.library.GamesLibraryViewModel

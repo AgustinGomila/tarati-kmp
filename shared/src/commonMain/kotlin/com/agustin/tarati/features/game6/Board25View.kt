@@ -3,20 +3,9 @@ package com.agustin.tarati.features.game6
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,30 +14,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
-import com.agustin.tarati.core.domain.game.board.Region
 import com.agustin.tarati.core.domain.game.board.Vertex
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game6.board.Board25
@@ -56,7 +31,6 @@ import com.agustin.tarati.core.domain.game6.pieces.Piece
 import com.agustin.tarati.core.domain.game6.pieces.PlayerColor
 import com.agustin.tarati.core.domain.game6.play.MpGameState
 import com.agustin.tarati.core.domain.game6.play.MpMove
-import com.agustin.tarati.core.domain.game6.play.SeatStatus
 import com.agustin.tarati.core.domain.game6.rules.MpRules
 import com.agustin.tarati.core.domain.game6.rules.MpSetup
 import com.agustin.tarati.ui.components.game.draw.board.LightOfDay
@@ -72,7 +46,6 @@ import com.agustin.tarati.ui.components.game.draw.board.getHighlightsSegmentsRan
 import com.agustin.tarati.ui.components.game.draw.board.getLightOfDay
 import com.agustin.tarati.ui.components.game.draw.board.pulseFactor
 import com.agustin.tarati.ui.components.game.draw.common.MorphShape
-import com.agustin.tarati.ui.components.game.draw.common.NoiseTexture
 import com.agustin.tarati.ui.components.game.draw.pieces.CenterMotif
 import com.agustin.tarati.ui.components.game.draw.pieces.CobColorScheme
 import com.agustin.tarati.ui.components.game.draw.pieces.CobShape
@@ -97,12 +70,8 @@ import com.agustin.tarati.ui.components.game.draw.pieces.toShapeColors
 import com.agustin.tarati.ui.components.game.highlights.HighlightAction
 import com.agustin.tarati.ui.components.game.highlights.base.DynamicEdgeHighlight
 import com.agustin.tarati.ui.theme.BoardColors
-import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.getBoardColors
 import kotlinx.coroutines.delay
-import kotlin.math.abs
-import kotlin.math.hypot
-import kotlin.math.roundToInt
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
@@ -798,169 +767,6 @@ fun Board25View(
 }
 
 /**
- * Overlay con un indicador por asiento, ubicado **afuera de su base** (empujado desde el punto
- * medio de las puntas E hacia el exterior). Muestra el color del jugador, si es Humano o IA, y su
- * cantidad de piezas en el tablero; resalta el turno actual y atenúa a los retirados.
- */
-@Composable
-private fun BaseIndicators(
-    state: MpGameState,
-    seatIsAI: List<Boolean>,
-    positions: Map<Vertex, Offset>,
-) {
-    val center = positions[Board25.A1] ?: return
-    Box(modifier = Modifier.fillMaxSize()) {
-        state.seats.forEachIndexed { index, seat ->
-            val base = Board25.baseById(seat.baseId)
-            val e0 = positions[base.eTips[0]] ?: return@forEachIndexed
-            val e1 = positions[base.eTips[1]] ?: return@forEachIndexed
-            val eMid = (e0 + e1) / 2f
-            val dir = eMid - center
-            val len = hypot(dir.x, dir.y)
-            // `anchor` es el punto (afuera de la base) donde apoya el **borde interior** de la cápsula;
-            // `outward` es la dirección hacia el exterior por la que ésta se desplaza para no invadir
-            // los vértices (ver [SeatIndicator]).
-            val anchor: Offset
-            val outward: Offset
-            if (len == 0f) {
-                anchor = eMid
-                outward = Offset.Zero
-            } else {
-                val r = dir / len          // radial unitario (centro → base)
-                val layer = len / 4f        // la punta E está a 4 capas del centro
-                // Colocación en el margen más holgado según la orientación de la base:
-                //  N/S (verticales) → al costado; NW/NE (arriba) → arriba; SW/SE (abajo) → abajo.
-                val (push, dist) = when {
-                    abs(r.x) < 0.5f -> Offset(1f, 0f) to layer * 1.25f
-                    r.y < 0f -> Offset(0f, -1f) to layer
-                    else -> Offset(0f, 1f) to layer
-                }
-                anchor = eMid + push * dist
-                outward = push
-            }
-            SeatIndicator(
-                color = seat.color,
-                isAI = seatIsAI.getOrElse(index) { false },
-                count = state.pieceCount(seat.color),
-                retired = seat.status == SeatStatus.RETIRED,
-                isCurrent = index == state.currentSeatIndex && !state.isGameOver,
-                anchor = anchor,
-                outward = outward,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SeatIndicator(
-    color: PlayerColor,
-    isAI: Boolean,
-    count: Int,
-    retired: Boolean,
-    isCurrent: Boolean,
-    anchor: Offset,
-    outward: Offset,
-) {
-    var boxSize by remember { mutableStateOf(IntSize.Zero) }
-    SeatChip(
-        color = color,
-        isAI = isAI,
-        count = count,
-        retired = retired,
-        isCurrent = isCurrent,
-        modifier = Modifier
-            .absoluteOffset {
-                // Se apoya el **borde interior** de la cápsula sobre `anchor` (en lugar de centrarla),
-                // corriéndola media dimensión en la dirección `outward`. Así la cápsula queda entera
-                // afuera de la base y no se superpone con los vértices del tablero, sin depender de su
-                // ancho dinámico (texto del contador).
-                val halfW = boxSize.width / 2f
-                val halfH = boxSize.height / 2f
-                IntOffset(
-                    (anchor.x - halfW + outward.x * halfW).roundToInt(),
-                    (anchor.y - halfH + outward.y * halfH).roundToInt(),
-                )
-            }
-            .onSizeChanged { boxSize = it },
-    )
-}
-
-/**
- * Cápsula de un asiento: círculo de color del jugador + ícono Humano/IA + contador de piezas. Resalta
- * (borde grueso del color) al asiento en turno y se atenúa si el jugador está retirado. La usan tanto
- * los indicadores in-board ([SeatIndicator], con posicionamiento absoluto) como la leyenda fuera del
- * tablero del detalle en portrait (`MpSeatLegend`), pasando su propio [modifier] de layout.
- */
-@Composable
-internal fun SeatChip(
-    color: PlayerColor,
-    isAI: Boolean,
-    count: Int,
-    retired: Boolean,
-    isCurrent: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val fill = PlayerPalette.fill(color)
-    val borderCol = PlayerPalette.border(color)
-    val shape = RoundedCornerShape(50)
-    Row(
-        modifier = modifier
-            .alpha(if (retired) 0.4f else 1f)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-            .border(
-                width = if (isCurrent) 2.dp else 1.dp,
-                color = if (isCurrent) fill else MaterialTheme.colorScheme.outlineVariant,
-                shape = shape,
-            )
-            .padding(horizontal = 6.dp, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Canvas(Modifier.size(14.dp)) {
-            val r = size.minDimension / 2f
-            drawCircle(fill, radius = r, center = Offset(r, r))
-            drawCircle(borderCol, radius = r, center = Offset(r, r), style = Stroke(width = r * 0.2f))
-        }
-        Icon(
-            imageVector = if (isAI) TaratiIcons.SmartToy else TaratiIcons.Person,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(13.dp),
-        )
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
-@Composable
-private fun VertexLabels(
-    positions: Map<Vertex, Offset>,
-    textSizePx: Float,
-    color: Color,
-) {
-    val density = LocalDensity.current
-    Box(modifier = Modifier.fillMaxSize()) {
-        positions.forEach { (vertex, pos) ->
-            val x = with(density) { (pos.x - textSizePx * 1.2f).toDp() }
-            val y = with(density) { (pos.y - textSizePx * 1.2f).toDp() }
-            val fontSize = with(density) { textSizePx.toSp() }
-            Text(
-                text = vertex.name,
-                color = color,
-                fontSize = fontSize,
-                lineHeight = fontSize,
-                modifier = Modifier.absoluteOffset(x = x, y = y),
-            )
-        }
-    }
-}
-
-/**
  * Render **estático** del tablero `25` (sin interacción ni animación) con una configuración inicial
  * de 6 jugadores, para previews (selector de paletas, vitrina de la Tienda). Reusa la superficie/áreas
  * de [Board25View] y el cob de Tarati; el color del tablero sale de la paleta activa
@@ -1015,159 +821,5 @@ fun StaticBoard25Renderer(modifier: Modifier, pieces: Map<Vertex, Piece>) {
     }
 }
 
-/**
- * Sombreado de las áreas del tablero `25` con la paleta activa (mismos tokens que single:
- * fondo de tablero + `boardPatternColor1/2/3`), sobre la geometría propia de Board25.
- */
-private fun DrawScope.drawBoard25Board(
-    screen: Map<Vertex, Offset>,
-    colors: BoardColors,
-    showRegions: Boolean,
-    showPerimeter: Boolean,
-    showEdges: Boolean,
-) {
-    if (!showRegions && !showPerimeter) return
-
-    // Superficie base del tablero.
-    val minX = screen.values.minOf { it.x }
-    val maxX = screen.values.maxOf { it.x }
-    val minY = screen.values.minOf { it.y }
-    val maxY = screen.values.maxOf { it.y }
-    // Margen más ancho que el semigrosor del perímetro → el RoundRect de fondo lo contiene.
-    val margin = minOf(size.width, size.height) * 0.065f
-    drawRoundRect(
-        color = colors.boardBackground.copy(alpha = 0.6f),
-        topLeft = Offset(minX - margin, minY - margin),
-        size = Size(maxX - minX + 2 * margin, maxY - minY + 2 * margin),
-        cornerRadius = CornerRadius(16f),
-    )
-
-    // Perímetro (bajo las áreas, como single).
-    if (showPerimeter) drawBoard25Perimeter(screen, colors, showEdges)
-
-    if (showRegions) drawBoard25RegionFills(screen, colors, drawBorders = true)
-
-    // Textura de grano sobre toda la superficie del tablero, igual que single.
-    with(NoiseTexture) {
-        applyNoise(
-            topLeft = Offset(minX - margin, minY - margin),
-            size = Size(maxX - minX + 2 * margin, maxY - minY + 2 * margin),
-            cornerRadius = CornerRadius(16f),
-            alpha = 0.07f,
-        )
-    }
-}
-
-/** Perímetro cosmético del tablero `25` (borde grueso + luz/sombra), como `drawPerimeter` de single. */
-private fun DrawScope.drawBoard25Perimeter(
-    screen: Map<Vertex, Offset>,
-    colors: BoardColors,
-    edgesVisible: Boolean,
-) {
-    val path = Path().apply {
-        Board25.externalBoundary.forEachIndexed { i, vertex ->
-            val p = screen.getValue(vertex)
-            if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
-        }
-        close()
-    }
-    val bounds = path.getBounds()
-    val vertexDistance = minOf(bounds.width, bounds.height) * 0.10f
-
-    if (edgesVisible) {
-        drawPath(
-            path = path,
-            color = colors.boardEdgeColor.copy(alpha = 0.2f),
-            style = Stroke(width = vertexDistance * 1.15f, join = StrokeJoin.Round),
-        )
-    }
-    drawPath(
-        path = path,
-        color = colors.boardPerimeterColor,
-        style = Stroke(width = vertexDistance, join = StrokeJoin.Round),
-    )
-
-    // Bordes de luz (lado del sol) y sombra (opuesto), como single.
-    val lightOfDay = getLightOfDay(hourOfDay = 12f, baseRadius = 32f)
-    val lightPath = Path().apply {
-        addPath(path)
-        translate(Offset(lightOfDay.sunPosition.x * 2f, lightOfDay.sunPosition.y * 2f))
-    }
-    drawPath(lightPath, color = colors.boardPatternColor3.copy(alpha = 0.4f), style = Stroke(width = 4f))
-    val shadowPath = Path().apply {
-        addPath(path)
-        translate(Offset(-lightOfDay.sunPosition.x * 4f, -lightOfDay.sunPosition.y * 4f))
-    }
-    drawPath(shadowPath, color = colors.boardVertexColor.copy(alpha = 0.4f), style = Stroke(width = 4f))
-}
-
-/**
- * Rellena las regiones del tablero `25` con la paleta (sin fondo base ni grano). Reutilizado por el
- * sombreado del tablero real y por la silueta del fondo decorativo ([drawBoard25Silhouette]).
- */
-private fun DrawScope.drawBoard25RegionFills(
-    screen: Map<Vertex, Offset>,
-    colors: BoardColors,
-    drawBorders: Boolean,
-) {
-    val border = colors.boardPatternBorderColor
-    Board25.centralRegions.forEachIndexed { i, region ->
-        fillRegion(
-            region,
-            screen,
-            if (i % 2 == 0) colors.boardPatternColor3 else colors.boardPatternColor2,
-            border,
-            drawBorders
-        )
-    }
-    Board25.circumferenceRegions.forEachIndexed { i, region ->
-        fillRegion(
-            region,
-            screen,
-            if (i % 2 == 0) colors.boardPatternColor3 else colors.boardPatternColor1,
-            border,
-            drawBorders
-        )
-    }
-    // Bandas C→D → color principal de las domésticas.
-    Board25.bandRegions.forEach {
-        fillRegion(it, screen, colors.boardPatternColor1, border, drawBorders)
-    }
-    // Cuadrados de base → color alternativo (alterna con la banda adyacente).
-    Board25.baseSquareRegions.forEach {
-        fillRegion(it, screen, colors.boardPatternColor2, border, drawBorders)
-    }
-    Board25.connectorSideRegions.forEach {
-        fillRegion(it, screen, colors.boardPatternColor3, border, drawBorders)
-    }
-    // Triángulos puntiagudos del conector → color alternativo del centro.
-    Board25.connectorTipRegions.forEach {
-        fillRegion(it, screen, colors.boardPatternColor2, border, drawBorders)
-    }
-}
-
-/** Silueta del tablero `25` para el fondo decorativo (solo rellenos de regiones, sin bordes). */
-internal fun DrawScope.drawBoard25Silhouette(colors: BoardColors, canvasSize: Size) {
-    val screen = Board25Geometry.fit(canvasSize)
-    drawBoard25RegionFills(screen, colors, drawBorders = false)
-}
-
-private fun DrawScope.fillRegion(
-    region: Region,
-    screen: Map<Vertex, Offset>,
-    fill: Color,
-    border: Color,
-    drawBorder: Boolean,
-) {
-    val path = Path().apply {
-        region.vertices.forEachIndexed { i, vertex ->
-            val p = screen.getValue(vertex)
-            if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
-        }
-        close()
-    }
-    drawPath(path = path, color = fill, style = Fill)
-    if (drawBorder) {
-        drawPath(path = path, color = border.copy(alpha = 0.2f), style = Stroke(width = 1f))
-    }
-}
+// El sombreado del tablero (drawBoard25Board & co.) vive en Board25Drawing.kt; los indicadores de
+// asiento y las etiquetas de vértice, en Board25Indicators.kt (mismo paquete).
