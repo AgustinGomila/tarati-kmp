@@ -87,7 +87,7 @@ class ConnectionViewModel(
 
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Connection failed: ${e.message}")
             _connectionState.value = ConnectionState.Error(
                 message = e.message ?: "Unknown error",
@@ -225,7 +225,7 @@ class ConnectionViewModel(
                     return@launch
                 } catch (e: CancellationException) {
                     throw e
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     logger.debug("Auto-reconnect attempt ${index + 1} failed: ${e.message}")
                 }
             }

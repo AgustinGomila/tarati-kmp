@@ -129,7 +129,7 @@ class AuthViewModel(
 
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Authentication failed: ${e.message}")
             _authState.value = AuthState.Error(
                 message = e.message ?: "Authentication failed"
@@ -188,7 +188,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("loginWithServer error: ${e.message}")
             _authState.value = AuthState.Error(message = e.message ?: "Login failed")
             Result.failure(e)
@@ -262,7 +262,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("refreshToken error: ${e.message}")
             Result.failure(e)
         }
@@ -313,7 +313,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("registerWithServer error: ${e.message}")
             _authState.value = AuthState.Error(message = e.message ?: "Registration failed")
             Result.failure(e)
@@ -329,7 +329,7 @@ class AuthViewModel(
                 authApi.logout(LogoutRequest(refreshToken = refreshToken))
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 logger.debug("Server logout failed (proceeding with local logout): ${e.message}")
             }
         }
@@ -361,7 +361,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("loginAsGuest error: ${e.message}")
             _authState.value = AuthState.Error(message = e.message ?: "Guest login failed")
             Result.failure(e)
@@ -375,7 +375,7 @@ class AuthViewModel(
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("forgotPassword error: ${e.message}")
             Result.failure(e)
         }
@@ -393,7 +393,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("resetPassword error: ${e.message}")
             Result.failure(e)
         }
@@ -411,7 +411,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("fetchProfile error: ${e.message}")
             Result.failure(e)
         }
@@ -438,7 +438,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("updateProfile error: ${e.message}")
             Result.failure(e)
         }
@@ -460,7 +460,7 @@ class AuthViewModel(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.debug("deleteAccount error: ${e.message}")
             Result.failure(e)
         }
@@ -546,7 +546,7 @@ class AuthViewModel(
                         }
                     } catch (e: CancellationException) {
                         throw e  // viewModelScope cancelado — no tratar como fallo de refresh
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         // Captura defensiva: cualquier excepción inesperada en el
                         // pipeline de Ktor/serialization que escape de refreshToken().
                         logger.error("Silent refresh threw unexpectedly: ${e::class.simpleName} — ${e.message}")
@@ -555,7 +555,9 @@ class AuthViewModel(
                     }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
             logger.error("Failed to restore session: ${e.message}")
             authRepository.clearAll()
         }
@@ -579,7 +581,7 @@ class AuthViewModel(
                 logger.debug("Previous guest cleaned up (HTTP ${response.status.value})")
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 logger.debug("Previous guest cleanup failed: ${e.message}")
             }
         }

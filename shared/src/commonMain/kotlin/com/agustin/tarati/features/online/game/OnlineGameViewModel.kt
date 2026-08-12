@@ -118,7 +118,7 @@ class OnlineGameViewModel(
 
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("startMatchmaking failed: ${e.message}")
             Result.failure(e)
         }
@@ -135,7 +135,7 @@ class OnlineGameViewModel(
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("joinOpenSearch failed: ${e.message}")
             Result.failure(e)
         }
@@ -231,7 +231,7 @@ class OnlineGameViewModel(
             onlineClient.spectateGame(gameId)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("spectateGame failed: ${e.message}")
             false
         }
@@ -277,7 +277,7 @@ class OnlineGameViewModel(
             block()
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("$op failed: ${e.message}")
         }
     }

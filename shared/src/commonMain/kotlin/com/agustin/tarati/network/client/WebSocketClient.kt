@@ -181,7 +181,7 @@ class TaratiWebSocketClient(
                         listenForMessages()
                     } catch (e: CancellationException) {
                         throw e
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         logger.debug("Listening stopped: ${e.message}")
                     }
 
@@ -198,7 +198,7 @@ class TaratiWebSocketClient(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 logger.debug("Connection error: ${e.message}")
                 _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
                 handshake.completeExceptionally(e)
@@ -230,7 +230,7 @@ class TaratiWebSocketClient(
             throw Exception("Connection timeout")
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Connection failed: ${e.message}")
             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
             throw e
@@ -251,7 +251,7 @@ class TaratiWebSocketClient(
                 logger.debug("Heartbeat sent")
             } catch (e: CancellationException) {
                 throw e  // heartbeat cancelado al cerrar la conexión
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 logger.error("Heartbeat failed: ${e.message}")
                 break
             }
@@ -278,7 +278,7 @@ class TaratiWebSocketClient(
                             _messages.emit(message)
                         } catch (e: CancellationException) {
                             throw e  // no tragar cancelación durante emit
-                        } catch (e: Exception) {
+                        } catch (e: Throwable) {
                             logger.debug("Failed to parse message: ${e.message}")
                         }
                     }
@@ -295,7 +295,7 @@ class TaratiWebSocketClient(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Error in message loop: ${e.message}")
             _connectionState.value = ConnectionState.Error(e.message ?: "Connection lost")
         }
@@ -325,7 +325,7 @@ class TaratiWebSocketClient(
             logger.debug("Sent: ${message::class.simpleName}")
         } catch (e: CancellationException) {
             throw e  // propagar cancelación sin loguear un error espurio
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             logger.error("Failed to send message: ${e.message}")
             throw e
         }
