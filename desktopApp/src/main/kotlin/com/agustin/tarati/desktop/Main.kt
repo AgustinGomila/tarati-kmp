@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.window.Window
@@ -16,10 +17,13 @@ import com.agustin.tarati.features.settings.ISettingsViewModel
 import com.agustin.tarati.services.sound.ISoundService
 import com.agustin.tarati.services.sound.LocalSoundService
 import com.agustin.tarati.ui.AppContent
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.dsl.koinConfiguration
+import kotlin.time.Duration.Companion.milliseconds
 import org.jetbrains.skia.Image as SkiaImage
 
 fun main(): Unit = application {
@@ -35,11 +39,39 @@ fun main(): Unit = application {
             }
     }
 
+    // Geometría de la ventana restaurada de la sesión anterior (tamaño, posición,
+    // maximizada). Compose Desktop no la persiste por sí solo.
+    val windowState = remember { DesktopWindowStateStore.load() }
+
     Window(
-        onCloseRequest = ::exitApplication,
+        onCloseRequest = {
+            // Guardado sincrónico al cerrar: garantiza el último estado aunque el
+            // debounce en vivo no haya llegado a disparar.
+            DesktopWindowStateStore.save(windowState)
+            exitApplication()
+        },
+        state = windowState,
         title = "Tarati",
         icon = appIcon,
     ) {
+        // Persistencia en vivo: guarda cuando cambia el tamaño/posición/maximizada.
+        // `collectLatest` + `delay` implementa un debounce (cada cambio cancela el
+        // guardado pendiente) sin depender de la API `debounce` en preview, para no
+        // escribir a disco en cada píxel de arrastre.
+        LaunchedEffect(windowState) {
+            snapshotFlow {
+                WindowGeometrySnapshot(
+                    placement = windowState.placement,
+                    isMinimized = windowState.isMinimized,
+                    size = windowState.size,
+                    position = windowState.position,
+                )
+            }.collectLatest {
+                delay(400L.milliseconds)
+                DesktopWindowStateStore.save(windowState)
+            }
+        }
+
         KoinApplication(
             configuration = koinConfiguration(declaration = { modules(desktopModules) }),
             content = {
