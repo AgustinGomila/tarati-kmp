@@ -152,6 +152,11 @@ val heavyTestPatterns: Set<String> = setOf(
     "**/*OpeningBookAbTest*.class",
     "**/*MpEngineStrengthTest*.class",
     "**/*SideToMoveAdvantageTest*.class",
+    "**/*ChampionVarietyTest*.class",
+    // Herramientas que juegan/replay partidas a depth 7 (CHAMPION) — lentas o manuales, no de aserción.
+    "**/*VisualGameTest*.class",
+    "**/*ChampionMatchTest*.class",
+    "**/*PgnReplayTest*.class",
 )
 
 if (skipHeavyTests) {
