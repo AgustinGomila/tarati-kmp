@@ -67,11 +67,11 @@ class OnlineGameClient(
 
     private val _currentGame = MutableStateFlow<OnlineGame?>(null)
 
-    // gameId de la última partida propia que terminó. Sobrevive a [clearCurrentGame] (que anula
-    // [_currentGame] a los 30s / al navegar) para que "Analizar la partida" siga resolviendo por el
-    // detalle persistente remoto —con los jugadores reales— en vez de caer al fallback offline con los
-    // labels locales revertidos. Se limpia al iniciar una partida nueva (online aquí, local vía
-    // [clearLastFinishedGameId]).
+    // gameId de la última partida que terminó (propia o espectada). Sobrevive a [clearCurrentGame]
+    // (que anula [_currentGame] a los 30s / al navegar) y a la limpieza de [_spectatingState] para que
+    // "Analizar la partida" siga resolviendo por el detalle persistente remoto —con los jugadores
+    // reales— en vez de caer al fallback offline con los labels locales revertidos. Se limpia al
+    // iniciar una partida nueva (online aquí, local vía [clearLastFinishedGameId]).
     private val _lastFinishedGameId = MutableStateFlow<String?>(null)
 
     private val _spectatingState = MutableStateFlow<SpectatingState?>(null)
@@ -488,6 +488,11 @@ class OnlineGameClient(
                     // Este scope.launch es el fallback para cuando tryEmit no llega al colector
                     // (ej. buffer lleno, dispatcher delay en WASM, etc.).
                     val endedGameId = watchedGame.gameId
+                    // Retener el gameId de la partida espectada para "Analizar la partida": es una
+                    // partida persistente y remota (jugadores reales), aunque _spectatingState se
+                    // limpie enseguida. Sin esto el análisis caía al fallback offline con los labels
+                    // locales ("usuario vs IA (nivel)").
+                    _lastFinishedGameId.value = endedGameId
                     _scope.launch {
                         delay(2000.milliseconds)
                         if (_spectatingState.value?.gameId == endedGameId) {

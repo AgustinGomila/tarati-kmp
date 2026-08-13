@@ -688,7 +688,7 @@ fun GameScreen(
                 onOpenAnalysisDetails = {
                     onNavigateToAnalysisDetails(
                         viewModel.exportGameToMatchDto(whitePlayerLabel, blackPlayerLabel),
-                        currentOnlineGame?.gameId ?: lastFinishedOnlineGameId,
+                        currentOnlineGame?.gameId ?: spectatingState?.gameId ?: lastFinishedOnlineGameId,
                     )
                 },
                 // ── Online components ─────────────────────────────────────────
