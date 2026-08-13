@@ -567,6 +567,11 @@ fun OnlineGameSideEffects(
         if (boardIsReset && currentOnlineGame?.status is OnlineGameStatus.Finished) {
             bus.clearAllToasts()
         }
+        // Al arrancar una partida local nueva (tablero inicial, sin partida online viva), olvidar el
+        // gameId online finalizado para que su análisis no resuelva la partida online vieja.
+        if (boardIsReset && currentOnlineGame == null) {
+            onlineGameViewModel.clearLastFinishedGameId()
+        }
     }
 
     // ── Movimiento del oponente ───────────────────────────────────────────────

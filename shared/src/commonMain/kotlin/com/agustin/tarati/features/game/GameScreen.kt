@@ -155,6 +155,9 @@ fun GameScreen(
     // ── Online state (hoisted — needed before rememberGameScreenState) ───────────
     val currentOnlineGame by onlineGameViewModel.currentGame.collectAsState()
     val isOnlineGame = currentOnlineGame?.status == OnlineGameStatus.InProgress
+    // Retenido tras el fin de la partida online para que el análisis use el detalle remoto (jugadores
+    // reales) aunque currentOnlineGame ya se haya limpiado.
+    val lastFinishedOnlineGameId by onlineGameViewModel.lastFinishedGameId.collectAsState()
     val spectatingState by onlineGameViewModel.spectatingState.collectAsState()
     val gameManagerState by viewModel.gameManagerState
     // onlinePlayerSide usa MutableState explícito para poder pasarlo a OnlineGameSideEffects.
@@ -685,7 +688,7 @@ fun GameScreen(
                 onOpenAnalysisDetails = {
                     onNavigateToAnalysisDetails(
                         viewModel.exportGameToMatchDto(whitePlayerLabel, blackPlayerLabel),
-                        currentOnlineGame?.gameId,
+                        currentOnlineGame?.gameId ?: lastFinishedOnlineGameId,
                     )
                 },
                 // ── Online components ─────────────────────────────────────────

@@ -525,6 +525,9 @@ private fun CompanionPane(
         Analysis -> {
             val analysisGameState by gameViewModel.gameState.collectAsState()
             val onlineGame by onlineGameViewModel.currentGame.collectAsState()
+            // Retenido tras el fin de la online: el análisis resuelve por el detalle remoto (jugadores
+            // reales) aunque onlineGame ya se haya limpiado.
+            val lastFinishedOnlineGameId by onlineGameViewModel.lastFinishedGameId.collectAsState()
             // Labels reales por-banda para el detalle temporal offline (IA (Dificultad) / nombre
             // de usuario / Humano), en paridad con GameScreen — así el PGN copiado refleja el tipo
             // de jugador correcto, incluidas partidas IA-vs-IA.
@@ -563,7 +566,7 @@ private fun CompanionPane(
                     onOpenFullAnalysis = {
                         scope.launch {
                             openGameAnalysis(
-                                onlineGameId = onlineGame?.gameId,
+                                onlineGameId = onlineGame?.gameId ?: lastFinishedOnlineGameId,
                                 buildOfflineMatch = {
                                     gameViewModel.exportGameToMatchDto(whiteLabel, blackLabel)
                                 },

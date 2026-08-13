@@ -67,6 +67,13 @@ class OnlineGameClient(
 
     private val _currentGame = MutableStateFlow<OnlineGame?>(null)
 
+    // gameId de la última partida propia que terminó. Sobrevive a [clearCurrentGame] (que anula
+    // [_currentGame] a los 30s / al navegar) para que "Analizar la partida" siga resolviendo por el
+    // detalle persistente remoto —con los jugadores reales— en vez de caer al fallback offline con los
+    // labels locales revertidos. Se limpia al iniciar una partida nueva (online aquí, local vía
+    // [clearLastFinishedGameId]).
+    private val _lastFinishedGameId = MutableStateFlow<String?>(null)
+
     private val _spectatingState = MutableStateFlow<SpectatingState?>(null)
     val spectatingState: StateFlow<SpectatingState?> = _spectatingState.asStateFlow()
 
@@ -143,6 +150,12 @@ class OnlineGameClient(
      * Estado actual de la partida online (null si no hay partida activa)
      */
     val currentGame: StateFlow<OnlineGame?> = _currentGame.asStateFlow()
+
+    /**
+     * gameId de la última partida propia terminada, disponible para el análisis aunque [currentGame]
+     * ya se haya limpiado. Se anula al empezar una partida nueva. Ver [_lastFinishedGameId].
+     */
+    val lastFinishedGameId: StateFlow<String?> = _lastFinishedGameId.asStateFlow()
 
     /**
      * Estado del sistema de matchmaking
@@ -370,6 +383,8 @@ class OnlineGameClient(
             }
 
             is ServerMessage.MatchFound -> {
+                // Nueva partida online: la partida finalizada anterior ya no es la "analizable".
+                _lastFinishedGameId.value = null
                 // Consumir contexto de torneo si TournamentGameAssigned llegó antes para este gameId
                 val tournamentCtx = pendingTournamentContext?.takeIf { it.gameId == message.gameId }
                 pendingTournamentContext = null
@@ -491,6 +506,8 @@ class OnlineGameClient(
                         ratingUpdate = message.newRatings
                     )
                 )
+                // Retener el gameId para el análisis, aunque luego se limpie _currentGame.
+                _currentGame.value?.gameId?.let { _lastFinishedGameId.value = it }
                 logger.info("Game ended: ${message.result} (${message.reason})")
             }
 
@@ -742,6 +759,14 @@ class OnlineGameClient(
             _pendingDrawSent.value = false
             _rematchOffer.value = null
         }
+    }
+
+    /**
+     * Olvida el gameId de la última partida terminada ([lastFinishedGameId]). Lo llama la UI cuando el
+     * usuario arranca una partida **local** nueva, para que su análisis no resuelva la online vieja.
+     */
+    fun clearLastFinishedGameId() {
+        _lastFinishedGameId.value = null
     }
 
     /**

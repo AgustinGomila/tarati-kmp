@@ -59,6 +59,8 @@ class OnlineGameViewModel(
     // ============ State (delegated to OnlineGameClient) ============
 
     override val currentGame: StateFlow<OnlineGame?> = onlineClient.currentGame
+
+    override val lastFinishedGameId: StateFlow<String?> = onlineClient.lastFinishedGameId
     override val matchmakingState: StateFlow<MatchmakingState> = onlineClient.matchmakingState
     override val drawOffer: StateFlow<String?> = onlineClient.drawOffer
     override val pendingDrawSent: StateFlow<Boolean> = onlineClient.pendingDrawSent
@@ -223,6 +225,10 @@ class OnlineGameViewModel(
     override fun clearOnlineGame(gameId: String) {
         logger.debug("clearOnlineGame: $gameId")
         onlineClient.clearCurrentGame(gameId)
+    }
+
+    override fun clearLastFinishedGameId() {
+        onlineClient.clearLastFinishedGameId()
     }
 
     override suspend fun spectateGame(gameId: String): Boolean {

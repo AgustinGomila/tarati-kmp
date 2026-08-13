@@ -63,6 +63,12 @@ interface IOnlineGameViewModel {
     val currentGame: StateFlow<OnlineGame?>
 
     /**
+     * gameId de la última partida propia terminada, retenido para el análisis aunque [currentGame] ya
+     * se haya limpiado. `null` si no hay ninguna o si empezó una partida nueva. Ver [clearLastFinishedGameId].
+     */
+    val lastFinishedGameId: StateFlow<String?>
+
+    /**
      * Estado del sistema de matchmaking
      *
      * - [MatchmakingState.Idle] - No buscando
@@ -188,6 +194,12 @@ interface IOnlineGameViewModel {
      * Usar [clearOnlineGameUnconditionally] solo al cerrar la app.
      */
     fun clearOnlineGame(gameId: String)
+
+    /**
+     * Olvida [lastFinishedGameId]. La UI lo llama al arrancar una partida **local** nueva para que su
+     * análisis no resuelva la partida online vieja.
+     */
+    fun clearLastFinishedGameId()
 
     // ── Spectating ────────────────────────────────────────────────────────────
 
