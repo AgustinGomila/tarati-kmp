@@ -219,10 +219,17 @@ data class EvaluationConfig(
             // reproducible, sin abrir con la jugada pasiva (OBS-1). Easy/Medium/Hard usan el aleatorio.
             deterministicTiebreak = true,
             // Variedad controlada en la raíz: sin ella, dos CHAMPION juegan siempre la misma partida
-            // (keep-first + evalNoise=0). epsilon=0 → solo empates exactos (costo de fuerza cero);
-            // temperature>0 → sesga hacia la jugada afilada pero deja aparecer las otras óptimas →
-            // aperturas diversas sin reabrir OBS-1. epsilon>0 se explora en ChampionVarietyTest.
-            rootSelection = RootSelection(enabled = true, temperature = 0.75),
+            // (keep-first + evalNoise=0). Medio juego/final: epsilon=0 → solo empates exactos (costo cero);
+            // temperature=0.75 sesga hacia la afilada dejando aparecer las otras óptimas. Apertura (primeros
+            // 8 plies): epsilon=60 admite la 2ª mejor apertura (avanzar vs. costado, no solo el reflejo espejo)
+            // donde las posiciones están equilibradas → variedad estratégica genuina a costo mínimo.
+            rootSelection = RootSelection(
+                enabled = true,
+                temperature = 0.75,
+                openingPlies = 8,
+                openingEpsilon = 60.0,
+                openingTemperature = 0.9,
+            ),
         )
 
         /**

@@ -12,6 +12,7 @@ import com.agustin.tarati.core.domain.game.pieces.isMaximizingPlayer
 import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
+import kotlinx.atomicfu.atomic
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -61,7 +62,10 @@ import kotlin.time.Clock
  * (CHAMPION), la jugada que se juega se elige entre las cuasi-óptimas de la raíz (dentro de un `epsilon` del
  * mejor score) con un softmax sesgado hacia la más afilada ([selectRootMove]). Así dos CHAMPION no juegan
  * siempre la misma partida sin debilitar la búsqueda: el *valor* (mejor score) no se toca y las ramas profundas
- * siguen deterministas. Se omite si la posición ya está ganada (se juega la contundente). Ver [RootSelection].
+ * siguen deterministas. Se omite si la posición ya está ganada (se juega la contundente). Los primeros
+ * [RootSelection.openingPlies] plies usan un `epsilon`/`temperature` de apertura mayores (variedad estratégica
+ * avanzar-vs-costado donde las posiciones están equilibradas). El RNG de la variedad es una instancia **sembrada
+ * con entropía** (no `Random.Default`, determinista en Kotlin/Wasm → partidas idénticas en web). Ver [RootSelection].
  *
  * ## Quiescence en la hoja (gateada por dificultad)
  * Si [EvaluationConfig.quiescenceEnabled] (solo CHAMPION), en la hoja `depth==0` la
@@ -107,6 +111,13 @@ class MinimaxStrategy(
 
     // Contexto de la última búsqueda — sus contadores alimentan [getStats].
     private var lastContext: SearchContext = SearchContext()
+
+    // RNG de la variedad (desempate + selección en la raíz + evalNoise). Sembrado con entropía
+    // de reloj + contador global: NO usar `Random.Default`, que en Kotlin/Wasm puede ser determinista
+    // (semilla fija) → como el engine worker se recrea por partida, todas las partidas salían idénticas
+    // en web. El clock varía entre partidas (segundos de diferencia) y el contador desambigua instancias
+    // creadas en el mismo milisegundo (torneos en paralelo en JVM).
+    private val random: Random = Random(Clock.System.now().toEpochMilliseconds() + nextSeedOffset())
 
     override suspend fun getNextMove(
         gameState: GameState,
@@ -221,9 +232,15 @@ class MinimaxStrategy(
         val rs = config.rootSelection
         val rootCandidates: MutableList<RootCandidate>? =
             if (isRoot && rs.enabled) ArrayList(moves.size) else null
+        // Ventana de apertura: los primeros [openingPlies] plies usan epsilon/temperature mayores
+        // (variedad estratégica avanzar-vs-costado); pasada la apertura, los valores de medio juego.
+        // El ply se estima con el total de posiciones registradas (topología-agnóstico).
+        val inOpening = rootCandidates != null && positionHistory.values.sum() < rs.openingPlies
+        val selEpsilon = if (inOpening) rs.openingEpsilon else rs.epsilon
+        val selTemperature = if (inOpening) rs.openingTemperature else rs.temperature
         // Para que los cuasi-empates (epsilon>0) lleguen con score preciso, la raíz no sube alpha/beta
         // hasta el mejor sino hasta mejor∓epsilon → menos poda solo en la raíz.
-        val rootRelax = rootCandidates?.let { rs.epsilon } ?: 0.0
+        val rootRelax = rootCandidates?.let { selEpsilon } ?: 0.0
 
         for ((index, move) in moves.withIndex()) {
             val newState = gameState.applyMove(move)
@@ -301,7 +318,7 @@ class MinimaxStrategy(
                 }
             } else if (isTied && !config.deterministicTiebreak) {
                 tiedCount++
-                if (Random.nextDouble() < 1.0 / tiedCount) {
+                if (random.nextDouble() < 1.0 / tiedCount) {
                     bestMove = move
                 }
             }
@@ -346,7 +363,7 @@ class MinimaxStrategy(
             bestMove != null &&
             !isWinningScore(bestScore, config)
         ) {
-            selectRootMove(rootCandidates, bestScore, isMaximizing, rs)
+            selectRootMove(rootCandidates, bestScore, isMaximizing, selEpsilon, selTemperature)
         } else {
             bestMove ?: repetitionFallback ?: moves.firstOrNull()
         }
@@ -364,11 +381,12 @@ class MinimaxStrategy(
         candidates: List<RootCandidate>,
         bestScore: Double,
         isMaximizing: Boolean,
-        selection: RootSelection,
+        epsilon: Double,
+        temperature: Double,
     ): Move {
         val eligible = candidates.filter {
-            if (isMaximizing) it.score >= bestScore - selection.epsilon
-            else it.score <= bestScore + selection.epsilon
+            if (isMaximizing) it.score >= bestScore - epsilon
+            else it.score <= bestScore + epsilon
         }
         if (eligible.size <= 1) return eligible.firstOrNull()?.move ?: candidates.first().move
 
@@ -377,11 +395,10 @@ class MinimaxStrategy(
                 .thenBy { it.orderIndex },
         )
 
-        val t = selection.temperature
-        if (t <= 0.0) return ranked.first().move
+        if (temperature <= 0.0) return ranked.first().move
 
-        val weights = ranked.indices.map { pos -> exp(-pos.toDouble() / t) }
-        var r = Random.nextDouble() * weights.sum()
+        val weights = ranked.indices.map { pos -> exp(-pos.toDouble() / temperature) }
+        var r = random.nextDouble() * weights.sum()
         for (i in ranked.indices) {
             r -= weights[i]
             if (r <= 0.0) return ranked[i].move
@@ -394,7 +411,7 @@ class MinimaxStrategy(
             cache.putFullEvaluation(gameState, it)
         }
         val noise = config.evalNoise
-        return if (noise > 0.0) base + (Random.nextDouble() - 0.5) * noise else base
+        return if (noise > 0.0) base + (random.nextDouble() - 0.5) * noise else base
     }
 
     /**
@@ -523,4 +540,10 @@ class MinimaxStrategy(
      * [orderIndex] es la posición en `sortMoves` (menor = más afilada por la heurística de ordenamiento).
      */
     private data class RootCandidate(val move: Move, val score: Double, val orderIndex: Int)
+
+    private companion object {
+        // Desambigua semillas de instancias creadas en el mismo milisegundo (torneos en paralelo).
+        private val seedCounter = atomic(0L)
+        fun nextSeedOffset(): Long = seedCounter.incrementAndGet()
+    }
 }
