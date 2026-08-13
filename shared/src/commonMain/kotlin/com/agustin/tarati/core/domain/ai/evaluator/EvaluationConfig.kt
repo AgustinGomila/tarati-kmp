@@ -63,6 +63,13 @@ data class EvaluationConfig(
      * entre óptimos → variedad gratis.
      */
     val deterministicTiebreak: Boolean = false,
+    /**
+     * Política de **selección en la raíz** (ver [RootSelection]): variedad controlada partida a partida
+     * aplicada solo al nodo raíz, sin tocar el valor de la búsqueda ni debilitar el juego profundo. La usa
+     * **CHAMPION** para no jugar siempre la misma partida contra sí mismo pese al desempate determinista.
+     * Deshabilitada por default (resto de tiers ya tienen variedad vía reservoir aleatorio).
+     */
+    val rootSelection: RootSelection = RootSelection(),
 ) {
     // ── MaterialWeights accessors ────────────────────────────────────────────
     val cobScore: Double get() = material.cobScore
@@ -211,6 +218,11 @@ data class EvaluationConfig(
             // Único nivel exento de la variación: desempate determinista (keep-first) → juego afilado
             // reproducible, sin abrir con la jugada pasiva (OBS-1). Easy/Medium/Hard usan el aleatorio.
             deterministicTiebreak = true,
+            // Variedad controlada en la raíz: sin ella, dos CHAMPION juegan siempre la misma partida
+            // (keep-first + evalNoise=0). epsilon=0 → solo empates exactos (costo de fuerza cero);
+            // temperature>0 → sesga hacia la jugada afilada pero deja aparecer las otras óptimas →
+            // aperturas diversas sin reabrir OBS-1. epsilon>0 se explora en ChampionVarietyTest.
+            rootSelection = RootSelection(enabled = true, temperature = 0.75),
         )
 
         /**

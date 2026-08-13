@@ -4,6 +4,7 @@ import com.agustin.tarati.core.domain.ai.cache.HybridEvaluationCache
 import com.agustin.tarati.core.domain.ai.cache.TranspositionTable
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig
 import com.agustin.tarati.core.domain.ai.evaluator.MoveEval
+import com.agustin.tarati.core.domain.ai.evaluator.RootSelection
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.ai.strategy.IAIStrategy
 import com.agustin.tarati.core.domain.game.pieces.CobColor
@@ -11,6 +12,7 @@ import com.agustin.tarati.core.domain.game.pieces.isMaximizingPlayer
 import com.agustin.tarati.core.domain.game.pieces.opponent
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -53,6 +55,13 @@ import kotlin.time.Clock
  *  - **keep-first** (`deterministicTiebreak=true`, **solo CHAMPION**): se conserva el primero del orden de
  *    [MoveEvaluator.sortMoves] (que ya prioriza calidad) → juego afilado reproducible, sin abrir con la jugada
  *    pasiva (OBS-1). Champion es el único nivel exento de la variación.
+ *
+ * ## Selección en la raíz (variedad controlada, [EvaluationConfig.rootSelection])
+ * Independiente del desempate de arriba y aplicada **solo en el nodo raíz**: cuando la política está activa
+ * (CHAMPION), la jugada que se juega se elige entre las cuasi-óptimas de la raíz (dentro de un `epsilon` del
+ * mejor score) con un softmax sesgado hacia la más afilada ([selectRootMove]). Así dos CHAMPION no juegan
+ * siempre la misma partida sin debilitar la búsqueda: el *valor* (mejor score) no se toca y las ramas profundas
+ * siguen deterministas. Se omite si la posición ya está ganada (se juega la contundente). Ver [RootSelection].
  *
  * ## Quiescence en la hoja (gateada por dificultad)
  * Si [EvaluationConfig.quiescenceEnabled] (solo CHAMPION), en la hoja `depth==0` la
@@ -206,6 +215,16 @@ class MinimaxStrategy(
         // Last-resort move used only when every legal move causes triple-repetition defeat.
         var repetitionFallback: Move? = null
 
+        // Selección en la raíz: recolecta (jugada, score efectivo, orden de calidad) de cada jugada
+        // evaluada para elegir entre las cuasi-óptimas al final (variedad controlada). Solo en la raíz
+        // y solo si la política está activa; en el resto del árbol es null (sin costo).
+        val rs = config.rootSelection
+        val rootCandidates: MutableList<RootCandidate>? =
+            if (isRoot && rs.enabled) ArrayList(moves.size) else null
+        // Para que los cuasi-empates (epsilon>0) lleguen con score preciso, la raíz no sube alpha/beta
+        // hasta el mejor sino hasta mejor∓epsilon → menos poda solo en la raíz.
+        val rootRelax = rootCandidates?.let { rs.epsilon } ?: 0.0
+
         for ((index, move) in moves.withIndex()) {
             val newState = gameState.applyMove(move)
 
@@ -256,6 +275,9 @@ class MinimaxStrategy(
                 if (isMaximizing) result.score - penalty else result.score + penalty
             } else result.score
 
+            // Raíz: registrar la jugada con su score efectivo y su orden de calidad (index de sortMoves).
+            rootCandidates?.add(RootCandidate(move, score, index))
+
             val causesCutoff = shouldPrune(score, alpha, beta, isMaximizing, config)
             if (causesCutoff && index < 3) {
                 moveEvaluator.recordKillerMove(move, depth, context)
@@ -285,8 +307,8 @@ class MinimaxStrategy(
             }
 
             when {
-                isMaximizing -> alpha = max(alpha, bestScore)
-                else -> beta = min(beta, bestScore)
+                isMaximizing -> alpha = max(alpha, bestScore - rootRelax)
+                else -> beta = min(beta, bestScore + rootRelax)
             }
 
             if (causesCutoff) {
@@ -315,7 +337,56 @@ class MinimaxStrategy(
         } else {
             bestScore
         }
-        return MoveEval(finalScore, bestMove ?: repetitionFallback ?: moves.firstOrNull())
+
+        // Selección en la raíz: si hay más de una jugada cuasi-óptima, jugar una elegida con sesgo hacia
+        // la afilada (variedad controlada). Se omite cuando la posición ya es ganada (jugar la contundente,
+        // no diversificar hacia una peor) o cuando no hubo mejor jugada real (fallback de repetición).
+        val chosen = if (
+            rootCandidates != null &&
+            bestMove != null &&
+            !isWinningScore(bestScore, config)
+        ) {
+            selectRootMove(rootCandidates, bestScore, isMaximizing, rs)
+        } else {
+            bestMove ?: repetitionFallback ?: moves.firstOrNull()
+        }
+        return MoveEval(finalScore, chosen)
+    }
+
+    /**
+     * Elige la jugada a jugar entre las candidatas de la raíz dentro de [RootSelection.epsilon] del mejor
+     * score. Ordena por score (óptica del bando al turno) y luego por el orden de calidad de `sortMoves`
+     * (la más afilada primero), y muestrea por softmax sobre la posición con [RootSelection.temperature]:
+     *  - `temperature <= 0` → keep-first determinista (la más afilada),
+     *  - `temperature > 0` → la afilada domina pero las siguientes óptimas aparecen → variedad.
+     */
+    private fun selectRootMove(
+        candidates: List<RootCandidate>,
+        bestScore: Double,
+        isMaximizing: Boolean,
+        selection: RootSelection,
+    ): Move {
+        val eligible = candidates.filter {
+            if (isMaximizing) it.score >= bestScore - selection.epsilon
+            else it.score <= bestScore + selection.epsilon
+        }
+        if (eligible.size <= 1) return eligible.firstOrNull()?.move ?: candidates.first().move
+
+        val ranked = eligible.sortedWith(
+            compareByDescending<RootCandidate> { if (isMaximizing) it.score else -it.score }
+                .thenBy { it.orderIndex },
+        )
+
+        val t = selection.temperature
+        if (t <= 0.0) return ranked.first().move
+
+        val weights = ranked.indices.map { pos -> exp(-pos.toDouble() / t) }
+        var r = Random.nextDouble() * weights.sum()
+        for (i in ranked.indices) {
+            r -= weights[i]
+            if (r <= 0.0) return ranked[i].move
+        }
+        return ranked.last().move
     }
 
     private fun getCachedEvaluation(gameState: GameState, config: EvaluationConfig): Double {
@@ -446,4 +517,10 @@ class MinimaxStrategy(
         cutoffs = lastContext.cutoffs,
         cacheHits = lastContext.cacheHits,
     )
+
+    /**
+     * Candidata de la raíz para la selección con variedad ([selectRootMove]).
+     * [orderIndex] es la posición en `sortMoves` (menor = más afilada por la heurística de ordenamiento).
+     */
+    private data class RootCandidate(val move: Move, val score: Double, val orderIndex: Int)
 }
