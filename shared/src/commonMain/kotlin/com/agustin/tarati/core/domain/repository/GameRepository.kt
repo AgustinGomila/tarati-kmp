@@ -5,6 +5,14 @@ import com.agustin.tarati.core.data.repositories.SavedGame
 import kotlinx.coroutines.flow.Flow
 
 interface GameRepository {
+    /**
+     * Indica si esta implementación persiste partidas localmente. `false` en
+     * plataformas sin biblioteca local (web / browser, `NoOpGameRepository`),
+     * donde guardar y listar partidas son no-op. La UI usa este flag para no
+     * ofrecer los controles de persistencia local (guardar / partidas guardadas).
+     */
+    val isPersistenceSupported: Boolean get() = true
+
     val savedGames: Flow<List<SavedGame>>
 
     /**

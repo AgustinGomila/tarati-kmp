@@ -55,6 +55,7 @@ import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.CobColor.BLACK
 import com.agustin.tarati.core.domain.game.pieces.CobColor.WHITE
 import com.agustin.tarati.core.domain.game.play.Move
+import com.agustin.tarati.core.domain.repository.GameRepository
 import com.agustin.tarati.features.game.GameEvents
 import com.agustin.tarati.features.game.IGameModel
 import com.agustin.tarati.features.game6.GameMode
@@ -81,6 +82,7 @@ import com.agustin.tarati.ui.components.game.draw.board.drawIndicatorPiece
 import com.agustin.tarati.ui.theme.TaratiIcons
 import com.agustin.tarati.ui.theme.getBoardColors
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import kotlin.math.PI
 
 /**
@@ -111,6 +113,7 @@ fun SidebarContent(
     spectatingState: SpectatingState? = null,
     onOnlineLobby: () -> Unit = {},
     onNavigateToAchievements: () -> Unit = {},
+    gameRepository: GameRepository = koinInject(),
 ) {
     var sidebarUIState by remember { mutableStateOf(SidebarUIState()) }
 
@@ -158,7 +161,10 @@ fun SidebarContent(
         onUIStateChange = { sidebarUIState = it },
         onlineGame = onlineGame,
         spectatingState = spectatingState,
-        localUserName = localUserName
+        localUserName = localUserName,
+        // La biblioteca local (guardar / partidas guardadas) no existe en web:
+        // ocultamos esos controles cuando el repositorio no persiste localmente.
+        canPersistGames = gameRepository.isPersistenceSupported,
     )
 }
 
@@ -258,6 +264,8 @@ fun Sidebar(
     onlineGame: OnlineGame? = null,
     spectatingState: SpectatingState? = null,
     localUserName: String? = null,
+    /** Si es `false` (web), se ocultan los controles de persistencia local (guardar / partidas guardadas). */
+    canPersistGames: Boolean = true,
 ) {
     val windowInfo = LocalWindowInfo.current
     val isLandscape = windowInfo.containerSize.width > windowInfo.containerSize.height
@@ -345,6 +353,7 @@ fun Sidebar(
                 onGamesLibrary = events::onGamesLibrary,
                 onOnlineLobby = events::onOnlineLobby,
                 onSaveGame = events::onSaveGame,
+                canPersistGames = canPersistGames,
             )
         },
         footer = {

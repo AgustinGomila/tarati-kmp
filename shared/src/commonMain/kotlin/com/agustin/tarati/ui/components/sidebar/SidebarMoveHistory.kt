@@ -97,6 +97,8 @@ internal fun MoveHistorySection(
     onGamesLibrary: () -> Unit,
     onOnlineLobby: () -> Unit,
     onSaveGame: () -> Unit,
+    /** Si es `false` (web), se ocultan los controles de persistencia local (guardar / partidas guardadas). */
+    canPersistGames: Boolean = true,
 ) {
     var isCopying by remember { mutableStateOf(false) }
     val gameManagerState = sidebarState.gameManagerState
@@ -145,29 +147,33 @@ internal fun MoveHistorySection(
                 )
             }
 
-            TooltipIconButton(
-                tooltip = localizedString(Res.string.save_game),
-                onClick = onSaveGame,
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    TaratiIcons.Save, localizedString(Res.string.save_game),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
+            // Guardar y "Partidas guardadas" dependen de la biblioteca local, que no
+            // existe en web (NoOpGameRepository): se ocultan cuando no hay persistencia.
+            if (canPersistGames) {
+                TooltipIconButton(
+                    tooltip = localizedString(Res.string.save_game),
+                    onClick = onSaveGame,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        TaratiIcons.Save, localizedString(Res.string.save_game),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
 
-            TooltipIconButton(
-                tooltip = localizedString(Res.string.saved_games),
-                onClick = onGamesLibrary,
-                modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    TaratiIcons.MenuBook,
-                    localizedString(Res.string.saved_games),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
+                TooltipIconButton(
+                    tooltip = localizedString(Res.string.saved_games),
+                    onClick = onGamesLibrary,
+                    modifier = Modifier.size(32.dp),
+                ) {
+                    Icon(
+                        TaratiIcons.MenuBook,
+                        localizedString(Res.string.saved_games),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
             if (FeatureFlags.ONLINE_ENABLED) {

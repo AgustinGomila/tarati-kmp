@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.flowOf
 
 /** Implementación no-op de [GameRepository] para web. La biblioteca local no aplica en browser. */
 class NoOpGameRepository : GameRepository {
+    override val isPersistenceSupported: Boolean = false
     override val savedGames: Flow<List<SavedGame>> = flowOf(emptyList())
     override fun searchGames(query: String): Flow<List<SavedGame>> = flowOf(emptyList())
     override suspend fun saveGame(dto: MatchDto): Unit = Unit
