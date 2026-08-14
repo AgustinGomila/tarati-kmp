@@ -140,11 +140,11 @@ class HardVarietyTest {
         val rate = if (total > 0) result.winsA.toDouble() / total else 0.0
         log(
             "HARD(variedad) vs HARD(determinista): " +
-                "${"%.1f".format(rate * 100)}% (${result.winsA}-${result.winsB}-${result.draws})",
+                    "${"%.1f".format(rate * 100)}% (${result.winsA}-${result.winsB}-${result.draws})",
         )
         assertTrue(
             "La variedad no debe debilitar a HARD frente a sí mismo determinista " +
-                "(actual: ${result.winsA}-${result.winsB}-${result.draws})",
+                    "(actual: ${result.winsA}-${result.winsB}-${result.draws})",
             result.winsA >= total * 0.30,
         )
     }
@@ -168,11 +168,11 @@ class HardVarietyTest {
         val rate = if (total > 0) result.winsA.toDouble() / total else 0.0
         log(
             "CHAMPION vs HARD(variedad): ${"%.1f".format(rate * 100)}% " +
-                "(${result.winsA}-${result.winsB}-${result.draws})",
+                    "(${result.winsA}-${result.winsB}-${result.draws})",
         )
         assertTrue(
             "CHAMPION no debe perder el head-to-head vs HARD(variedad) " +
-                "(actual: ${result.winsA}-${result.winsB}-${result.draws})",
+                    "(actual: ${result.winsA}-${result.winsB}-${result.draws})",
             result.winsA >= result.winsB,
         )
     }

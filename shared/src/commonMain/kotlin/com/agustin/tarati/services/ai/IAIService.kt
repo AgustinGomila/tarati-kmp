@@ -34,6 +34,16 @@ interface IAIService {
     fun requestAIMove(gameState: GameState, difficulty: Difficulty)
 
     /**
+     * Cancels the in-flight AI computation, if any, and lowers [isAIThinking].
+     *
+     * Must be called when a new game starts: the computation runs in
+     * [AIViewModel.viewModelScope], which survives the board reset. Without cancelling,
+     * its move — computed for the previous position — would return late and be applied to
+     * the fresh board, corrupting it (it overwrites a piece and shifts the move list).
+     */
+    fun cancelThinking()
+
+    /**
      * Current position history from the AI engine.
      * Used by callers that need to evaluate game-over conditions
      * (triple repetition) without accessing the engine singleton directly.

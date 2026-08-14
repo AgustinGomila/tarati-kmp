@@ -5,8 +5,10 @@ package com.agustin.tarati.web.worker
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.play.GameState.Companion.initialGameState
 import com.agustin.tarati.web.worker.EngineWorkerClient.COOLDOWN
+import com.agustin.tarati.web.worker.EngineWorkerClient.LIVENESS_MAX_UNANSWERED
 import com.agustin.tarati.web.worker.EngineWorkerClient.MAX_CONSECUTIVE_FAILURES
 import com.agustin.tarati.web.worker.EngineWorkerClient.WATCHDOG_POLL_MS
+import com.agustin.tarati.web.worker.EngineWorkerClient.awaitForeground
 import com.agustin.tarati.web.worker.EngineWorkerClient.broken
 import com.agustin.tarati.web.worker.EngineWorkerClient.ensureWorker
 import com.agustin.tarati.web.worker.EngineWorkerClient.markBroken
@@ -19,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
@@ -120,6 +124,20 @@ internal object EngineWorkerClient {
     /** `true` si el motor de workers es utilizable (aunque haya que recrear el worker); guía el fallback. */
     val available: Boolean get() = !permanentlyUnavailable
 
+    /**
+     * Suspende hasta que la pestaña vuelva a primer plano; retorna de inmediato si ya está visible.
+     *
+     * En segundo plano el navegador estrangula timers y worker (clamp de `setTimeout` a ≥1 s): seguir
+     * disparando búsquedas de IA martilla un hilo principal throttled y puede dejar el worker sin
+     * recuperación (el watchdog no logra recrearlo mientras los ticks llegan tarde). Los runners
+     * esperan aquí antes de calcular, así la IA se pausa al ocultar la pestaña y se reanuda al volver.
+     * Es cancelable: `AIViewModel.cancelThinking` (partida nueva) corta la espera.
+     */
+    suspend fun awaitForeground() {
+        if (!hidden.value) return
+        hidden.first { !it }
+    }
+
     private var nextId = 0
     private val pending = mutableMapOf<Int, Pending>()
 
@@ -156,6 +174,17 @@ internal object EngineWorkerClient {
      */
     private var lastWorkerReplyMark: TimeMark? = null
 
+    /**
+     * Envíos consecutivos sin ninguna respuesta del worker. Se resetea con cualquier reply. Al superar
+     * [LIVENESS_MAX_UNANSWERED] el worker se presume muerto y se recrea en el próximo [submit] —
+     * recuperación **independiente del watchdog** per-job (que necesita el hilo principal ocioso con
+     * ticks puntuales, condición que un IA-vs-IA caído al fallback nunca cumple).
+     */
+    private var submitsSinceReply = 0
+
+    /** `true` mientras la pestaña está oculta; lo consume [awaitForeground] para no calcular en segundo plano. */
+    private val hidden = MutableStateFlow(isDocumentHidden())
+
     private class Pending(
         val onProgress: (Float) -> Unit,
         val deferred: CompletableDeferred<WorkerReply>,
@@ -171,7 +200,9 @@ internal object EngineWorkerClient {
         // que el watchdog no confunda ese silencio con un cuelgue real. Se registra una sola vez,
         // independiente del ciclo de vida del worker.
         onVisibilityChange {
-            if (isDocumentHidden()) backgroundedRecently = true
+            val isHidden = isDocumentHidden()
+            hidden.value = isHidden
+            if (isHidden) backgroundedRecently = true
         }
         // Creación temprana (mismo comportamiento que antes: el worker existe apenas se toca el objeto).
         ensureWorker()
@@ -276,6 +307,15 @@ internal object EngineWorkerClient {
             halfOpen = true
         }
 
+        // Liveness (recuperación independiente del watchdog): si el worker existe y no está marcado
+        // roto pero acumuló demasiados envíos sin ninguna respuesta, se lo presume muerto/colgado y se
+        // fuerza su recreación. El watchdog per-job no basta: necesita el hilo principal ocioso con
+        // ticks puntuales, y un IA-vs-IA caído al fallback lo satura sin descanso.
+        if (worker != null && !broken && submitsSinceReply >= LIVENESS_MAX_UNANSWERED) {
+            consoleWarn("[engine-worker] worker mudo ($submitsSinceReply envíos sin respuesta) → recreación por liveness")
+            markBroken()
+        }
+
         // ensureWorker recrea el worker si murió en un fallo previo (recuperable); solo devuelve null
         // si el entorno no soporta workers → fallback definitivo.
         val w = ensureWorker() ?: throw WorkerUnavailable()
@@ -283,6 +323,7 @@ internal object EngineWorkerClient {
         val deferred = CompletableDeferred<WorkerReply>()
         val entry = Pending(onProgress, deferred)
         pending[id] = entry
+        submitsSinceReply++
         workerPost(w, workerJson.encodeToString(buildJob(id)).toJsString())
         return try {
             coroutineScope {
@@ -326,16 +367,18 @@ internal object EngineWorkerClient {
                         if (silentHealthyMs >= inactivityTimeoutMs) {
                             val workerAlive =
                                 lastWorkerReplyMark?.let { it.elapsedNow() < inactivityTimeoutMs.milliseconds } == true
-                            // Zombie: pendiente hace tanto que no puede ser un cuelgue reciente (un job
-                            // legítimo termina en ≪ este umbral) → el worker nunca lo recibió (p. ej. el
-                            // warmUp cuyo mensaje no se entregó en el cold-start). No debe tumbar el worker.
-                            val zombie = entry.submitMark.elapsedNow() > ZOMBIE_MAX_WALL
-                            if (workerAlive || zombie) {
-                                // El worker sigue vivo (contestó otros jobs) o este job es un zombie viejo:
-                                // falla solo ESTE trabajo (fallback) sin tumbar el worker ni los demás.
+                            // Zombie de arranque en frío: solo es benigno si el worker NUNCA contestó
+                            // (lastWorkerReplyMark == null) y el job es muy viejo → es el warmUp #0 pagando
+                            // la carga del bundle + compilación WASM. Si el worker YA contestó antes y ahora
+                            // está mudo, un job viejo es evidencia de MUERTE, no de cold-start → recrear.
+                            val coldStartZombie = lastWorkerReplyMark == null &&
+                                    entry.submitMark.elapsedNow() > ZOMBIE_MAX_WALL
+                            if (workerAlive || coldStartZombie) {
+                                // El worker sigue vivo (contestó otros jobs) o es el warmUp en frío: falla
+                                // solo ESTE trabajo (fallback) sin tumbar el worker ni los demás.
                                 consoleWarn(
                                     "[engine-worker] job sin respuesta " +
-                                            "(${if (zombie) "zombie" else "worker vivo"}) → fallback de ese job",
+                                            "(${if (coldStartZombie) "cold-start" else "worker vivo"}) → fallback de ese job",
                                 )
                                 pending.remove(id)
                                 deferred.completeExceptionally(WorkerFailure())
@@ -363,6 +406,7 @@ internal object EngineWorkerClient {
         val reply = runCatching { workerJson.decodeFromString<WorkerReply>(text) }.getOrNull() ?: return
         // Cualquier reply prueba que el worker está vivo (aunque sea de otro job).
         lastWorkerReplyMark = TimeSource.Monotonic.markNow()
+        submitsSinceReply = 0
         val entry = pending[reply.id] ?: return
         entry.sawActivity = true
         when (reply.kind) {
@@ -393,6 +437,8 @@ internal object EngineWorkerClient {
         // Idempotente: watchdog y onerror/onmessageerror pueden dispararse para el mismo fallo.
         if (broken) return
         broken = true
+        // El worker recreado arranca su propio conteo de liveness.
+        submitsSinceReply = 0
         // Termina el worker colgado/muerto: libera su instancia WASM y evita workers huérfanos vivos
         // (que se acumulaban en cada recreación, compitiendo por CPU/memoria y agravando el fallo).
         worker?.let { runCatching { workerTerminate(it) } }
@@ -416,11 +462,19 @@ internal object EngineWorkerClient {
     private val COOLDOWN = 60.seconds
 
     /**
-     * Antigüedad tras la cual un job pendiente se considera **zombie** (el worker nunca lo recibió, no
-     * un cuelgue reciente): muy por encima de lo que tarda cualquier job legítimo (Champion topa ~10 s
-     * por `timeLimitMs`; el análisis emite progreso). Un zombie jamás tumba el worker.
+     * Antigüedad tras la cual un job pendiente se considera **zombie**. Solo es benigno en el arranque
+     * en frío (el worker nunca contestó): es el warmUp #0 pagando la carga del bundle + compilación
+     * WASM. Si el worker ya contestó antes, un zombie es evidencia de muerte y dispara la recreación.
      */
     private val ZOMBIE_MAX_WALL = 45.seconds
+
+    /**
+     * Envíos consecutivos sin respuesta tras los que el worker se presume muerto y se recrea en el
+     * próximo [submit] (recuperación independiente del watchdog). En operación sana cada envío recibe
+     * su reply y el conteo vuelve a 0, así que solo trepa cuando el worker deja de contestar de veras;
+     * dos turnos sin respuesta bastan para recrearlo.
+     */
+    private const val LIVENESS_MAX_UNANSWERED = 2
 
     /** Ventana por defecto sin señales del worker tras la cual se lo considera colgado. */
     private const val WATCHDOG_TIMEOUT_MS = 15_000L

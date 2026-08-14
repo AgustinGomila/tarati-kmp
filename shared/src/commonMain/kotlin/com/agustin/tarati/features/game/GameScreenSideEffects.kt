@@ -140,9 +140,15 @@ fun GameScreenSideEffects(
             // configuración heredada de la última partida offline desincroniza el tablero y
             // el servidor rechaza toda jugada posterior con InvalidMove.
             if (latestIsOnlineGame || latestIsSpectating) return@collect
-            if (latestGameManagerState.gameStatus == GameStatus.PLAYING) {
-                handleGameMove(events, latestGameManagerState, move, viewModel)
-            }
+            val live = latestGameManagerState
+            if (live.gameStatus != GameStatus.PLAYING) return@collect
+            // Red de seguridad: el cómputo de IA corre en viewModelScope y puede volver tras
+            // iniciarse una partida nueva (su emit pudo quedar en el buffer del SharedFlow antes de
+            // cancelarlo). Descartar toda jugada que no sea legal en el estado vivo evita aplicar
+            // una jugada de la partida anterior sobre el tablero nuevo (sobrescribiría una pieza y
+            // correría la notación).
+            if (move !in live.gameState.allMovesForTurn()) return@collect
+            handleGameMove(events, live, move, viewModel)
         }
     }
 

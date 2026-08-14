@@ -490,6 +490,9 @@ fun GameScreen(
                             gameOverMessage = buildGameOverMessage(matchState),
                             onConfirmed = {
                                 dismiss()
+                                // Cancela cualquier cómputo de IA en vuelo antes de resetear: si volviera
+                                // tarde, su jugada (de la partida anterior) se aplicaría al tablero nuevo.
+                                aiViewModel.cancelThinking()
                                 events.startNewGame(scope, request.playerSide)
                             },
                             onDismissed = {
@@ -508,6 +511,9 @@ fun GameScreen(
                                 // Si estábamos espectando, interrumpir antes de comenzar la partida local.
                                 val spectatingGameId = onlineGameViewModel.spectatingState.value?.gameId
                                 if (spectatingGameId != null) scope.launch { onlineGameViewModel.stopSpectating() }
+                                // Cancela cualquier cómputo de IA en vuelo antes de resetear: si volviera
+                                // tarde, su jugada (de la partida anterior) se aplicaría al tablero nuevo.
+                                aiViewModel.cancelThinking()
                                 events.startNewGame(scope, request.initialColor)
                             },
                             onDismissed = {

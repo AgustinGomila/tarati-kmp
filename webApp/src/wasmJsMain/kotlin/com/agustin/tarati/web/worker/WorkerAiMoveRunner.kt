@@ -25,6 +25,11 @@ class WorkerAiMoveRunner(
         difficulty: Difficulty,
         positionHistory: Map<String, Int>,
     ): MoveEval {
+        // No calcular mientras la pestaña esté en segundo plano: el navegador estrangula timers y
+        // worker (clamp de setTimeout a ≥1 s), y seguir disparando búsquedas de IA-vs-IA martilla un
+        // hilo throttled y puede dejar el worker sin recuperación. Se reanuda al volver a primer plano.
+        // Cancelable: cancelThinking (partida nueva) corta la espera.
+        EngineWorkerClient.awaitForeground()
         if (!EngineWorkerClient.available) {
             return fallback.bestMove(gameState, difficulty, positionHistory)
         }

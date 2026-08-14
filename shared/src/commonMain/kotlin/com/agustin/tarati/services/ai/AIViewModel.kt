@@ -8,6 +8,7 @@ import com.agustin.tarati.core.domain.ai.services.Difficulty
 import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.core.domain.game.play.Move
 import com.agustin.tarati.core.utils.logging.LoggingFactory
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,16 @@ class AIViewModel(
     override val positionHistory: Map<String, Int>
         get() = aiEngine.positionHistory
 
+    /** Cómputo de IA en curso; se cancela al iniciar una partida nueva ([cancelThinking]). */
+    private var currentJob: Job? = null
+
+    /**
+     * Generación del cómputo vigente. Cada [requestAIMove] y cada [cancelThinking] la incrementan;
+     * el `finally` de un job solo baja [isAIThinking] si sigue siendo el vigente, así el job
+     * cancelado (que termina tarde) no pisa el estado de un cómputo posterior ya arrancado.
+     */
+    private var thinkingGeneration = 0
+
     /**
      * Lanza el cómputo de la IA en [androidx.lifecycle.viewModelScope], que sobrevive rotaciones
      * de pantalla. El resultado se emite a [pendingAIMove] y es recogido por el Composable via
@@ -62,7 +73,8 @@ class AIViewModel(
         // Snapshot en el hilo llamante (el mismo que muta el historial vía putState): seguro de leer.
         val historySnapshot = aiEngine.positionHistory.toMap()
 
-        viewModelScope.launch {
+        val myGeneration = ++thinkingGeneration
+        currentJob = viewModelScope.launch {
             _isAIThinking.update { true }
             logger.debug("AI starting to think...")
 
@@ -84,8 +96,28 @@ class AIViewModel(
             } catch (t: Throwable) {
                 logger.error(t.message.orEmpty(), t)
             } finally {
-                _isAIThinking.update { false }
+                // Solo el cómputo vigente baja la bandera. Un job cancelado (p. ej. por
+                // cancelThinking al iniciar partida nueva) termina tarde: si reseteara aquí,
+                // pisaría el "pensando" de un cómputo posterior ya en curso.
+                if (myGeneration == thinkingGeneration) {
+                    _isAIThinking.update { false }
+                }
             }
         }
+    }
+
+    /**
+     * Cancela el cómputo de IA en vuelo (si lo hay) y baja [isAIThinking].
+     *
+     * El cómputo corre en [viewModelScope], que sobrevive al reset del tablero. Al iniciar una
+     * partida nueva hay que cancelarlo: su jugada —calculada para la posición anterior— volvería
+     * tarde y se aplicaría sobre el tablero nuevo (lo corrompe: sobrescribe una pieza y corre la
+     * notación). El bump de generación invalida el `finally` del job cancelado.
+     */
+    override fun cancelThinking() {
+        thinkingGeneration++
+        currentJob?.cancel()
+        currentJob = null
+        _isAIThinking.update { false }
     }
 }
