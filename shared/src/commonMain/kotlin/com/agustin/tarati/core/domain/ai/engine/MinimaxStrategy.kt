@@ -50,16 +50,16 @@ import kotlin.time.Clock
  * ## Desempate (variedad orgánica vs. determinismo)
  * Cuando dos movimientos tienen exactamente el mismo score, el modo lo fija
  * [EvaluationConfig.deterministicTiebreak]:
- *  - **aleatorio** (default, EASY/MEDIUM/HARD): reservoir sampling de un elemento entre las empatadas →
+ *  - **aleatorio** (default, EASY/MEDIUM): reservoir sampling de un elemento entre las empatadas →
  *    **variedad orgánica** partida a partida (sorpresa, mejor experiencia) sin costo de fuerza (todas las
  *    empatadas son igual de buenas para el motor; a diferencia de `evalNoise`, no debilita).
- *  - **keep-first** (`deterministicTiebreak=true`, **solo CHAMPION**): se conserva el primero del orden de
+ *  - **keep-first** (`deterministicTiebreak=true`, **HARD y CHAMPION**): se conserva el primero del orden de
  *    [MoveEvaluator.sortMoves] (que ya prioriza calidad) → juego afilado reproducible, sin abrir con la jugada
- *    pasiva (OBS-1). Champion es el único nivel exento de la variación.
+ *    pasiva (OBS-1). La variedad partida a partida la aporta [rootSelection].
  *
  * ## Selección en la raíz (variedad controlada, [EvaluationConfig.rootSelection])
  * Independiente del desempate de arriba y aplicada **solo en el nodo raíz**: cuando la política está activa
- * (CHAMPION), la jugada que se juega se elige entre las cuasi-óptimas de la raíz (dentro de un `epsilon` del
+ * (HARD y CHAMPION), la jugada que se juega se elige entre las cuasi-óptimas de la raíz (dentro de un `epsilon` del
  * mejor score) con un softmax sesgado hacia la más afilada ([selectRootMove]). Así dos CHAMPION no juegan
  * siempre la misma partida sin debilitar la búsqueda: el *valor* (mejor score) no se toca y las ramas profundas
  * siguen deterministas. Se omite si la posición ya está ganada (se juega la contundente). Los primeros

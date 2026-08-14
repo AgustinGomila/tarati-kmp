@@ -54,10 +54,10 @@ data class EvaluationConfig(
      * Cómo se rompen los empates de score en [com.agustin.tarati.core.domain.ai.engine.MinimaxStrategy]:
      *  - `false` (default) → **aleatorio** (reservoir sampling entre las jugadas de igual score). Da
      *    **variedad orgánica** sin costo de fuerza (todas las empatadas son igual de buenas para el motor):
-     *    sorpresa y mejor experiencia de juego. Lo usan EASY/MEDIUM/HARD.
-     *  - `true` → **keep-first determinista** (la primera del orden de `sortMoves`). **Solo CHAMPION**: fija el
-     *    juego afilado (evita abrir con la jugada pasiva — OBS-1) y lo hace reproducible; Champion es el único
-     *    nivel exento de la variación.
+     *    sorpresa y mejor experiencia de juego. Lo usan EASY/MEDIUM.
+     *  - `true` → **keep-first determinista** (la primera del orden de `sortMoves`). Lo usan **HARD y CHAMPION**:
+     *    fija el juego afilado (evita abrir con la jugada pasiva — OBS-1) y lo hace reproducible en las ramas
+     *    profundas; la variedad partida a partida la aporta [rootSelection], no el reservoir.
      *
      * A diferencia de [BehaviorConfig.evalNoise] (que perturba el score y **debilita**), esto solo desempata
      * entre óptimos → variedad gratis.
@@ -65,9 +65,10 @@ data class EvaluationConfig(
     val deterministicTiebreak: Boolean = false,
     /**
      * Política de **selección en la raíz** (ver [RootSelection]): variedad controlada partida a partida
-     * aplicada solo al nodo raíz, sin tocar el valor de la búsqueda ni debilitar el juego profundo. La usa
-     * **CHAMPION** para no jugar siempre la misma partida contra sí mismo pese al desempate determinista.
-     * Deshabilitada por default (resto de tiers ya tienen variedad vía reservoir aleatorio).
+     * aplicada solo al nodo raíz, sin tocar el valor de la búsqueda ni debilitar el juego profundo. La usan
+     * **HARD y CHAMPION** para no jugar siempre la misma partida pese al desempate determinista: sesga hacia
+     * la jugada afilada entre las cuasi-óptimas (esquiva OBS-1) y diversifica la apertura. Deshabilitada por
+     * default (EASY/MEDIUM ya tienen variedad vía reservoir aleatorio).
      */
     val rootSelection: RootSelection = RootSelection(),
 ) {
@@ -180,6 +181,19 @@ data class EvaluationConfig(
                 opponentDomesticPressureScore = 45.0,
                 upgradeScore = 160.0,
             ),
+            // Variedad controlada en la raíz sin costo de fuerza (mismo mecanismo que CHAMPION): keep-first
+            // determinista en las ramas profundas + selección en la raíz que sesga hacia la afilada entre las
+            // cuasi-óptimas (esquiva OBS-1, a diferencia del reservoir uniforme) y diversifica la apertura.
+            // Medio juego/final: epsilon=0 → solo empates exactos (costo cero). Apertura (primeros 8 plies):
+            // epsilon=60 admite la 2ª mejor apertura (avanzar vs. costado) donde las posiciones están equilibradas.
+            deterministicTiebreak = true,
+            rootSelection = RootSelection(
+                enabled = true,
+                temperature = 0.75,
+                openingPlies = 8,
+                openingEpsilon = 60.0,
+                openingTemperature = 0.9,
+            ),
         )
 
         // CHAMPION: hereda la base calibrada de HARD y la extiende con conocimiento
@@ -215,8 +229,8 @@ data class EvaluationConfig(
             // paga cuando evalúa posiciones tranquilas (sin capturas pendientes); es el
             // diferenciador real frente a HARD (depth 5, sin quiescence).
             quiescenceEnabled = true,
-            // Único nivel exento de la variación: desempate determinista (keep-first) → juego afilado
-            // reproducible, sin abrir con la jugada pasiva (OBS-1). Easy/Medium/Hard usan el aleatorio.
+            // Desempate determinista (keep-first) → juego afilado reproducible en las ramas profundas, sin
+            // abrir con la jugada pasiva (OBS-1). Compartido con HARD; Easy/Medium usan el reservoir aleatorio.
             deterministicTiebreak = true,
             // Variedad controlada en la raíz: sin ella, dos CHAMPION juegan siempre la misma partida
             // (keep-first + evalNoise=0). Medio juego/final: epsilon=0 → solo empates exactos (costo cero);
