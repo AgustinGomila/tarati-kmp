@@ -1,8 +1,7 @@
 package com.agustin.tarati.core.domain.ai.evaluator
 
 import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig.Companion.withPersonality
-import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfigBuilder.defensive
-import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfigBuilder.gambit
+import com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfigBuilder.balanced
 import com.agustin.tarati.core.domain.ai.services.Difficulty
 
 /**
@@ -281,17 +280,13 @@ data class EvaluationConfig(
          *
          * Personality selection is based on round-robin tournament results across the five
          * key personalities (baseline, defensive, gambit, balanced, positional):
-         * - EASY    → no overlay — noise alone defines the skill floor.
-         * - MEDIUM  → [defensive]: steady piece safety outperforms riskier styles at depth 3.
-         * - HARD    → [gambit]: high-flip aggression exploits the deeper search at depth 5.
-         * - CHAMPION → [gambit]: at depth 7 high-flip aggression produces the highest win rate.
          */
         fun getByDifficulty(difficulty: Difficulty): EvaluationConfig =
             when (difficulty) {
                 Difficulty.EASY -> EASY
-                Difficulty.MEDIUM -> defensive(MEDIUM)
-                Difficulty.HARD -> gambit(HARD)
-                Difficulty.CHAMPION -> gambit(CHAMPION)
+                Difficulty.MEDIUM -> balanced(MEDIUM)
+                Difficulty.HARD -> balanced(HARD)
+                Difficulty.CHAMPION -> balanced(CHAMPION)
             }
     }
 }
