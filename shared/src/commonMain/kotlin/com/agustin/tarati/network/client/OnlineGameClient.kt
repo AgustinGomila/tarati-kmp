@@ -383,6 +383,15 @@ class OnlineGameClient(
             }
 
             is ServerMessage.MatchFound -> {
+                // Reconexión/resync: si ya tenemos ESTA partida (mismo gameId), el MatchFound es un eco
+                // que el servidor antepone al GameStarted/GameStateUpdate de reconexión
+                // (ver ConnectionManager.notifyPlayerConnected). Ignorarlo evita resetear el tablero y
+                // el estado de una partida en curso. Solo se ADOPTA cuando es una partida nueva o cuando
+                // perdimos el estado local (gameId distinto o _currentGame null) y hay que reconstruir.
+                if (_currentGame.value?.gameId == message.gameId) {
+                    logger.info("Ignoring MatchFound echo for known game ${message.gameId}")
+                    return
+                }
                 // Nueva partida online: la partida finalizada anterior ya no es la "analizable".
                 _lastFinishedGameId.value = null
                 // Consumir contexto de torneo si TournamentGameAssigned llegó antes para este gameId

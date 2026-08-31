@@ -551,10 +551,33 @@ fun OnlineGameSideEffects(
                 }
             }
 
-            // Starting → manejado por LaunchedEffect(status=Starting) en GameScreen
+            // Starting: la partida aún no arrancó (se promueve a InProgress vía GameStarted).
+            // La recuperación ante un GameStarted perdido la cubre el watchdog de más abajo.
             OnlineGameStatus.Starting -> Unit
             null -> Unit
         }
+    }
+
+    // ── Watchdog: recuperación de "atascado en Starting" ──────────────────────
+    // Tras aceptar/ofrecer una revancha (o un match), el estado pasa a Starting y debe
+    // promoverse a InProgress cuando llega GameStarted. Si ese GameStarted se pierde o no
+    // se adopta (race de orden de mensajes / de recomposición), la UI queda clavada en
+    // Starting y el reloj del servidor corre hasta perder por tiempo (0 movimientos).
+    // Si seguimos en Starting pasado el timeout, forzamos una reconexión: el servidor reenvía
+    // MatchFound + GameStarted (ver ConnectionManager.notifyPlayerConnected), que reconstruye
+    // y/o promueve la partida a InProgress. La key (gameId, status) hace que dispare una sola
+    // vez por episodio de atasco.
+    LaunchedEffect(currentOnlineGame?.gameId, currentOnlineGame?.status) {
+        if (currentOnlineGame?.status != OnlineGameStatus.Starting) return@LaunchedEffect
+        delay(STUCK_STARTING_TIMEOUT)
+        val game = onlineGameViewModel.currentGame.value ?: return@LaunchedEffect
+        if (game.status != OnlineGameStatus.Starting) return@LaunchedEffect
+        if (!connectionViewModel.isConnected) return@LaunchedEffect
+        getLogger("OnlineGameSideEffects").warn(
+            "Stuck in Starting for ${game.gameId} past $STUCK_STARTING_TIMEOUT — forcing resync"
+        )
+        val token = connectionViewModel.accessToken ?: return@LaunchedEffect
+        connectionViewModel.connectToServer(devServerUrl, token)
     }
 
     // ── Limpieza de toasts de revancha al iniciar partida local ──────────────
@@ -623,6 +646,13 @@ fun OnlineGameSideEffects(
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Tiempo máximo que la UI tolera en estado `Starting` antes de forzar una resincronización.
+ * Cubre con holgura el handshake normal (RematchAccepted/MatchFound → GameStarted, ~decenas de ms)
+ * dejando margen para latencia de red, sin que el usuario espere demasiado ante un atasco.
+ */
+private val STUCK_STARTING_TIMEOUT = 8.seconds
 
 /**
  * Resultado de la reconciliación del tablero del jugador ante un `GameStateUpdate` del oponente.
