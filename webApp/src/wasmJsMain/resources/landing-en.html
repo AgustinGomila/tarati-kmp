@@ -46,22 +46,41 @@
     <meta name="twitter:image" content="https://tarati.tech/icon-512x512.png">
 
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "VideoGame",
-      "name": "Tarati",
-      "url": "https://tarati.tech/",
-      "image": "https://tarati.tech/icon-512x512.png",
-      "description": "Tarati is an abstract strategy board game created by George Spencer-Brown, author of Laws of Form. Free to play online with multiplayer, AI opponents, ranked play and a tutorial.",
-      "genre": "Abstract strategy board game",
-      "applicationCategory": "GameApplication",
-      "operatingSystem": "Web, Android, Windows, macOS, Linux",
-      "gamePlatform": ["Web browser", "Android", "Windows", "macOS", "Linux"],
-      "playMode": ["SinglePlayer", "MultiPlayer"],
-      "author": { "@type": "Person", "name": "George Spencer-Brown" },
-      "inLanguage": ["en", "es"],
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }
+        {
+            "@context": "https://schema.org",
+            "@type": "VideoGame",
+            "name": "Tarati",
+            "url": "https://tarati.tech/",
+            "image": "https://tarati.tech/icon-512x512.png",
+            "description": "Tarati is an abstract strategy board game created by George Spencer-Brown, author of Laws of Form. Free to play online with multiplayer, AI opponents, ranked play and a tutorial.",
+            "genre": "Abstract strategy board game",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Web, Android, Windows, macOS, Linux",
+            "gamePlatform": [
+                "Web browser",
+                "Android",
+                "Windows",
+                "macOS",
+                "Linux"
+            ],
+            "playMode": [
+                "SinglePlayer",
+                "MultiPlayer"
+            ],
+            "author": {
+                "@type": "Person",
+                "name": "George Spencer-Brown"
+            },
+            "inLanguage": [
+                "en",
+                "es"
+            ],
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+            }
+        }
     </script>
 
     <link rel="stylesheet" href="/site.css">
@@ -98,6 +117,11 @@
                 enemy pieces to your own colour and promoting your own toward victory.</p>
             <p>There is also <strong>Tarati Six</strong>, a separate multiplayer variant for 2 to 6
                 players on an expanded board with cubic pieces.</p>
+            <figure class="board-figure">
+                <img src="/board_alpha.png" width="440" height="440"
+                     alt="The Tarati board — 23 vertices in concentric zones with pieces in play">
+                <figcaption>The Tarati board: 23 vertices across four concentric zones.</figcaption>
+            </figure>
         </section>
 
         <section>
@@ -137,7 +161,8 @@
             <h2>Download &amp; play</h2>
             <div class="cta" style="justify-content:flex-start">
                 <a class="btn" href="/play">Play online</a>
-                <a class="btn btn-outline" href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Google Play</a>
+                <a class="btn btn-outline" href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Google
+                    Play</a>
                 <a class="btn btn-outline" href="https://6e61646965.itch.io/tarati">itch.io</a>
                 <a class="btn btn-outline" href="https://github.com/AgustinGomila/tarati-kmp">GitHub</a>
             </div>
@@ -154,6 +179,8 @@
 </main>
 
 <footer class="site-footer">
+    <img class="footer-logo" src="/distinct-logo.svg" width="44" height="44"
+         alt="Tarati mark of distinction">
     <p>Tarati — a game by George Spencer-Brown &nbsp;·&nbsp;
         <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
         <a href="/terms">Terms</a> &nbsp;·&nbsp;

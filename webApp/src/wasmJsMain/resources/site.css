@@ -212,6 +212,24 @@ li {
     font-size: 0.95rem;
 }
 
+/* ── Imagen del tablero (landing) ────────────────────────────────────────── */
+.board-figure {
+    margin: 24px auto 4px;
+    text-align: center;
+}
+
+.board-figure img {
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+}
+
+.board-figure figcaption {
+    color: var(--muted);
+    font-size: 0.88rem;
+    margin-top: 12px;
+}
+
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .site-footer {
     border-top: 1px solid var(--line);
@@ -219,6 +237,14 @@ li {
     text-align: center;
     color: var(--muted);
     font-size: 0.9rem;
+}
+
+.footer-logo {
+    width: 44px;
+    height: auto;
+    display: block;
+    margin: 0 auto 18px;
+    opacity: 0.75;
 }
 
 .site-footer a {

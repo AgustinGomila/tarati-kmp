@@ -46,22 +46,41 @@
     <meta name="twitter:image" content="https://tarati.tech/icon-512x512.png">
 
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "VideoGame",
-      "name": "Tarati",
-      "url": "https://tarati.tech/es",
-      "image": "https://tarati.tech/icon-512x512.png",
-      "description": "Tarati es un juego de estrategia abstracta creado por George Spencer-Brown, autor de Laws of Form. Gratis para jugar online con multijugador, rivales con IA, partidas rankeadas y tutorial.",
-      "genre": "Juego de estrategia abstracta",
-      "applicationCategory": "GameApplication",
-      "operatingSystem": "Web, Android, Windows, macOS, Linux",
-      "gamePlatform": ["Navegador web", "Android", "Windows", "macOS", "Linux"],
-      "playMode": ["SinglePlayer", "MultiPlayer"],
-      "author": { "@type": "Person", "name": "George Spencer-Brown" },
-      "inLanguage": ["es", "en"],
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }
+        {
+            "@context": "https://schema.org",
+            "@type": "VideoGame",
+            "name": "Tarati",
+            "url": "https://tarati.tech/es",
+            "image": "https://tarati.tech/icon-512x512.png",
+            "description": "Tarati es un juego de estrategia abstracta creado por George Spencer-Brown, autor de Laws of Form. Gratis para jugar online con multijugador, rivales con IA, partidas rankeadas y tutorial.",
+            "genre": "Juego de estrategia abstracta",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Web, Android, Windows, macOS, Linux",
+            "gamePlatform": [
+                "Navegador web",
+                "Android",
+                "Windows",
+                "macOS",
+                "Linux"
+            ],
+            "playMode": [
+                "SinglePlayer",
+                "MultiPlayer"
+            ],
+            "author": {
+                "@type": "Person",
+                "name": "George Spencer-Brown"
+            },
+            "inLanguage": [
+                "es",
+                "en"
+            ],
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+            }
+        }
     </script>
 
     <link rel="stylesheet" href="/site.css">
@@ -98,6 +117,11 @@
                 enemigas a tu color y promoviendo las propias hacia la victoria.</p>
             <p>También está <strong>Tarati Six</strong>, una variante multijugador aparte para 2 a 6
                 jugadores en un tablero ampliado con piezas cúbicas.</p>
+            <figure class="board-figure">
+                <img src="/board_alpha.png" width="440" height="440"
+                     alt="El tablero de Tarati — 23 vértices en zonas concéntricas con piezas en juego">
+                <figcaption>El tablero de Tarati: 23 vértices en cuatro zonas concéntricas.</figcaption>
+            </figure>
         </section>
 
         <section>
@@ -139,7 +163,8 @@
             <h2>Descargar y jugar</h2>
             <div class="cta" style="justify-content:flex-start">
                 <a class="btn" href="/play">Jugar online</a>
-                <a class="btn btn-outline" href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Google Play</a>
+                <a class="btn btn-outline" href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Google
+                    Play</a>
                 <a class="btn btn-outline" href="https://6e61646965.itch.io/tarati">itch.io</a>
                 <a class="btn btn-outline" href="https://github.com/AgustinGomila/tarati-kmp">GitHub</a>
             </div>
@@ -157,6 +182,8 @@
 </main>
 
 <footer class="site-footer">
+    <img class="footer-logo" src="/distinct-logo.svg" width="44" height="44"
+         alt="Marca de distinción de Tarati">
     <p>Tarati — un juego de George Spencer-Brown &nbsp;·&nbsp;
         <a href="/privacy">Privacidad</a> &nbsp;·&nbsp;
         <a href="/terms">Términos</a> &nbsp;·&nbsp;
