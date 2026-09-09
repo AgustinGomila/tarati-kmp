@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Acerca de Tarati — George Spencer-Brown y Laws of Form</title>
+    <meta name="description"
+          content="Acerca de Tarati: un juego de estrategia abstracta de George Spencer-Brown, autor de Laws of Form, y cómo su cálculo de distinciones da forma al juego. Implementación multiplataforma gratuita.">
+    <link rel="canonical" href="https://tarati.tech/acerca">
+    <meta name="robots" content="index, follow">
+
+    <link rel="alternate" hreflang="en" href="https://tarati.tech/about">
+    <link rel="alternate" hreflang="es" href="https://tarati.tech/acerca">
+    <link rel="alternate" hreflang="x-default" href="https://tarati.tech/about">
+
+    <link href="/favicon.ico" rel="icon" type="image/x-icon">
+    <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
+    <link href="/manifest.json" rel="manifest">
+    <meta content="#1a1a2e" name="theme-color">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Tarati">
+    <meta property="og:title" content="Acerca de Tarati — George Spencer-Brown y Laws of Form">
+    <meta property="og:description"
+          content="Cómo Laws of Form de George Spencer-Brown da forma a Tarati, un juego de estrategia abstracta.">
+    <meta property="og:url" content="https://tarati.tech/acerca">
+    <meta property="og:image" content="https://tarati.tech/icon-512x512.png">
+
+    <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/es">Tarati</a>
+    <nav>
+        <a href="/reglas">Reglas</a>
+        <a href="/acerca">Acerca</a>
+        <a class="lang" href="/about" hreflang="en" lang="en">EN</a>
+        <a class="btn btn-play" href="/play">Jugar</a>
+    </nav>
+</header>
+
+<main class="container">
+    <section style="border-top:none">
+        <h1>Acerca de Tarati</h1>
+        <p>Tarati es un juego de estrategia abstracta creado por <strong>George Spencer-Brown</strong>
+            (1923–2016), el matemático británico más conocido por <em>Laws of Form</em> (1969). El juego
+            es una aplicación práctica de las ideas de ese libro: un cálculo construido enteramente sobre
+            el acto único de trazar una distinción.</p>
+    </section>
+
+    <section>
+        <h2>Laws of Form y el juego</h2>
+        <p><em>Laws of Form</em> desarrolla un sistema lógico completo a partir de una sola operación
+            primitiva — la distinción, el trazado de un límite que separa el adentro del afuera. Tarati
+            convierte esa idea en juego: las piezas cruzan límites entre las zonas concéntricas del
+            tablero, y la captura funciona <strong>girando</strong> una pieza enemiga hacia tu lado — un
+            cambio en la marca que lleva, una distinción vuelta a trazar.</p>
+        <p>La táctica central del juego, la <strong>regla de pre-adyacencia</strong> (solo podés capturar
+            una pieza a la que te acercás desde afuera), es en sí misma una afirmación sobre los límites:
+            una distinción solo surte efecto cuando se la cruza desde afuera.</p>
+    </section>
+
+    <section>
+        <h2>Esta implementación</h2>
+        <p>Tarati es una implementación multiplataforma gratuita hecha con Kotlin Multiplatform y
+            Compose: una sola base de código compartida que corre en Web, Android, Windows, macOS y
+            Linux. Ofrece multijugador online con ranking Glicko-2, cuatro niveles de IA, análisis de
+            posición estilo ajedrez, un tutorial interactivo y una variante aparte para 2 a 6 jugadores,
+            <strong>Tarati Six</strong>.</p>
+        <p>Es un proyecto educativo. El código fuente se publica bajo licencia MIT; todos los derechos
+            del concepto original del juego y de <em>Laws of Form</em> pertenecen a George
+            Spencer-Brown.</p>
+        <div class="cta" style="justify-content:flex-start; margin-top:22px">
+            <a class="btn" href="/play">Jugar online</a>
+            <a class="btn btn-outline" href="/reglas">Leer las reglas</a>
+            <a class="btn btn-outline" href="https://github.com/AgustinGomila/tarati-kmp">Código en GitHub</a>
+        </div>
+    </section>
+
+    <section>
+        <h2>Para seguir leyendo</h2>
+        <ul>
+            <li><a href="https://youtu.be/UqMl_Wb04nU">Louis Kauffman — Laws of Form (video)</a></li>
+            <li><a href="https://www.youtube.com/watch?v=HUCVEcbehaM">Divyamaan Sahoo — How to Play Tarati</a></li>
+            <li><a href="https://www.youtube.com/playlist?list=PLoK3NtWr5NbqEOdjQrWaq1sDweF7NJ5NB">Laws of Form Mini Course by Leon Conrad</a></li>
+        </ul>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <p>Tarati — un juego de George Spencer-Brown &nbsp;·&nbsp;
+        <a href="/privacy">Privacidad</a> &nbsp;·&nbsp;
+        <a href="/terms">Términos</a> &nbsp;·&nbsp;
+        <a href="/about" hreflang="en" lang="en">English</a></p>
+</footer>
+</body>
+</html>

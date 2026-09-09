@@ -1,0 +1,15 @@
+# Tarati — https://tarati.tech
+# Todo el contenido público es indexable. Se excluyen rutas de API, auth,
+# WebSocket, admin y el panel de monitoreo (no son páginas de contenido).
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /ws/
+Disallow: /admin/
+Disallow: /grafana/
+Disallow: /stripe/
+Disallow: /polar/
+
+Sitemap: https://tarati.tech/sitemap.xml

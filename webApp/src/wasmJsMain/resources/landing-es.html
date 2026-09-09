@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script>
+        // Retorno del checkout de Supporter (Polar/Stripe → success_url "/?supporter=...").
+        // La raíz ahora es la landing, así que reenviamos a la app en /play para cerrar el
+        // flujo. Corre sincrónico antes de pintar; solo se dispara con el parámetro presente.
+        (function () {
+            var s = window.location.search;
+            if (s.indexOf('supporter=success') !== -1 || s.indexOf('supporter=cancel') !== -1) {
+                window.location.replace('/play' + s);
+            }
+        })();
+    </script>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Tarati — Juego de estrategia abstracta online de George Spencer-Brown</title>
+    <meta name="description"
+          content="Jugá a Tarati, el juego de estrategia abstracta de George Spencer-Brown, autor de Laws of Form. Multijugador online gratis, rivales con IA, partidas rankeadas y tutorial — navegador, Android y escritorio.">
+    <link rel="canonical" href="https://tarati.tech/es">
+    <meta name="robots" content="index, follow">
+
+    <link rel="alternate" hreflang="en" href="https://tarati.tech/">
+    <link rel="alternate" hreflang="es" href="https://tarati.tech/es">
+    <link rel="alternate" hreflang="x-default" href="https://tarati.tech/">
+
+    <link href="/favicon.ico" rel="icon" type="image/x-icon">
+    <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
+    <link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180">
+    <link href="/manifest.json" rel="manifest">
+    <meta content="#1a1a2e" name="theme-color">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Tarati">
+    <meta property="og:title" content="Tarati — Juego de estrategia abstracta online">
+    <meta property="og:description"
+          content="El juego de estrategia abstracta de George Spencer-Brown, autor de Laws of Form. Multijugador online gratis, rivales con IA y tutorial.">
+    <meta property="og:url" content="https://tarati.tech/es">
+    <meta property="og:image" content="https://tarati.tech/icon-512x512.png">
+    <meta property="og:locale" content="es_ES">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Tarati — Juego de estrategia abstracta online">
+    <meta name="twitter:description"
+          content="El juego de estrategia abstracta de George Spencer-Brown. Multijugador online gratis, rivales con IA y tutorial.">
+    <meta name="twitter:image" content="https://tarati.tech/icon-512x512.png">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Tarati",
+      "url": "https://tarati.tech/es",
+      "image": "https://tarati.tech/icon-512x512.png",
+      "description": "Tarati es un juego de estrategia abstracta creado por George Spencer-Brown, autor de Laws of Form. Gratis para jugar online con multijugador, rivales con IA, partidas rankeadas y tutorial.",
+      "genre": "Juego de estrategia abstracta",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web, Android, Windows, macOS, Linux",
+      "gamePlatform": ["Navegador web", "Android", "Windows", "macOS", "Linux"],
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "author": { "@type": "Person", "name": "George Spencer-Brown" },
+      "inLanguage": ["es", "en"],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+    </script>
+
+    <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/es">Tarati</a>
+    <nav>
+        <a href="/reglas">Reglas</a>
+        <a href="/acerca">Acerca</a>
+        <a class="lang" href="/" hreflang="en" lang="en">EN</a>
+        <a class="btn btn-play" href="/play">Jugar</a>
+    </nav>
+</header>
+
+<main>
+    <div class="hero">
+        <h1>Tarati</h1>
+        <p class="tagline">El juego de estrategia abstracta de <strong>George Spencer-Brown</strong>,
+            autor de <em>Laws of Form</em>. Mové, girá y superá al rival — gratis y online.</p>
+        <div class="cta">
+            <a class="btn" href="/play">Jugar en el navegador</a>
+            <a class="btn btn-outline" href="/reglas">Cómo se juega</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <section>
+            <h2>¿Qué es <span class="accent">Tarati</span>?</h2>
+            <p>Tarati es un juego de estrategia abstracta para dos jugadores, diseñado por el
+                matemático George Spencer-Brown como aplicación práctica del cálculo de distinciones
+                de su libro <em>Laws of Form</em>. De estructura minimalista y consecuencias profundas:
+                movés piezas por un tablero de 23 vértices en zonas concéntricas, girando las piezas
+                enemigas a tu color y promoviendo las propias hacia la victoria.</p>
+            <p>También está <strong>Tarati Six</strong>, una variante multijugador aparte para 2 a 6
+                jugadores en un tablero ampliado con piezas cúbicas.</p>
+        </section>
+
+        <section>
+            <h2>Cómo se gana</h2>
+            <p>Una pieza se mueve a un vértice libre adyacente y gira toda pieza enemiga elegible a la
+                que se acerca desde afuera (la regla de pre-adyacencia — la táctica clave del juego).
+                Al llegar a la base rival, tu Cob se promociona a Rok, que se mueve libremente en
+                cualquier dirección. Ganás capturando la última pieza enemiga en una sola jugada
+                (<strong>Mit</strong>) o dejando al rival sin jugadas legales
+                (<strong>Stalemit</strong>).</p>
+            <p><a href="/reglas">Leé las reglas completas →</a></p>
+        </section>
+
+        <section>
+            <h2>Características</h2>
+            <div class="grid">
+                <div class="card">
+                    <h3>Multijugador online</h3>
+                    <p>Emparejamiento, ranking Glicko-2, tablas de posiciones, torneos, desafíos y modo
+                        espectador.</p>
+                </div>
+                <div class="card">
+                    <h3>IA fuerte</h3>
+                    <p>Cuatro niveles de dificultad y análisis de posición estilo ajedrez con barra de
+                        evaluación.</p>
+                </div>
+                <div class="card">
+                    <h3>Tutorial interactivo</h3>
+                    <p>Aprendé las reglas paso a paso con burbujas guía sobre el tablero.</p>
+                </div>
+                <div class="card">
+                    <h3>En todas partes</h3>
+                    <p>Jugá en el navegador o instalá la app en Android, Windows, macOS y Linux.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Descargar y jugar</h2>
+            <div class="cta" style="justify-content:flex-start">
+                <a class="btn" href="/play">Jugar online</a>
+                <a class="btn btn-outline" href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Google Play</a>
+                <a class="btn btn-outline" href="https://6e61646965.itch.io/tarati">itch.io</a>
+                <a class="btn btn-outline" href="https://github.com/AgustinGomila/tarati-kmp">GitHub</a>
+            </div>
+        </section>
+
+        <section>
+            <h2>Laws of Form</h2>
+            <p>Tarati se apoya en <em>Laws of Form</em> de George Spencer-Brown, un cálculo
+                matemáticamente completo construido enteramente sobre el concepto de distinción. Tarati
+                es el primer juego digital serio basado en su obra — una puerta de entrada jugable a
+                estas ideas.</p>
+            <p><a href="/acerca">Más sobre Tarati y Laws of Form →</a></p>
+        </section>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <p>Tarati — un juego de George Spencer-Brown &nbsp;·&nbsp;
+        <a href="/privacy">Privacidad</a> &nbsp;·&nbsp;
+        <a href="/terms">Términos</a> &nbsp;·&nbsp;
+        <a href="/" hreflang="en" lang="en">English</a></p>
+    <p>Una implementación educativa. Todos los derechos del concepto original pertenecen a George
+        Spencer-Brown.</p>
+</footer>
+</body>
+</html>

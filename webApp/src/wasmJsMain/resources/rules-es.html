@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Cómo jugar a Tarati — Reglas del juego de tablero</title>
+    <meta name="description"
+          content="Las reglas completas de Tarati: el tablero, Cobs y Roks, el movimiento, la regla de pre-adyacencia, piezas muertas, promoción forzada y cómo ganar (Mit y Stalemit).">
+    <link rel="canonical" href="https://tarati.tech/reglas">
+    <meta name="robots" content="index, follow">
+
+    <link rel="alternate" hreflang="en" href="https://tarati.tech/rules">
+    <link rel="alternate" hreflang="es" href="https://tarati.tech/reglas">
+    <link rel="alternate" hreflang="x-default" href="https://tarati.tech/rules">
+
+    <link href="/favicon.ico" rel="icon" type="image/x-icon">
+    <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
+    <link href="/manifest.json" rel="manifest">
+    <meta content="#1a1a2e" name="theme-color">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Tarati">
+    <meta property="og:title" content="Cómo jugar a Tarati — Reglas">
+    <meta property="og:description"
+          content="Las reglas completas de Tarati: tablero, piezas, movimiento, la regla de pre-adyacencia y cómo ganar.">
+    <meta property="og:url" content="https://tarati.tech/reglas">
+    <meta property="og:image" content="https://tarati.tech/icon-512x512.png">
+
+    <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/es">Tarati</a>
+    <nav>
+        <a href="/reglas">Reglas</a>
+        <a href="/acerca">Acerca</a>
+        <a class="lang" href="/rules" hreflang="en" lang="en">EN</a>
+        <a class="btn btn-play" href="/play">Jugar</a>
+    </nav>
+</header>
+
+<main class="container">
+    <section style="border-top:none">
+        <h1>Cómo jugar a Tarati</h1>
+        <p>Tarati es un juego de estrategia abstracta para dos jugadores de George Spencer-Brown. Esta
+            página cubre las reglas completas. ¿Preferís aprender jugando? La app tiene un
+            <a href="/play">tutorial interactivo</a>.</p>
+    </section>
+
+    <section>
+        <h2>Objetivo</h2>
+        <p>Capturar la última pieza enemiga en una sola jugada (<strong>Mit</strong>) o dejar al rival
+            sin jugadas legales (<strong>Stalemit</strong>).</p>
+    </section>
+
+    <section>
+        <h2>El tablero</h2>
+        <p>El tablero tiene 23 vértices en cuatro zonas (no del todo disjuntas):</p>
+        <ul>
+            <li><strong>Centro absoluto:</strong> 1 vértice.</li>
+            <li><strong>Puente:</strong> 6 vértices que conectan el centro con la circunferencia.</li>
+            <li><strong>Circunferencia:</strong> 12 vértices que forman el anillo exterior.</li>
+            <li><strong>Bases domésticas:</strong> 4 vértices por jugador (8 en total).</li>
+        </ul>
+        <p>Cada jugador empieza con 4 Cobs en su base doméstica.</p>
+    </section>
+
+    <section>
+        <h2>Las piezas</h2>
+        <h3>Cob</h3>
+        <p>La pieza básica. Se mueve solo hacia adelante, por las aristas hacia el lado del rival. No
+            puede retroceder salvo que se promueva.</p>
+        <h3>Rok</h3>
+        <p>Un Cob mejorado. Se mueve libremente en cualquier dirección por cualquier arista. Un Cob se
+            convierte en Rok al entrar en cualquier vértice de la base doméstica del rival. Un Rok
+            capturado conserva su condición: cambia de color pero sigue siendo Rok.</p>
+    </section>
+
+    <section>
+        <h2>Movimiento</h2>
+        <p>Una pieza se mueve a un vértice libre adyacente. Al llegar, gira al color del jugador que
+            mueve toda pieza enemiga elegible conectada directamente a ese vértice.</p>
+        <p><em>Excepción:</em> un Cob en su propia base doméstica puede moverse en cualquier dirección,
+            pero solo si esa jugada produce al menos una captura.</p>
+    </section>
+
+    <section>
+        <h2>La regla de pre-adyacencia</h2>
+        <p>Una pieza enemiga solo puede capturarse si la pieza que se mueve <strong>no era adyacente a
+            ella antes de la jugada</strong>. Solo se giran las piezas enemigas que son nuevas vecinas
+            del destino y no eran ya vecinas del origen. Las piezas ya adyacentes al origen quedan
+            protegidas.</p>
+        <p>Es la regla táctica más importante del juego: <strong>hay que acercarse desde
+            afuera</strong>.</p>
+    </section>
+
+    <section>
+        <h2>Piezas muertas y promoción forzada</h2>
+        <p>Un Cob puede quedar <strong>muerto</strong> — atrapado sin forma de avanzar.</p>
+        <h3>Muerte primaria</h3>
+        <p>Un Cob girado sobre uno de los dos vértices más externos de la base del rival queda muerto de
+            inmediato: desde ahí no tiene camino hacia adelante.</p>
+        <h3>Muerte en cadena</h3>
+        <p>Un Cob también está muerto si todos sus vértices adyacentes hacia adelante están ocupados por
+            Cobs muertos del mismo color. La condición se propaga y siempre termina en un vértice de
+            muerte primaria. Una pieza <em>no</em> muere por estar bloqueada por una pieza enemiga, un
+            Cob amigo vivo o un Rok de cualquier color — esos pueden apartarse. Solo los Cobs muertos
+            del mismo color bloquean permanentemente; los Roks nunca están muertos.</p>
+        <h3>Cuándo se puede promover una pieza muerta</h3>
+        <p>Promover un Cob muerto a Rok no es automático. Solo ocurre cuando el jugador no puede hacer
+            ninguna jugada normal, y únicamente si el Rok resultante tendría al menos una jugada
+            disponible.</p>
+        <h3>Caso especial — última pieza</h3>
+        <p>Si un Cob es la única pieza que le queda al jugador, debe promoverse a Rok sin condiciones,
+            esté donde esté, incluso si existen otras jugadas.</p>
+    </section>
+
+    <section>
+        <h2>Condiciones de fin</h2>
+        <ul>
+            <li><strong>Mit:</strong> un jugador captura todas las piezas enemigas en una sola jugada.</li>
+            <li><strong>Stalemit:</strong> el jugador activo no tiene jugadas normales ni promociones
+                forzadas disponibles — gana el rival.</li>
+            <li><strong>Triple repetición:</strong> la misma posición aparece tres veces con el mismo
+                jugador para mover; pierde quien provocó la tercera repetición.</li>
+            <li><strong>Regla de 50 jugadas:</strong> si pasan 100 medias jugadas seguidas sin mover un
+                Cob ni promover, el jugador activo puede reclamar tablas.</li>
+            <li><strong>Tiempo agotado:</strong> en partidas con reloj, quien excede su tiempo pierde.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Tarati Six (2 a 6 jugadores)</h2>
+        <p>Más allá del juego clásico de dos jugadores, Tarati incluye un modo multijugador aparte
+            basado en la variante cúbica de la patente de Spencer-Brown: un tablero ampliado de 49
+            vértices y piezas con forma de cubo para 2 a 6 jugadores. La captura es por conversión (las
+            piezas giran a tu color, no se eliminan), la regla de pre-adyacencia sigue vigente y no hay
+            promociones ni piezas muertas. El juego termina cuando quedan dos jugadores; gana quien
+            tenga más piezas.</p>
+        <p style="margin-top:24px"><a class="btn" href="/play">Jugar a Tarati ahora →</a></p>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <p>Tarati — un juego de George Spencer-Brown &nbsp;·&nbsp;
+        <a href="/privacy">Privacidad</a> &nbsp;·&nbsp;
+        <a href="/terms">Términos</a> &nbsp;·&nbsp;
+        <a href="/rules" hreflang="en" lang="en">English</a></p>
+</footer>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>How to Play Tarati — Rules of the Board Game</title>
+    <meta name="description"
+          content="The full rules of Tarati: the board, Cobs and Roks, movement, the pre-adjacency rule, dead pieces, forced promotion, and how to win (Mit and Stalemit).">
+    <link rel="canonical" href="https://tarati.tech/rules">
+    <meta name="robots" content="index, follow">
+
+    <link rel="alternate" hreflang="en" href="https://tarati.tech/rules">
+    <link rel="alternate" hreflang="es" href="https://tarati.tech/reglas">
+    <link rel="alternate" hreflang="x-default" href="https://tarati.tech/rules">
+
+    <link href="/favicon.ico" rel="icon" type="image/x-icon">
+    <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
+    <link href="/manifest.json" rel="manifest">
+    <meta content="#1a1a2e" name="theme-color">
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Tarati">
+    <meta property="og:title" content="How to Play Tarati — Rules">
+    <meta property="og:description"
+          content="The full rules of Tarati: board, pieces, movement, the pre-adjacency rule and how to win.">
+    <meta property="og:url" content="https://tarati.tech/rules">
+    <meta property="og:image" content="https://tarati.tech/icon-512x512.png">
+
+    <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<header class="site-header">
+    <a class="brand" href="/">Tarati</a>
+    <nav>
+        <a href="/rules">Rules</a>
+        <a href="/about">About</a>
+        <a class="lang" href="/reglas" hreflang="es" lang="es">ES</a>
+        <a class="btn btn-play" href="/play">Play</a>
+    </nav>
+</header>
+
+<main class="container">
+    <section style="border-top:none">
+        <h1>How to play Tarati</h1>
+        <p>Tarati is a two-player abstract strategy game by George Spencer-Brown. This page covers the
+            complete rules. Prefer to learn by doing? The app has an
+            <a href="/play">interactive tutorial</a>.</p>
+    </section>
+
+    <section>
+        <h2>Objective</h2>
+        <p>Capture the last enemy piece in a single move (<strong>Mit</strong>) or leave the opponent
+            with no legal moves (<strong>Stalemit</strong>).</p>
+    </section>
+
+    <section>
+        <h2>The board</h2>
+        <p>The board has 23 vertices across four zones (not fully disjoint):</p>
+        <ul>
+            <li><strong>Absolute centre:</strong> 1 vertex.</li>
+            <li><strong>Bridge:</strong> 6 vertices connecting the centre to the circumference.</li>
+            <li><strong>Circumference:</strong> 12 vertices forming the outer ring.</li>
+            <li><strong>Domestic bases:</strong> 4 vertices per player (8 total).</li>
+        </ul>
+        <p>Each player starts with 4 Cobs on their domestic base.</p>
+    </section>
+
+    <section>
+        <h2>The pieces</h2>
+        <h3>Cob</h3>
+        <p>The basic piece. Moves forward only, along edges toward the opponent's side. It cannot move
+            backward unless promoted.</p>
+        <h3>Rok</h3>
+        <p>An upgraded Cob. Moves freely in any direction along any edge. A Cob becomes a Rok by
+            entering any vertex of the opponent's domestic base. A captured Rok keeps its Rok status:
+            it changes colour but remains a Rok.</p>
+    </section>
+
+    <section>
+        <h2>Movement</h2>
+        <p>A piece moves to an adjacent free vertex. On arriving, it flips every eligible enemy piece
+            directly connected to that vertex to the moving player's colour.</p>
+        <p><em>Exception:</em> a Cob on its own domestic base may move in any direction, but only if
+            that move produces at least one capture.</p>
+    </section>
+
+    <section>
+        <h2>The pre-adjacency rule</h2>
+        <p>An enemy piece can only be captured if the moving piece <strong>was not adjacent to it
+            before the move</strong>. Only enemy pieces that are new neighbours of the destination —
+            and were not already neighbours of the origin — are flipped. Pieces already adjacent to the
+            origin are protected.</p>
+        <p>This is the most important tactical rule in the game: <strong>you must approach from
+            outside</strong>.</p>
+    </section>
+
+    <section>
+        <h2>Dead pieces and forced promotion</h2>
+        <p>A Cob can become <strong>dead</strong> — trapped with no way to advance.</p>
+        <h3>Primary death</h3>
+        <p>A Cob flipped onto one of the two outermost vertices of the opponent's base is immediately
+            dead: from there it has no forward path.</p>
+        <h3>Chain death</h3>
+        <p>A Cob is also dead if every forward-adjacent vertex is occupied by dead Cobs of the same
+            colour. This condition propagates, always ending at a primary dead vertex. A piece is
+            <em>not</em> dead when blocked by an enemy piece, a live friendly Cob, or a Rok of either
+            colour — those can move away. Only dead Cobs of the same colour block permanently; Roks are
+            never dead.</p>
+        <h3>When a dead piece can be promoted</h3>
+        <p>Promoting a dead Cob to a Rok is not automatic. It only happens when the player cannot make
+            any normal move, and only if the resulting Rok would have at least one move available.</p>
+        <h3>Special case — last piece</h3>
+        <p>If a Cob is the player's only remaining piece, it must be promoted to a Rok unconditionally,
+            regardless of position, even if other moves exist.</p>
+    </section>
+
+    <section>
+        <h2>End conditions</h2>
+        <ul>
+            <li><strong>Mit:</strong> a player captures all enemy pieces in a single move.</li>
+            <li><strong>Stalemit:</strong> the active player has no normal moves and no forced
+                promotions available — the opponent wins.</li>
+            <li><strong>Triple repetition:</strong> the same position appears three times with the same
+                player to move; the player who caused the third repetition loses.</li>
+            <li><strong>50-move rule:</strong> if 100 consecutive half-moves pass without a Cob move or
+                any promotion, the active player may claim a draw.</li>
+            <li><strong>Time out:</strong> in timed games, exceeding your time limit loses.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Tarati Six (2–6 players)</h2>
+        <p>Beyond the classic two-player game, Tarati includes a separate multiplayer mode based on the
+            cubic variant from Spencer-Brown's patent: an expanded 49-vertex board and cube-shaped
+            pieces for 2 to 6 players. Capture works by conversion (pieces flip to your colour, they
+            are not removed), the pre-adjacency rule still applies, and there are no promotions or dead
+            pieces. The game ends when two players remain; the one with the most pieces wins.</p>
+        <p style="margin-top:24px"><a class="btn" href="/play">Play Tarati now →</a></p>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <p>Tarati — a game by George Spencer-Brown &nbsp;·&nbsp;
+        <a href="/privacy">Privacy</a> &nbsp;·&nbsp;
+        <a href="/terms">Terms</a> &nbsp;·&nbsp;
+        <a href="/reglas" hreflang="es" lang="es">Español</a></p>
+</footer>
+</body>
+</html>

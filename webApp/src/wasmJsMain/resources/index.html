@@ -1,15 +1,66 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
-    <title>Tarati — The Game</title>
+    <title>Tarati — Online Abstract Strategy Board Game by George Spencer-Brown</title>
+    <meta name="description"
+          content="Play Tarati, the abstract strategy board game by George Spencer-Brown, author of Laws of Form. Free online multiplayer, AI opponents, ranked play and an interactive tutorial — in your browser, on Android and Desktop.">
+    <link rel="canonical" href="https://tarati.tech/play">
+    <meta name="robots" content="index, follow">
+
     <link href="/favicon.ico" rel="icon" type="image/x-icon">
     <link href="/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png">
     <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
     <link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180">
     <link href="/manifest.json" rel="manifest">
     <meta content="#1a1a2e" name="theme-color">
+
+    <!-- Open Graph (Facebook, WhatsApp, Discord, LinkedIn link previews) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Tarati">
+    <meta property="og:title" content="Tarati — Online Abstract Strategy Board Game">
+    <meta property="og:description"
+          content="The abstract strategy game by George Spencer-Brown, author of Laws of Form. Free online multiplayer, AI opponents and a tutorial — browser, Android and Desktop.">
+    <meta property="og:url" content="https://tarati.tech/play">
+    <meta property="og:image" content="https://tarati.tech/icon-512x512.png">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="es_ES">
+
+    <!-- Twitter / X card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Tarati — Online Abstract Strategy Board Game">
+    <meta name="twitter:description"
+          content="The abstract strategy game by George Spencer-Brown, author of Laws of Form. Free online multiplayer, AI opponents and a tutorial.">
+    <meta name="twitter:image" content="https://tarati.tech/icon-512x512.png">
+
+    <!-- Structured data: helps Google build a rich result (free game, platforms, author) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Tarati",
+      "url": "https://tarati.tech/play",
+      "image": "https://tarati.tech/icon-512x512.png",
+      "description": "Tarati is an abstract strategy board game created by George Spencer-Brown, author of Laws of Form. Players move pieces across a board of concentric zones, flipping enemy pieces to their own colour, and win by capturing the last enemy piece or leaving the opponent with no legal move.",
+      "genre": "Abstract strategy board game",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web, Android, Windows, macOS, Linux",
+      "gamePlatform": ["Web browser", "Android", "Windows", "macOS", "Linux"],
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "author": {
+        "@type": "Person",
+        "name": "George Spencer-Brown"
+      },
+      "inLanguage": ["en", "es"],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
     <style>
         * {
             margin: 0;
@@ -26,6 +77,32 @@
 
         canvas {
             display: block;
+        }
+
+        /* Contenido HTML real para los buscadores. La app (canvas de Compose) y el
+           splash lo cubren por completo, así que el usuario nunca lo ve; Googlebot en
+           cambio lee este texto del DOM (el canvas no expone contenido indexable).
+           No se usa display:none — el texto está renderizado, solo detrás (z-index:-1). */
+        #seo-content {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            padding: 40px;
+            color: #e8e8f0;
+            background: #1a1a2e;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+        }
+
+        #seo-content h1 {
+            font-size: 28px;
+            margin-bottom: 12px;
+        }
+
+        #seo-content h2 {
+            font-size: 20px;
+            margin: 20px 0 8px;
         }
 
         /* Splash instantáneo: se pinta apenas parsea el HTML, mucho antes de que el
@@ -75,6 +152,46 @@
     </style>
 </head>
 <body>
+<!-- Contenido indexable (invisible para el usuario, lo cubren el splash y el canvas). -->
+<main id="seo-content">
+    <h1>Tarati — Abstract Strategy Board Game</h1>
+    <p>
+        <strong>Tarati</strong> is an abstract strategy board game created by
+        <strong>George Spencer-Brown</strong>, the mathematician and author of
+        <em>Laws of Form</em>. It applies his calculus of distinctions to gameplay: a minimalist
+        structure with deep strategic consequence. Play free online at
+        <a href="https://tarati.tech/">tarati.tech</a> — in your browser, on Android or on Desktop.
+    </p>
+
+    <h2>How to play</h2>
+    <p>
+        Each player starts with four Cobs on their home base and moves along the edges of a board
+        of 23 vertices arranged in concentric zones. A piece moves to an adjacent free vertex and
+        flips every eligible enemy piece connected to it — but only enemies it approaches from
+        outside (the pre-adjacency rule). A Cob that reaches the opponent's base is promoted to a
+        Rok, which moves freely in any direction. You win by capturing the last enemy piece in a
+        single move (Mit) or leaving the opponent with no legal move (Stalemit).
+    </p>
+
+    <h2>Features</h2>
+    <ul>
+        <li>Free online multiplayer with matchmaking, Glicko-2 ranking, leaderboards and tournaments</li>
+        <li>AI opponents with four difficulty levels and chess-style position analysis</li>
+        <li>Interactive tutorial that introduces the rules step by step</li>
+        <li>Tarati Six — a multiplayer variant for 2 to 6 players on an expanded board</li>
+        <li>Available on Web, Android, Windows, macOS and Linux</li>
+    </ul>
+
+    <h2>Download &amp; links</h2>
+    <ul>
+        <li><a href="https://play.google.com/store/apps/details?id=com.agustin.tarati">Tarati on Google Play (Android)</a></li>
+        <li><a href="https://6e61646965.itch.io/tarati">Tarati on itch.io (Desktop &amp; Android)</a></li>
+        <li><a href="https://github.com/AgustinGomila/tarati-kmp">Source code on GitHub</a></li>
+        <li><a href="/">Home</a> · <a href="/rules">How to play</a> · <a href="/about">About Tarati &amp; Laws of Form</a></li>
+        <li><a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of service</a></li>
+    </ul>
+</main>
+
 <!-- Splash inmediato (HTML/CSS puro, sin requests extra) mientras carga el WASM. -->
 <div id="tarati-splash">
     <div class="ring"></div>
@@ -118,7 +235,7 @@
         p.prompt();
     };
 </script>
-<script src="tarati.js"></script>
+<script src="/tarati.js"></script>
 <script>
     const isDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     if ('serviceWorker' in navigator) {

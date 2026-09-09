@@ -62,9 +62,10 @@ self.addEventListener('fetch', event => {
     // API / auth / WebSocket: siempre red, nunca caché.
     if (NETWORK_ONLY_PREFIXES.some(prefix => url.pathname.startsWith(prefix))) return;
 
-    // HTML (index.html, raíz): network-first para que los deploys se propaguen.
-    // Si no hay red, sirve desde caché (permite abrir la app offline).
-    if (url.pathname === '/' || url.pathname.endsWith('.html')) {
+    // Navegación (documentos: raíz, .html y deep-links SPA como /play o /reset-password):
+    // network-first para que los deploys se propaguen. Sin red, sirve la página cacheada
+    // y, si no está, cae al shell /index.html — así la app y sus rutas abren offline.
+    if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
@@ -72,7 +73,7 @@ self.addEventListener('fetch', event => {
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request))
+                .catch(() => caches.match(event.request).then(cached => cached || caches.match('/index.html')))
         );
         return;
     }
