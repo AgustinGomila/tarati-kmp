@@ -48,6 +48,14 @@ class TaratiAI : IAIEngine {
             evalConfig = ::evalConfig,
         )
 
+    init {
+        // Siembra el token de la config inicial en los cachés, para que sean config-aware aun si se
+        // busca antes del primer setConfig (los runners siempre llaman setConfig, pero esto lo cubre).
+        val token = configToken(globalConfigRef.value)
+        transpositionTable.setConfigToken(token)
+        cache.setConfigToken(token)
+    }
+
     // ==================== API Pública ====================
 
     override val name: String get() = "Engine Standard"
@@ -149,18 +157,28 @@ class TaratiAI : IAIEngine {
     }
 
     /**
-     * Updates the active EvaluationConfig. The transposition table is cleared
-     * when difficulty changes because cached entries are depth-tagged: a shallow
-     * entry from a lower difficulty would be incorrectly reused as a valid deep
-     * result for a higher difficulty, corrupting the search.
+     * Updates the active EvaluationConfig and propagates its identity token to the caches.
+     *
+     * Board evaluations, move ordering and full search results all depend on the config's weights
+     * and depth, so [TranspositionTable] and [HybridEvaluationCache] key every entry by a token
+     * derived from the config ([configToken]). Entries from different configs coexist without
+     * clashing — there is no need to flush the caches on a difficulty change (this replaces the old
+     * clear-on-difficulty-change), and the result is correct even when the same engine alternates
+     * configs (AI-vs-AI with different levels sharing one engine).
      */
     override fun setConfig(config: EvaluationConfig) {
-        val prevDifficulty = globalConfigRef.value.difficulty
         globalConfigRef.value = config
-        if (config.difficulty != prevDifficulty) {
-            transpositionTable.clear()
-        }
+        val token = configToken(config)
+        transpositionTable.setConfigToken(token)
+        cache.setConfigToken(token)
     }
+
+    /**
+     * Token that identifies a config for cache namespacing. Uses the structural hash of the whole
+     * [EvaluationConfig] (a data class), so any change in the eval-relevant weights, depth-related
+     * search params or difficulty yields a distinct token → entries never leak across configs.
+     */
+    private fun configToken(config: EvaluationConfig): String = config.hashCode().toString()
 
     override fun getDiagnostics(): AIDiagnostics {
         val stats = (aiStrategy as? MinimaxStrategy)?.getStats()

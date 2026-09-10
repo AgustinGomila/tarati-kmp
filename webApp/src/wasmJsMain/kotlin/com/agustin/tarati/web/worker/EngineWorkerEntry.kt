@@ -97,8 +97,15 @@ private suspend fun runBestMove(job: EngineJob) {
         postSafely(WorkerReply(job.id, WorkerReplyKind.ERROR))
         return
     }
+    val history = job.positionHistory ?: emptyMap()
+    // Partida nueva (historial vacío = ninguna jugada registrada aún): descarta el estado de búsqueda
+    // acumulado (transposition table + cachés de evaluación). Sin esto, el motor persistente del worker
+    // arrastra la partida anterior: la posición raíz sale cacheada de la TT y congela la jugada de
+    // apertura → misma partida una y otra vez (la variedad de rootSelection/desempate nunca re-tira).
+    // Da paridad con el hilo principal, que limpia el motor en cada partida nueva (GameViewModel.startGame).
+    if (history.isEmpty()) aiEngine.clearHistory()
     aiEngine.setConfig(EvaluationConfig.getByDifficulty(job.difficulty ?: Difficulty.DEFAULT))
-    aiEngine.replaceHistory(job.positionHistory ?: emptyMap())
+    aiEngine.replaceHistory(history)
     val eval = aiEngine.getNextMove(gameState)
     postSafely(WorkerReply(job.id, WorkerReplyKind.BEST_MOVE, move = eval.move, score = eval.score))
 }

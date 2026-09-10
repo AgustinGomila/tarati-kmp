@@ -33,6 +33,15 @@ import com.agustin.tarati.core.domain.game.play.GameState
  * profundidad (MoveEval), mientras que esta caché almacena evaluaciones
  * estáticas de posición y ordenamiento. Un hit en la transposición evita
  * la búsqueda completa; un hit aquí evita recomputar la evaluación del nodo.
+ *
+ * ## Conciencia de la config ([setConfigToken])
+ * Las evaluaciones y el orden de jugadas **dependen de los pesos de
+ * [com.agustin.tarati.core.domain.ai.evaluator.EvaluationConfig]** (una posición vale distinto en
+ * MEDIUM que en HARD). Por eso todas las claves llevan como prefijo un *token* que identifica la
+ * config activa: entradas calculadas bajo una config **no** se reusan bajo otra. Es imprescindible
+ * cuando un mismo motor evalúa con configs distintas — p. ej. IA-vs-IA con niveles distintos, donde
+ * ambos lados comparten esta caché — para no devolver evaluaciones de la config equivocada.
+ * [com.agustin.tarati.core.domain.ai.engine.TaratiAI.setConfig] actualiza el token en cada cambio.
  */
 class HybridEvaluationCache(
     maxSize: Int = 2000,
@@ -43,9 +52,22 @@ class HybridEvaluationCache(
     private val quickEvaluationCache = LruCache<String, Double>(quickCacheSize)
     private val moveOrderingCache = LruCache<String, List<String>>(1000)
 
+    // Discriminador de la config activa, antepuesto a toda clave (ver KDoc "Conciencia de la config").
+    // Vacío hasta el primer [setConfigToken]; con una sola config es indistinto, así que el default es
+    // seguro para usos que nunca cambian de config.
+    private var configToken: String = ""
+
+    /**
+     * Fija el token que identifica la [EvaluationConfig] activa. Debe llamarse cuando la config del
+     * motor cambia (lo hace [com.agustin.tarati.core.domain.ai.engine.TaratiAI.setConfig]). No borra
+     * las entradas existentes: quedan namespaced por su propio token y conviven con las de otra config.
+     */
+    fun setConfigToken(token: String) {
+        configToken = token
+    }
+
     fun getFullEvaluation(gameState: GameState): Double? {
-        val hash = gameState.hashBoard()
-        return fullEvaluationCache[hash]?.also {
+        return fullEvaluationCache[evalKey(gameState)]?.also {
             recordAccess(hit = true)
         } ?: run {
             recordAccess(hit = false)
@@ -57,17 +79,20 @@ class HybridEvaluationCache(
         gameState: GameState,
         score: Double,
     ) {
-        fullEvaluationCache[gameState.hashBoard()] = score
+        fullEvaluationCache[evalKey(gameState)] = score
     }
 
-    fun getQuickEvaluation(gameState: GameState): Double? = quickEvaluationCache[gameState.hashBoard()]
+    fun getQuickEvaluation(gameState: GameState): Double? = quickEvaluationCache[evalKey(gameState)]
 
     fun putQuickEvaluation(
         gameState: GameState,
         score: Double,
     ) {
-        quickEvaluationCache[gameState.hashBoard()] = score
+        quickEvaluationCache[evalKey(gameState)] = score
     }
+
+    // Clave de evaluación estática (full/quick): token de config + hash de la posición.
+    private fun evalKey(gameState: GameState): String = "$configToken|${gameState.hashBoard()}"
 
     private fun getCacheKey(
         gameState: GameState,
@@ -76,7 +101,7 @@ class HybridEvaluationCache(
     ): String {
         val hash = gameState.hashBoard()
         val repetitionKey = positionHistory[hash] ?: 0
-        return "$hash:$isMaximizing:$depth:$repetitionKey"
+        return "$configToken|$hash:$isMaximizing:$depth:$repetitionKey"
     }
 
     fun getMoveOrdering(
