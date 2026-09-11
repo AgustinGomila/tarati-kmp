@@ -101,6 +101,7 @@ import com.agustin.tarati.ui.layout.LocalScreenLayout
 import com.agustin.tarati.ui.layout.ScreenLayout
 import com.agustin.tarati.ui.theme.TaratiLogo
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -127,6 +128,12 @@ fun GameEffects(
     gameState: GameState,
     aiThinkingDependencies: AiThinkingDependencies,
     onAITurn: (gameState: GameState, difficulty: Difficulty) -> Unit,
+    /**
+     * Movimientos aún encolados/en curso en el pipeline de animación del tablero
+     * ([IBoardAnimationViewModel.pendingMoveCount]). El disparo de la IA se espera hasta
+     * que llegue a 0 para que la IA no se adelante a la animación (ver el efecto de abajo).
+     */
+    animationPendingMoveCount: StateFlow<Int>,
     onBoardOrientationChanged: (BoardOrientation) -> Unit,
     isTutorialActive: Boolean,
     tutorialState: TutorialState,
@@ -167,6 +174,13 @@ fun GameEffects(
         }
 
         if (gameState.isGameOver(aiEngine.positionHistory)) return@LaunchedEffect
+
+        // Ritmo IA↔animación: esperar a que la jugada anterior termine de animarse antes de
+        // pedir la siguiente jugada de IA. El motor (rápido en Desktop) corría hasta el final de
+        // la partida mientras la cola de animación seguía drenando, así que la lista de
+        // movimientos se llenaba de golpe y el tablero quedaba muy atrás. pendingMoveCount siempre
+        // vuelve a 0 (el consumidor de la cola decrementa en su finally), así que no puede colgar.
+        animationPendingMoveCount.first { it == 0 }
 
         // WASM: give the animation system time to render the previous move before
         // the AI search runs. AiThinkingDependencies does not include isAIThinking, so

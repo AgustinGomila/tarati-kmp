@@ -444,6 +444,7 @@ fun GameScreen(
             orientationSide = onlinePlayerSide,
         ),
         onAITurn = { gameState, difficulty -> aiViewModel.requestAIMove(gameState, difficulty) },
+        animationPendingMoveCount = animationViewModel.pendingMoveCount,
         onBoardOrientationChanged = viewModel::updateBoardOrientation,
         isTutorialActive = screenState.isTutorialActive,
         tutorialState = tutorialState,
