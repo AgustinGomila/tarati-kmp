@@ -53,7 +53,7 @@ class BoardSymmetryTest {
     }
 
     @Test
-    fun `mirror preserves piece color (home base maps to itself)`() {
+    fun `mirror preserves piece color - home base maps to itself`() {
         for ((color, base) in GameBoard.homeBases) {
             for (vertex in base) {
                 assertTrue(

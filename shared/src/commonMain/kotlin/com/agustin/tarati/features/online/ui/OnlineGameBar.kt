@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.pieces.CobColor
+import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
+import com.agustin.tarati.core.domain.game.pieces.colorNameRes
 import com.agustin.tarati.features.online.game.SpectatingState
 import com.agustin.tarati.network.models.OnlineGame
 import com.agustin.tarati.network.models.OnlineGameStatus
@@ -177,6 +179,11 @@ fun OnlineGameBar(
             val avatarSize = if (compact) 18.dp else 24.dp
             val iconSize = if (compact) 16.dp else 20.dp
 
+            // Color del jugador localizado
+            val localizedCobColor = cobColorByDescription(game.yourColor)
+                ?.let { localizedString(it.colorNameRes) }
+                ?: ""
+
             Surface(
                 modifier = Modifier.wrapContentWidth(align = Alignment.Start),
                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -272,7 +279,7 @@ fun OnlineGameBar(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
-                                text = localizedString(Res.string.your_color, game.yourColor.capitalize()),
+                                text = localizedString(Res.string.your_color, localizedCobColor),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -603,6 +610,3 @@ private fun OpponentDisconnectedBanner(
         )
     }
 }
-
-private fun String.capitalize(): String =
-    replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }

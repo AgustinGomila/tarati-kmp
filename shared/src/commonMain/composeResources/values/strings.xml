@@ -278,7 +278,6 @@
     <string name="analysis_metric_upgrade">Promotion</string>
     <string name="analysis_metric_forced_promotion">Forced promotion</string>
     <string name="analysis_metric_conversion">Conversion</string>
-    <string name="analysis_black_advantage_note">In Tarati, Black has a structural advantage at high level.</string>
     <string name="analysis_analyze_game">Analyze game</string>
     <string name="analysis_analyzing">Analyzing…</string>
     <string name="analysis_view_full">Full game analysis</string>

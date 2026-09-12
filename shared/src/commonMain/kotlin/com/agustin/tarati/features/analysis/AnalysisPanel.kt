@@ -25,7 +25,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.analysis.EvalMetric
@@ -34,7 +33,6 @@ import com.agustin.tarati.core.domain.game.play.GameState
 import com.agustin.tarati.services.localization.localizedString
 import com.agustin.tarati.shared.generated.resources.Res
 import com.agustin.tarati.shared.generated.resources.analysis_black
-import com.agustin.tarati.shared.generated.resources.analysis_black_advantage_note
 import com.agustin.tarati.shared.generated.resources.analysis_breakdown
 import com.agustin.tarati.shared.generated.resources.analysis_material
 import com.agustin.tarati.shared.generated.resources.analysis_metric_center
@@ -133,13 +131,6 @@ fun AnalysisPanel(
                 maxAbs = maxAbs,
             )
         }
-
-        Text(
-            text = localizedString(Res.string.analysis_black_advantage_note),
-            style = MaterialTheme.typography.bodySmall,
-            fontStyle = FontStyle.Italic,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
 
         // ── Acceso al análisis completo (gráfico por-ply + clasificación) ─────
         if (onOpenFullAnalysis != null) {

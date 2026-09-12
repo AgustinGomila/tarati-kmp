@@ -18,7 +18,7 @@ class MoveClassifierTest {
     }
 
     @Test
-    fun `umbrales sobre la caida de win% (Blancas)`() {
+    fun `umbrales sobre la caida de win - Blancas`() {
         // Márgenes claros dentro de cada banda para evitar flakiness de punto flotante.
         assertEquals(MoveQuality.BLUNDER, quality(0.90f, 0.69f, white = true)) // drop ~.21
         assertEquals(MoveQuality.MISTAKE, quality(0.90f, 0.79f, white = true)) // drop ~.11
