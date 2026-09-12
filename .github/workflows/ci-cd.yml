@@ -357,6 +357,20 @@ jobs:
           ls -lh "$OUTPUT_DIR"
 
       # ═══════════════════════════════════════════════════════════
+      # Bump CACHE_VERSION del Service Worker
+      # Cada deploy genera una versión única (timestamp) para que los
+      # clientes con el SW anterior descarten su caché y bajen el bundle
+      # nuevo. Se parchea el artefacto construido; el source queda intacto.
+      # ═══════════════════════════════════════════════════════════
+      - name: Bump Service Worker cache version
+        run: |
+          SW="webApp/build/dist/wasmJs/productionExecutable/sw.js"
+          NEW_CACHE_VERSION="v$(date -u +%Y%m%d%H%M%S)"
+          sed -i "s/const CACHE_VERSION = '.*'/const CACHE_VERSION = '$NEW_CACHE_VERSION'/" "$SW"
+          echo "✅ Service Worker cache version → $NEW_CACHE_VERSION"
+          grep "const CACHE_VERSION" "$SW"
+
+      # ═══════════════════════════════════════════════════════════
       # Deploy al VPS
       # ═══════════════════════════════════════════════════════════
       - name: Setup SSH key
