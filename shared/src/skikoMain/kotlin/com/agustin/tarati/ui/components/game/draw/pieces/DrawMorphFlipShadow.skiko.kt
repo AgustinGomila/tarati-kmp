@@ -29,7 +29,8 @@ import org.jetbrains.skia.PathBuilder
  * `sigma = radius / 3f` (ver [drawFlipShadow]); `coerceAtLeast(0.1f)` evita sigma=0.
  */
 actual fun DrawScope.drawMorphFlipShadow(params: MorphFlipShadowParams) {
-    val matrix = Matrix33(*params.transformMatrix)
+    val m = params.transformMatrix
+    val matrix = Matrix33(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8])
 
     // Copia del path para no mutar el backing del Path de Compose original.
     val shadowSkia = PathBuilder()
