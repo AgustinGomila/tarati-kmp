@@ -1,6 +1,6 @@
 [versions]
 # Android Core
-agp = "9.0.1"
+agp = "9.4.0"
 compileSdk = "36"
 jvmCompatibility = "21"
 minSdk = "26"
@@ -16,20 +16,20 @@ kotlinxSerialization = "1.11.0"
 # Compose
 activity-compose = "1.13.0"
 # Compose 1.12.x / navigation 2.10.x requieren compileSdk 37 + AGP 9.1 (gateado por soporte IDEA)
-compose-bom = "2026.06.01"
+compose-bom = "2026.09.00"
 compose-material-icons = "1.7.8"
-compose-multiplatform = "1.11.1"
-navigation-compose = "2.9.8"
+compose-multiplatform = "1.12.0"
+navigation-compose = "2.10.1"
 navigation-compose-multiplatform = "2.9.2"
 
 # AndroidX
 # core-ktx 1.19+ y lifecycle 2.11+ requieren compileSdk 37 + AGP 9.1 (gateado por soporte IDEA)
-core-ktx = "1.18.0"
+core-ktx = "1.19.0"
 datastore = "1.2.1"
 lifecycle = "2.10.0"
 
 # Room Multiplatform
-ksp = "2.3.10"
+ksp = "2.3.12"
 room = "2.8.5"
 sqlite = "2.7.1"
 
@@ -64,7 +64,7 @@ kreds = "0.9.1"
 logback = "1.6.3"
 mp3spi = "1.9.5.4"
 postgresql = "42.7.13"
-resend = "4.23.0"
+resend = "4.24.0"
 slf4j = "1.7.36"
 micrometer = "1.17.1"
 sentry = "8.56.0"
