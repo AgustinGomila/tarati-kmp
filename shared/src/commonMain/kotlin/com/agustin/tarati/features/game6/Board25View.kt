@@ -3,6 +3,7 @@ package com.agustin.tarati.features.game6
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -291,6 +293,10 @@ fun Board25View(
     // Indicadores de jugador junto a cada base (color + Humano/IA + Nº de piezas). El detalle en portrait
     // los apaga y los reubica como leyenda fuera del tablero.
     showBaseIndicators: Boolean = true,
+    // Modo edición: el arrastre reubica la pieza vía [onRelocate] (no mueve ni selecciona). Solo el
+    // juego local lo activa; online queda con los defaults.
+    editing: Boolean = false,
+    onRelocate: (from: Vertex, to: Vertex) -> Unit = { _, _ -> },
 ) {
     val boardColors = getBoardColors()
     val edgeColor = boardColors.boardEdgeColor.copy(alpha = 0.8f)
@@ -331,12 +337,32 @@ fun Board25View(
     }
     var showPostMove by remember { mutableStateOf(false) }
 
+    // Estado visual transitorio del arrastre: pieza agarrada + posición del puntero. `dropAnimOverride`
+    // recuerda (keyed por el MpMove) el offset de soltado para animar el deslizamiento **desde** ahí en
+    // vez de teletransportar la pieza al vértice de origen.
+    var draggingFrom by remember { mutableStateOf<Vertex?>(null) }
+    var dragPosition by remember { mutableStateOf(Offset.Unspecified) }
+    var dropAnimOverride by remember { mutableStateOf<Pair<MpMove, Offset>?>(null) }
+
+    // Limpieza reactiva del drag tras un drop que mueve la pieza: en cuanto el estado ya no tiene la
+    // pieza en el origen (movida o reubicada), el render normal toma el relevo desde el punto de soltado
+    // y la pieza flotante deja de dibujarse → se limpia. Evita el flash de 1 frame en el origen.
+    LaunchedEffect(state.pieces, draggingFrom) {
+        val df = draggingFrom
+        if (df != null && dragPosition.isSpecified && df !in state.pieces) {
+            draggingFrom = null
+            dragPosition = Offset.Unspecified
+        }
+    }
+
     LaunchedEffect(moveCount) {
         if (!mounted) {
             mounted = true
             return@LaunchedEffect
         }
         if (shouldAnimateMove) moveProgress.animateTo(1f, animationSpec = tween(ANIMATION_MS))
+        // El override de soltado vive exactamente una animación: se consume aquí, tras el deslizamiento.
+        dropAnimOverride = null
         // Tras el deslizamiento, resalta los destinos alcanzables de la pieza recién llegada.
         if (shouldAnimateMove && postMoveTargets.isNotEmpty()) {
             showPostMove = true
@@ -375,6 +401,14 @@ fun Board25View(
     // `rememberUpdatedState` hace que el gesto invoque siempre el callback más reciente.
     val currentOnVertexTap by rememberUpdatedState(onVertexTap)
 
+    // ── Arrastrar y soltar ───────────────────────────────────────────────────────
+    // Valores frescos para el bloque de gestos (`pointerInput(Unit)` congela closures). El estado
+    // visual del arrastre (draggingFrom/dragPosition/dropAnimOverride) se declara más arriba porque
+    // el LaunchedEffect(moveCount) consume dropAnimOverride.
+    val currentEditing by rememberUpdatedState(editing)
+    val currentOnRelocate by rememberUpdatedState(onRelocate)
+    val currentState by rememberUpdatedState(state)
+
     Box(modifier = modifier) {
         Canvas(
             modifier = Modifier
@@ -386,6 +420,85 @@ fun Board25View(
                         val tapRadius = minOf(size.width, size.height) * 0.06f
                         Board25Geometry.closestVertex(offset, screen, tapRadius)?.let(currentOnVertexTap)
                     }
+                }
+                // Arrastrar y soltar: paralelo al tap (Compose arbitra por touch-slop). En juego reusa la
+                // FSM de onVertexTap (agarrar = tap de origen, soltar = tap de destino); en editor reubica.
+                .pointerInput(Unit) {
+                    // Estado del gesto en curso (independiente del State de Compose, sin staleness).
+                    var gFrom: Vertex? = null
+                    var gPointer = Offset.Unspecified
+
+                    fun closest(at: Offset): Vertex? {
+                        val screen = Board25Geometry.fit(size.toSize())
+                        val tapRadius = minOf(size.width, size.height) * 0.06f
+                        return Board25Geometry.closestVertex(at, screen, tapRadius)
+                    }
+
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            val v = closest(offset)
+                            if (v != null) {
+                                val grabbable = if (currentEditing) {
+                                    currentState.pieces[v] != null
+                                } else {
+                                    // La FSM decide si hay pieza seleccionable/pre-seleccionable ahí.
+                                    currentOnVertexTap(v)
+                                    true
+                                }
+                                if (grabbable) {
+                                    gFrom = v
+                                    gPointer = offset
+                                    draggingFrom = v
+                                    dragPosition = offset
+                                }
+                            }
+                        },
+                        onDrag = { change, _ ->
+                            if (gFrom != null) {
+                                change.consume()
+                                gPointer = change.position
+                                dragPosition = change.position
+                            }
+                        },
+                        onDragEnd = {
+                            val origin = gFrom
+                            var moved = false
+                            if (origin != null) {
+                                val to = if (gPointer.isSpecified) closest(gPointer) else null
+                                if (to != null && to != origin) {
+                                    if (currentEditing) {
+                                        // Reubica solo a vértice libre (mismo guard que el VM).
+                                        if (currentState.pieces[to] == null) {
+                                            currentOnRelocate(origin, to)
+                                            moved = true
+                                        }
+                                    } else {
+                                        // "Mueve" solo si la FSM lo aceptará (misma condición que
+                                        // onVertexTap: turno legal). Si no, es pre-move / deselección.
+                                        moved = MpRules.isLegal(currentState, MpMove(origin, to))
+                                        // Registrar el offset de soltado antes de despachar, para animar
+                                        // el deslizamiento desde ahí (keyed por el MpMove).
+                                        if (moved) dropAnimOverride = MpMove(origin, to) to gPointer
+                                        currentOnVertexTap(to)
+                                    }
+                                }
+                            }
+                            gFrom = null
+                            gPointer = Offset.Unspecified
+                            // Si movió, se mantiene flotando en el punto de soltado hasta que el estado
+                            // reubique la pieza (limpieza reactiva más abajo) → sin flash en el origen.
+                            if (!moved) {
+                                draggingFrom = null
+                                dragPosition = Offset.Unspecified
+                            }
+                        },
+                        onDragCancel = {
+                            gFrom = null
+                            gPointer = Offset.Unspecified
+                            draggingFrom = null
+                            dragPosition = Offset.Unspecified
+                        },
+                    )
                 },
         ) {
             val screen = Board25Geometry.fit(Size(size.width, size.height))
@@ -494,7 +607,11 @@ fun Board25View(
             // (misma transformación que single, con los colores de cada jugador).
             val slidingMove = lastMove?.takeIf { slide < 1f }
             val movingTo = slidingMove?.to
-            val movingFrom = slidingMove?.let { screen.getValue(it.from) }
+            // Si esta jugada vino de un soltado, arranca el deslizamiento desde el punto de soltado
+            // (override keyed por el MpMove, para que una jugada rival no lo tome por error).
+            val movingFrom = slidingMove?.let { sm ->
+                dropAnimOverride?.takeIf { it.first == sm }?.second ?: screen.getValue(sm.from)
+            }
             val convertingActive = moveP < 1f && converted.isNotEmpty()
 
             // Posición interpolada de la pieza que se desliza — origen de la estela y de los arcos en
@@ -566,9 +683,18 @@ fun Board25View(
                 }
             }
 
+            // Pieza arrastrada: se dibuja aparte (bajo el dedo, encima de todo) y se omite en el bucle.
+            // Solo "flota" si el agarre efectivamente la tomó: en editor cualquier pieza; en juego la
+            // pieza seleccionada o pre-seleccionada (así no hace falta conocer myColor/turno acá).
+            val floatingVertex = draggingFrom?.takeIf {
+                dragPosition.isSpecified && state.pieces.containsKey(it) &&
+                        (editing || selection == it || preMoveFrom == it)
+            }
+
             state.pieces.entries
                 .sortedBy { if (it.key == movingTo) 1 else 0 }
                 .forEach { (vertex, piece) ->
+                    if (vertex == floatingVertex) return@forEach
                     val center = if (vertex == movingTo && movingFrom != null) {
                         lerp(movingFrom, screen.getValue(vertex), slide)
                     } else {
@@ -687,6 +813,23 @@ fun Board25View(
                         )
                     }
                 }
+
+            // Pieza arrastrada — dibujada al final para quedar por encima; sigue al dedo (dragPosition),
+            // con leve realce. Su vértice de origen conserva el anillo de selección (abajo).
+            floatingVertex?.let { vertex ->
+                state.pieces[vertex]?.let { piece ->
+                    val tilt = if (isPolygon) vertexTilt(vertex) else 0f
+                    drawMpRestingPiece(
+                        center = dragPosition,
+                        layout = layout,
+                        pieceRadius = pieceRadius,
+                        tilt = tilt,
+                        pieceColor = PlayerPalette.pieceColor(piece.owner),
+                        lightOfDay = lightOfDay,
+                        boardColors = boardColors,
+                    )
+                }
+            }
 
             // Resalte de selección — mismo anillo giratorio que Tarati (circular o poligonal según el tipo).
             selection?.let { vertex ->

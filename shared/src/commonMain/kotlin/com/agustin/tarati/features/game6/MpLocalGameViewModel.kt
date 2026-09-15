@@ -514,6 +514,22 @@ class MpLocalGameViewModel(
         _state.value = s.copy(pieces = pieces.toMap())
     }
 
+    /**
+     * Reubica la pieza de [from] a [to] (arrastrar y soltar en el editor), conservando dueño y
+     * recomputando [Piece.hasLeftBase] en el destino. No-op si no está editando, si no hay pieza en
+     * [from], si [from] == [to], o si [to] ya está ocupado (no se pisa otra pieza).
+     */
+    fun editMovePiece(from: Vertex, to: Vertex) {
+        if (!_isEditing.value) return
+        val s = _state.value
+        val piece = s.pieces[from] ?: return
+        if (from == to || s.pieces[to] != null) return
+        val pieces = s.pieces.toMutableMap()
+        pieces.remove(from)
+        pieces[to] = piece.copy(hasLeftBase = hasLeftBaseFor(piece.owner, to))
+        _state.value = s.copy(pieces = pieces.toMap())
+    }
+
     /** Vacía el tablero (conserva asientos y turno). */
     fun clearEditBoard() {
         _state.value = _state.value.copy(pieces = emptyMap())

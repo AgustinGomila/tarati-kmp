@@ -1,6 +1,7 @@
 package com.agustin.tarati.ui.components.game.animation
 
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.agustin.tarati.core.domain.game.board.BoardOrientation
 import com.agustin.tarati.core.domain.game.board.Vertex
@@ -78,6 +79,14 @@ interface IBoardAnimationViewModel {
         newGameState: GameState,
         isGameOver: Boolean = false,
     )
+
+    /**
+     * Registra que el próximo movimiento [move] debe animarse **desde** el offset
+     * absoluto [startOffset] (px del contenedor) en vez de desde el vértice de origen.
+     * Lo usa arrastrar-y-soltar: la pieza vuela desde el punto donde se soltó hasta el
+     * destino. Se consume una única vez al animar ese movimiento; default no-op.
+     */
+    fun setNextMoveStartOffset(move: Move, startOffset: Offset) {}
 
     fun reset()
 

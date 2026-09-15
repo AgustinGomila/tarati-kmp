@@ -196,6 +196,24 @@ class BoardAnimationViewModel(
         }
     }
 
+    // ── Arrastrar y soltar: offset de inicio del próximo movimiento ──────────────
+    // Se guarda keyed por el Move para que la cola FIFO no lo aplique a otro
+    // movimiento (p. ej. una jugada de IA encolada antes). Set y consumo ocurren
+    // ambos en viewModelScope (Main) → sin necesidad de sincronización.
+    private var pendingStartOverride: Pair<Move, Offset>? = null
+
+    override fun setNextMoveStartOffset(move: Move, startOffset: Offset) {
+        pendingStartOverride = move to startOffset
+    }
+
+    /** Devuelve y consume el override si coincide con [move]; si no coincide, lo deja intacto. */
+    private fun consumeStartOverride(move: Move): Offset? {
+        val pending = pendingStartOverride ?: return null
+        if (pending.first != move) return null
+        pendingStartOverride = null
+        return pending.second
+    }
+
     private fun getLogMessage(
         tag: String,
         extra: Map<String, Any?> = emptyMap(),
@@ -247,6 +265,10 @@ class BoardAnimationViewModel(
         val fromTiltDeg = tiltMap.get(move.from)
         val toTiltDeg = TiltStateMap.randomTilt()
 
+        // Arrastrar-y-soltar: si hay un offset registrado para este movimiento, la pieza
+        // arranca desde el punto de soltado en lugar del vértice de origen.
+        val startOverride = consumeStartOverride(move)
+
         val animatedCob = AnimatedCob(
             vertex = move.to,
             cob = cob,
@@ -255,6 +277,7 @@ class BoardAnimationViewModel(
             animationProgress = 0f,
             fromTiltDeg = fromTiltDeg,
             toTiltDeg = toTiltDeg,
+            startOverride = startOverride,
         )
 
         updateVisualState { curr ->
@@ -271,7 +294,7 @@ class BoardAnimationViewModel(
         val steps = animationSteps
         val stepDelay = duration / steps
 
-        val fromPos = _positionCache[move.from]
+        val fromPos = startOverride ?: _positionCache[move.from]
         val toPos = _positionCache[move.to]
 
         repeat(steps) { step ->
@@ -560,6 +583,7 @@ class BoardAnimationViewModel(
     }
 
     override fun forceSync() {
+        pendingStartOverride = null
         clearQueue()
         stopHighlights()
         viewModelScope.launch {

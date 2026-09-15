@@ -16,6 +16,9 @@ interface IEditBoard {
 
     fun editPiece(vertex: Vertex)
 
+    /** Reubica la pieza de [from] a [to] (arrastrar y soltar en el editor). Default no-op. */
+    fun editMovePiece(from: Vertex, to: Vertex) {}
+
     fun startGameFromEditedState()
 
     fun toggleEditing()

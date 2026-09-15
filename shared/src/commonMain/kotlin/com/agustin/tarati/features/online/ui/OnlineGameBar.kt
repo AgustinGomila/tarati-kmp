@@ -37,7 +37,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.capitalize
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import com.agustin.tarati.core.domain.game.pieces.CobColor
 import com.agustin.tarati.core.domain.game.pieces.cobColorByDescription
@@ -181,7 +183,7 @@ fun OnlineGameBar(
 
             // Color del jugador localizado
             val localizedCobColor = cobColorByDescription(game.yourColor)
-                ?.let { localizedString(it.colorNameRes) }
+                ?.let { localizedString(it.colorNameRes).capitalize(Locale.current) }
                 ?: ""
 
             Surface(

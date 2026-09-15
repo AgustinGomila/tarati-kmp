@@ -363,6 +363,8 @@ fun MpGameScreen(
                     preMoveFrom = preMoveFrom,
                     preMoveTargets = preMoveTargets,
                     pendingPreMove = pendingPreMove,
+                    editing = isEditing,
+                    onRelocate = viewModel::editMovePiece,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(end = boardEndPadding, bottom = boardBottomPadding)

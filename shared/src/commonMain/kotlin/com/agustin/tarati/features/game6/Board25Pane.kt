@@ -35,6 +35,10 @@ fun Board25Pane(
     // Dibuja los indicadores de jugador (color + Humano/IA + Nº de piezas) junto a cada base. El detalle
     // en portrait lo apaga y los muestra como leyenda fuera del tablero (`MpSeatLegend`).
     showBaseIndicators: Boolean = true,
+    // Modo edición: el arrastre reubica piezas vía [onRelocate] en vez de mover/seleccionar. Solo el
+    // juego local ([MpGameScreen]) tiene editor; online queda con los defaults.
+    editing: Boolean = false,
+    onRelocate: (from: Vertex, to: Vertex) -> Unit = { _, _ -> },
 ) {
     Board25View(
         state = state,
@@ -61,5 +65,7 @@ fun Board25Pane(
         forcedLabelVertices = forcedLabelVertices,
         guideArrows = guideArrows,
         showBaseIndicators = showBaseIndicators,
+        editing = editing,
+        onRelocate = onRelocate,
     )
 }

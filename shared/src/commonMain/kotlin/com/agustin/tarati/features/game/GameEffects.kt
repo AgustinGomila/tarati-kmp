@@ -748,6 +748,9 @@ private fun createBoardRenderEvents(
 
     override fun onSyncState(gameState: GameState) =
         animationViewModel.syncState(gameState)
+
+    override fun onMoveFromDrop(move: Move, startOffset: Offset) =
+        animationViewModel.setNextMoveStartOffset(move, startOffset)
 }
 
 private fun createTapEvents(
@@ -771,6 +774,8 @@ private fun createTapEvents(
     }
 
     override fun onEditPieceRequested(from: Vertex) = events.onEditPiece(from)
+
+    override fun onEditMovePieceRequested(from: Vertex, to: Vertex) = events.onEditMovePiece(from, to)
 
     override fun onCancel() = selectViewModel.resetSelection()
 

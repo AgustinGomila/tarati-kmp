@@ -154,6 +154,41 @@ class MpEditorTest {
     }
 
     @Test
+    fun editMovePiece_relocatesToEmpty_andRecomputesHasLeftBase() {
+        vm.toggleEditing()
+        vm.clearEditBoard()
+        // P1 (base S) en D1 (dentro de su base) → hasLeftBase = false.
+        tap("D1")
+        assertFalse(vm.state.value.pieces[v("D1")]?.hasLeftBase ?: true)
+        // Reubicar D1 → C1 (fuera de la base): se mueve la pieza y recomputa hasLeftBase = true.
+        vm.editMovePiece(v("D1"), v("C1"))
+        assertNull(vm.state.value.pieces[v("D1")])
+        assertEquals(PlayerColor.P1, vm.state.value.pieces[v("C1")]?.owner)
+        assertTrue(vm.state.value.pieces[v("C1")]?.hasLeftBase ?: false)
+    }
+
+    @Test
+    fun editMovePiece_ontoOccupied_isNoOp() {
+        vm.toggleEditing()
+        vm.clearEditBoard()
+        tap("C1") // P1
+        vm.cycleEditColor()
+        tap("C7") // P2
+        vm.editMovePiece(v("C1"), v("C7")) // destino ocupado → no-op
+        assertEquals(PlayerColor.P1, vm.state.value.pieces[v("C1")]?.owner)
+        assertEquals(PlayerColor.P2, vm.state.value.pieces[v("C7")]?.owner)
+    }
+
+    @Test
+    fun editMovePiece_whenNotEditing_isNoOp() {
+        // Sin entrar a edición: la posición inicial no debe alterarse.
+        val d1Owner = vm.state.value.pieces[v("D1")]?.owner
+        vm.editMovePiece(v("D1"), v("A1"))
+        assertEquals(d1Owner, vm.state.value.pieces[v("D1")]?.owner)
+        assertNull(vm.state.value.pieces[v("A1")])
+    }
+
+    @Test
     fun cancelEditing_restoresPreEditPosition() {
         // Entra desde la posición inicial (8 piezas), edita y cancela → se restaura.
         val initialCount = vm.state.value.pieces.size

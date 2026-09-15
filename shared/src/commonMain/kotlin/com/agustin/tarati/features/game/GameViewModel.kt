@@ -207,6 +207,12 @@ abstract class GameViewModel(
         gameManager.updateGameState(newState)
     }
 
+    override fun editMovePiece(from: Vertex, to: Vertex) {
+        val currentState = gameManager.gameState.value
+        val newState = editBoardManager.editMovePiece(from, to, currentState)
+        gameManager.updateGameState(newState)
+    }
+
     override fun startGameFromEditedState() {
         val currentState = gameManager.gameState.value
         if (!editBoardManager.validateDistributionForGameStart(currentState)) return

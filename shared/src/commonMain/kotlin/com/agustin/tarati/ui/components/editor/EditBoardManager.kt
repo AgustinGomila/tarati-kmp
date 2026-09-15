@@ -93,6 +93,25 @@ class EditBoardManager : IEditBoardManager {
         return currentState.copy(cobs = mutableCobs.toMap())
     }
 
+    /**
+     * Reubica la pieza de [from] a [to] conservando su color y estado (arrastrar y soltar).
+     * No-op si no hay pieza en [from] o si [to] ya está ocupado (no se pisa otra pieza).
+     * No altera los contadores: es un movimiento, no un alta/baja.
+     */
+    fun editMovePiece(
+        from: Vertex,
+        to: Vertex,
+        currentState: GameState,
+    ): GameState {
+        val cob = currentState.cobs[from] ?: return currentState
+        if (from == to || currentState.cobs[to] != null) return currentState
+
+        val mutableCobs = currentState.cobs.toMutableMap()
+        mutableCobs.remove(from)
+        mutableCobs[to] = cob
+        return currentState.copy(cobs = mutableCobs.toMap())
+    }
+
     fun validateDistributionForGameStart(currentState: GameState): Boolean {
         val pieceCounts = currentState.getPieceCounts()
         return isValidDistribution(pieceCounts.white, pieceCounts.black)

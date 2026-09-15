@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -38,6 +39,7 @@ import com.agustin.tarati.ui.components.game.BoardState
 import com.agustin.tarati.ui.components.game.animation.AnimatedCob
 import com.agustin.tarati.ui.components.game.behaviors.PreMoveContext
 import com.agustin.tarati.ui.components.game.behaviors.TapEvents
+import com.agustin.tarati.ui.components.game.behaviors.dragGestures
 import com.agustin.tarati.ui.components.game.behaviors.tapGestures
 import com.agustin.tarati.ui.components.game.draw.pieces.createOrganicColor
 import com.agustin.tarati.ui.components.game.draw.pieces.drawAnimatedPiece
@@ -260,6 +262,26 @@ fun BoardRenderer(
         )
     }
 
+    // ── Arrastrar y soltar ─────────────────────────────────────────────────────
+    // Estado visual transitorio del arrastre: qué pieza se agarró y dónde está el
+    // dedo/puntero. Vive local al renderer (no en el ViewModel) para no generar
+    // churn de StateFlow a 60fps; drawAllPieces lo lee para dibujar la pieza bajo
+    // el puntero. La semántica (seleccionar/mover/pre-mover/reubicar) la resuelve
+    // dragGestures reutilizando los mismos callbacks de TapEvents que el tap.
+    var draggingFrom by remember { mutableStateOf<Vertex?>(null) }
+    var dragPosition by remember { mutableStateOf(Offset.Unspecified) }
+
+    // Limpieza reactiva del drag tras un drop que mueve la pieza (onRelease no limpió): en cuanto el
+    // estado visual deja de tener la pieza en el origen (movida o pasada a animación), el render normal
+    // toma el relevo desde el punto de soltado y ya no hace falta la pieza flotante → se limpia.
+    LaunchedEffect(visualState.cobs, draggingFrom) {
+        val df = draggingFrom
+        if (df != null && dragPosition.isSpecified && df !in visualState.cobs) {
+            draggingFrom = null
+            dragPosition = Offset.Unspecified
+        }
+    }
+
     Box(
         modifier =
             modifier
@@ -295,6 +317,47 @@ fun BoardRenderer(
                         tapEvents = tapEvents,
                         logger = logger,
                         preMoveContext = preMoveContext,
+                    )
+                }
+                // Bloque de arrastre paralelo al de tap: Compose arbitra por touch-slop.
+                // No depende de selectedVertex (el drag computa su propio origen al agarrar).
+                .pointerInput(
+                    visualWidth,
+                    boardState.gameState,
+                    boardState.boardOrientation,
+                    boardState.isEditing,
+                    boardState.whiteIsAI,
+                    boardState.blackIsAI,
+                    tapEvents,
+                    preMoveContext,
+                ) {
+                    dragGestures(
+                        visualWidth = visualWidth,
+                        gameState = boardState.gameState,
+                        whiteIsAI = boardState.whiteIsAI,
+                        blackIsAI = boardState.blackIsAI,
+                        orientation = boardState.boardOrientation,
+                        editorMode = boardState.isEditing,
+                        tapEvents = tapEvents,
+                        logger = logger,
+                        preMoveContext = preMoveContext,
+                        onGrab = { from, pointer ->
+                            draggingFrom = from
+                            dragPosition = pointer
+                        },
+                        onDragTo = { pointer -> dragPosition = pointer },
+                        onRelease = { moved ->
+                            // Si el drop movió la pieza, se mantiene flotando en el punto de soltado
+                            // hasta que el estado la reubique (limpieza reactiva más abajo), evitando el
+                            // flash de 1 frame en el origen. En cancel/pre-move/ilegal se limpia ya.
+                            if (!moved) {
+                                draggingFrom = null
+                                dragPosition = Offset.Unspecified
+                            }
+                        },
+                        // Anima la pieza desde el punto de soltado hasta el destino
+                        // (registra el offset en el pipeline de animación, keyed por el Move).
+                        onDropMove = { move, pointer -> boardEvents.onMoveFromDrop(move, pointer) },
                     )
                 },
     ) {
@@ -445,6 +508,8 @@ fun BoardRenderer(
                 hourOfDay = hourOfDay,
                 selectionTimeMs = selectionTick,
                 colors = boardColors,
+                draggingFrom = draggingFrom,
+                dragPosition = dragPosition,
             )
 
             // ── Pre-movimiento ─────────────────────────────────────────────────
@@ -493,6 +558,10 @@ fun DrawScope.drawAllPieces(
     hourOfDay: Float = 12f,
     selectionTimeMs: Long = 0L,
     colors: BoardColors,
+    /** Vértice de la pieza que se está arrastrando, o null si no hay arrastre en curso. */
+    draggingFrom: Vertex? = null,
+    /** Posición actual del puntero mientras se arrastra (Unspecified si no aplica). */
+    dragPosition: Offset = Offset.Unspecified,
 ) {
     // Fallback de seguridad: si positionCache llega con size cero (solo posible en
     // previews antes del primer layout), se construye desde DrawScope.size que
@@ -517,12 +586,15 @@ fun DrawScope.drawAllPieces(
         CobColor.BLACK to createOrganicColor(getPieceColors(Cob(CobColor.BLACK), colors), hourOfDay, colors),
     )
 
-    // Dibujar piezas estáticas
+    // Dibujar piezas estáticas. La pieza que se está arrastrando se dibuja bajo el
+    // puntero (dragPosition) y algo más grande, para que "flote" siguiendo el dedo;
+    // su vértice de origen conserva el anillo de selección (Canvas estático).
+    val isDragging = draggingFrom != null && dragPosition.isSpecified
     staticCobs.forEach { (vertex, cob) ->
-        val pos = effectiveCache[vertex]
+        val dragged = isDragging && vertex == draggingFrom
         drawPiece(
-            position = pos,
-            radius = pieceRadius,
+            position = if (dragged) dragPosition else effectiveCache[vertex],
+            radius = if (dragged) pieceRadius * 1.18f else pieceRadius,
             selectedVertex = selectedPiece,
             vertex = vertex,
             cob = cob,
@@ -537,7 +609,8 @@ fun DrawScope.drawAllPieces(
 
     // Dibujar piezas animadas
     animatedPieces.values.forEach { animatedCob ->
-        val currentPos = effectiveCache[animatedCob.currentPos]
+        // startOverride: arrastrar-y-soltar → arranca el tramo desde el punto de soltado.
+        val currentPos = animatedCob.startOverride ?: effectiveCache[animatedCob.currentPos]
         val targetPos = effectiveCache[animatedCob.targetPos]
 
         // Interpolar posición para animación

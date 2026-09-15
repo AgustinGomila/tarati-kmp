@@ -615,6 +615,7 @@ fun GameScreen(
                 boardEvents = object : BoardEvents {
                     override fun onMove(move: Move) = handleMove(move)
                     override fun onEditPiece(from: Vertex) = viewModel.editPiece(from)
+                    override fun onEditMovePiece(from: Vertex, to: Vertex) = viewModel.editMovePiece(from, to)
                     override fun onResetCompleted() = Unit
                 },
                 events = events,

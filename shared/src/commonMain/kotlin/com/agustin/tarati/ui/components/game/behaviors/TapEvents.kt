@@ -21,6 +21,12 @@ interface TapEvents {
 
     fun onEditPieceRequested(from: Vertex)
 
+    /**
+     * El usuario arrastró una pieza de [from] a [to] en modo edición para reubicarla.
+     * Default no-op: solo el flujo de juego real lo implementa (previews/tests no lo necesitan).
+     */
+    fun onEditMovePieceRequested(from: Vertex, to: Vertex) {}
+
     fun onCancel()
 
     // ── Flujo pre-move (mientras la IA piensa y preMovesEnabled=true) ────────

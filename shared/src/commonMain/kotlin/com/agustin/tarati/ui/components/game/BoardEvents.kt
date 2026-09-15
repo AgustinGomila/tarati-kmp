@@ -10,5 +10,8 @@ interface BoardEvents {
 
     fun onEditPiece(from: Vertex)
 
+    /** Reubica en modo edición la pieza de [from] a [to]. Default no-op (previews/tests). */
+    fun onEditMovePiece(from: Vertex, to: Vertex) {}
+
     fun onResetCompleted()
 }
