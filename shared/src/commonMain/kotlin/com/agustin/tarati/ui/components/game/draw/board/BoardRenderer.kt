@@ -586,15 +586,16 @@ fun DrawScope.drawAllPieces(
         CobColor.BLACK to createOrganicColor(getPieceColors(Cob(CobColor.BLACK), colors), hourOfDay, colors),
     )
 
-    // Dibujar piezas estáticas. La pieza que se está arrastrando se dibuja bajo el
-    // puntero (dragPosition) y algo más grande, para que "flote" siguiendo el dedo;
-    // su vértice de origen conserva el anillo de selección (Canvas estático).
-    val isDragging = draggingFrom != null && dragPosition.isSpecified
+    // Vértice de la pieza que se está arrastrando (o null): se omite en el bucle de
+    // estáticas y se dibuja al final para quedar por encima del resto de las piezas.
+    val draggedVertex = if (dragPosition.isSpecified) draggingFrom else null
+
+    // Dibujar piezas estáticas (excepto la arrastrada, que se pinta al final).
     staticCobs.forEach { (vertex, cob) ->
-        val dragged = isDragging && vertex == draggingFrom
+        if (vertex == draggedVertex) return@forEach
         drawPiece(
-            position = if (dragged) dragPosition else effectiveCache[vertex],
-            radius = if (dragged) pieceRadius * 1.18f else pieceRadius,
+            position = effectiveCache[vertex],
+            radius = pieceRadius,
             selectedVertex = selectedPiece,
             vertex = vertex,
             cob = cob,
@@ -636,6 +637,27 @@ fun DrawScope.drawAllPieces(
             colors = colors,
             precomputedLight = lightOfDay,
         )
+    }
+
+    // Pieza arrastrada — dibujada al final para quedar por encima del resto; sigue al
+    // puntero (dragPosition) con leve realce. Su vértice de origen conserva el anillo de
+    // selección (Canvas estático).
+    draggedVertex?.let { vertex ->
+        staticCobs[vertex]?.let { cob ->
+            drawPiece(
+                position = dragPosition,
+                radius = pieceRadius * 1.18f,
+                selectedVertex = selectedPiece,
+                vertex = vertex,
+                cob = cob,
+                hourOfDay = hourOfDay,
+                selectionTimeMs = selectionTimeMs,
+                tiltDeg = tiltAngles[vertex] ?: 0f,
+                colors = colors,
+                precomputedLight = lightOfDay,
+                precomputedOrganicColors = organicColors,
+            )
+        }
     }
 }
 
